@@ -1,7 +1,4 @@
-#include "config.h"
-#include "system.h"
-#include "coretypes.h"
-#include "tm.h"
+#include "dehydra.h"
 /*C++ headers*/
 #include "cp-tree.h"
 #include "cxx-pretty-print.h"
