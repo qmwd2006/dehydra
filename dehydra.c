@@ -2,33 +2,14 @@
 #include "system.h"
 #include "coretypes.h"
 #include "tm.h"
-#include "tree.h"
-#include "rtl.h"
-#include "tm_p.h"
-#include "hard-reg-set.h"
-#include "basic-block.h"
-#include "output.h"
-#include "errors.h"
-#include "flags.h"
-#include "function.h"
-#include "expr.h"
-#include "diagnostic.h"
-#include "tree-flow.h"
-#include "timevar.h"
-#include "tree-dump.h"
-#include "tree-pass.h"
-#include "toplev.h"
-#include "c-common.h"
-#include "tree.h"
-#include "cgraph.h"
-#include "input.h"
 /*C++ headers*/
 #include "cp-tree.h"
-#include "name-lookup.h"
 #include "cxx-pretty-print.h"
+
 static int processed = 0;
 
-void process(tree);
+static void process(tree);
+static void process_type(tree t);
 
 // do a DFS of a TREE_CHAIN
 void dfs_process_chain(tree t) {
@@ -36,7 +17,6 @@ void dfs_process_chain(tree t) {
   dfs_process_chain(TREE_CHAIN(t));
   process(t);
 }
-
 
 /* stolen from gcc/cp/error.h */
 static location_t
@@ -63,14 +43,14 @@ char const * loc(tree t) {
   size_t en = strlen(eloc.file) + 20;
   if (en > n) {
     free(locationbuf);
-    locationbuf = xmalloc(en);
+    locationbuf = (char*) xmalloc(en);
   }
   sprintf(locationbuf, "%s:%d:%d", eloc.file, eloc.line, eloc.column);
   return locationbuf;
 }
 #define TREE_HANDLER(name, var) static void process_##name(tree var)
 
-TREE_HANDLER(namespace, ns) {
+TREE_HANDLER(namespace_decl, ns) {
     if (DECL_NAMESPACE_ALIAS (ns)) return;
 
     fprintf(stderr, "namespace %s\n", DECL_NAME(ns) 
@@ -80,24 +60,66 @@ TREE_HANDLER(namespace, ns) {
     dfs_process_chain(level->names);
 }
 
-TREE_HANDLER(function, f) {
+TREE_HANDLER(function_decl, f) {
   if (DECL_IS_BUILTIN(f)) return;
-  fprintf(stderr, "function %s\n", decl_as_string(f, 0xff));
+  fprintf(stderr, "%s: function %s\n", loc(f), decl_as_string(f, 0xff));
 }
 
-TREE_HANDLER(type, t) {
+TREE_HANDLER(record_type, c) {
+  tree field, func;
+  fprintf(stderr, "class %s\n", type_as_string(c, 0));
+  /* Output all the method declarations in the class.  */
+  for (func = TYPE_METHODS (c) ; func ; func = TREE_CHAIN (func)) {
+    if (DECL_ARTIFICIAL(func)) continue;
+    /* Don't output the cloned functions.  */
+    if (DECL_CLONED_FUNCTION_P (func)) continue;
+    process(func);
+  }
+
+  for (field = TYPE_FIELDS (c) ; field ; field = TREE_CHAIN (field)) {
+    if (DECL_ARTIFICIAL(field) && !DECL_IMPLICIT_TYPEDEF_P(field)) continue;
+    // ignore typedef of self field
+    // my theory is that the guard above takes care of this one too
+    if (TREE_CODE (field) == TYPE_DECL 
+        && TREE_TYPE (field) == c) continue;
+     
+    process(field);
+    //fprintf(stderr, "%s: member %s\n", loc(c), tree_code_name[TREE_CODE(field)]);
+  }
+    
+  fprintf(stderr, "/class //%s\n", type_as_string(c, 0));
+}
+
+TREE_HANDLER(type_decl, t) {
   if (DECL_IS_BUILTIN(t)) return;
+
+  process_type(TREE_TYPE(t));
   fprintf(stderr, "%s: %s\n", loc(t), decl_as_string(t, TFF_DECL_SPECIFIERS));
 }
 
-void process(tree t) {
+TREE_HANDLER(field_decl, f) {
+    return process_type(TREE_TYPE(f));
+}
+
+static void process_type(tree t) {
+ switch (TREE_CODE(t)) {
+    case RECORD_TYPE:
+      return process_record_type(t);
+    default:
+      fprintf(stderr, "Unhandled type:%s\n", tree_code_name[TREE_CODE(t)]);
+  }
+}
+
+static void process(tree t) {
   switch(TREE_CODE(t)) {
   case NAMESPACE_DECL:
-    return process_namespace(t);
+    return process_namespace_decl(t);
   case FUNCTION_DECL:
-    return process_function(t);
+    return process_function_decl(t);
   case TYPE_DECL:
-    return process_type(t);
+    return process_type_decl(t);
+  case FIELD_DECL:
+    return process_field_decl(t);
   default:
     printf("unknown tree element: %s\n", tree_code_name[TREE_CODE(t)]);
   }

@@ -6,7 +6,8 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 	-I$(GCCDIR)/gcc/../libdecnumber -I$(GCCDIR)/gcc/../libdecnumber/bid \
 	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp
 CFLAGS=-Wall -fPIC  -g $(INCLUDE)
-gccplugin.so: chydra.o
-	$(CXX) -shared -nostartfiles -o $@ $+
+
+gcc_dehydra.so: dehydra.o
+	$(CC) -shared -nostartfiles -o $@ $+
 clean:
-	rm -f *.o gccplugin.so gccplugin *~
+	rm -f *.o gcc_dehydra.so *~
