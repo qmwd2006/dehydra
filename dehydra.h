@@ -9,7 +9,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+  void initDehydra(const char *arg);
   int visitClass(tree c);
 
 #ifdef __cplusplus

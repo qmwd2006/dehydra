@@ -64,6 +64,8 @@ TREE_HANDLER(function_decl, f) {
 
 TREE_HANDLER(record_type, c) {
   tree field, func;
+  if (!visitClass(c)) return;
+
   fprintf(stderr, "class %s\n", type_as_string(c, 0));
   /* Output all the method declarations in the class.  */
   for (func = TYPE_METHODS (c) ; func ; func = TREE_CHAIN (func)) {
@@ -124,7 +126,7 @@ static void process(tree t) {
 
 int gcc_plugin_main(tree t, const char* arg) {
   if (processed) return 0;
-  
+  initDehydra(arg);
   process(global_namespace);
   free(locationbuf);
   return 0;
