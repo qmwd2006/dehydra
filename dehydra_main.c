@@ -64,9 +64,9 @@ TREE_HANDLER(function_decl, f) {
 
 TREE_HANDLER(record_type, c) {
   tree field, func;
+  fprintf(stderr, "class %s\n", type_as_string(c, 0));
   if (!visitClass(c)) return;
 
-  fprintf(stderr, "class %s\n", type_as_string(c, 0));
   /* Output all the method declarations in the class.  */
   for (func = TYPE_METHODS (c) ; func ; func = TREE_CHAIN (func)) {
     if (DECL_ARTIFICIAL(func)) continue;
@@ -85,7 +85,7 @@ TREE_HANDLER(record_type, c) {
     process(field);
     //fprintf(stderr, "%s: member %s\n", loc(c), tree_code_name[TREE_CODE(field)]);
   }
-    
+  postvisitClass(c);
   fprintf(stderr, "/class //%s\n", type_as_string(c, 0));
 }
 

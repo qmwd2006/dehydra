@@ -1,7 +1,10 @@
 #include "dehydra.h"
-#include "jsapi.h"
+#include <jsapi.h>
+#include <jsobj.h>
 #include <unistd.h>
 #include <stdio.h>
+#include "cp-tree.h"
+#include "cxx-pretty-print.h"
 
 #define xassert(cond) \
   if (!(cond)) {      \
@@ -10,16 +13,21 @@
    }
 
 struct Dehydra {
- JSRuntime *rt;
- JSContext *cx;
- JSObject *globalObj;
+  JSRuntime *rt;
+  JSContext *cx;
+  JSObject *globalObj;
+  JSObject *destArray;
+  JSObject *rootedArgDestArray;
 };
 
 typedef struct Dehydra Dehydra;
 
+static const char *NAME = "name";
+static const char *LOC = "loc";
+
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
-char *readFile(const char *filename, const char *dir, long *size) {
+static char *readFile(const char *filename, const char *dir, long *size) {
   char *buf;
   FILE *f = fopen(filename, "r");
   if (!f) {
@@ -44,26 +52,7 @@ char *readFile(const char *filename, const char *dir, long *size) {
   return buf;
 }
 
-void
-PrintError(JSContext *cx, const char *message, JSErrorReport *report)
-{
-  fflush(stdout);
-  int error = JSREPORT_IS_EXCEPTION(report->flags);
-  fprintf(stderr, "%s:%d: ", (report->filename ? report->filename : "NULL"),
-          report->lineno);
-  if (JSREPORT_IS_WARNING(report->flags)) fprintf(stderr, "JS Warning");
-  if (JSREPORT_IS_STRICT(report->flags)) fprintf(stderr, "JS STRICT");
-  if (error) fprintf(stderr, "JS Exception");
- 
-  fprintf(stderr, ": %s\n", message);
-  if (report->linebuf) {
-    fprintf(stderr, "%s\n", report->linebuf);
-  }
-  fflush(stderr);
-  _exit(1);
-}
-
-JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
+static JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
                            jsval *argv, jsval *rval) {
   /*  if (!(argc == 1 && JSVAL_IS_STRING(argv[0]))) return JS_TRUE;
   fopen(JS_GetStringBytes(JSVAL_TO_STRING(argv[0])), std::ios::binary);
@@ -81,7 +70,7 @@ JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
   return JS_TRUE;
 }
 
-JSBool WriteFile(JSContext *cx, JSObject *obj, uintN argc,
+static JSBool WriteFile(JSContext *cx, JSObject *obj, uintN argc,
                             jsval *argv, jsval *rval) {
   /*if (!(argc == 2 && JSVAL_IS_STRING(argv[0]) && JSVAL_IS_STRING(argv[1]))) {
     return JS_TRUE;
@@ -94,7 +83,7 @@ JSBool WriteFile(JSContext *cx, JSObject *obj, uintN argc,
   return JS_TRUE;
 }
 
-JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
+static JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
                         jsval *rval)
 {
   uintN i;
@@ -147,7 +136,7 @@ JSBool Error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
   return JS_TRUE;
 }
 
-void dehydra_init(Dehydra *this, const char *script) {
+static void dehydra_init(Dehydra *this, const char *script) {
   static JSClass global_class = {
     "global", JSCLASS_NEW_RESOLVE,
     JS_PropertyStub,  JS_PropertyStub,
@@ -175,8 +164,9 @@ void dehydra_init(Dehydra *this, const char *script) {
   /* register error handler */
   //JS_SetErrorReporter(cx, printError);
   xassert(JS_DefineFunctions(this->cx, this->globalObj, shell_functions));
-  //rootedArgDestArray = destArray = JS_NewArrayObject(cx, 0, NULL);
-  //xassert(destArray && JS_AddRoot(cx, &rootedArgDestArray));
+  this->rootedArgDestArray = 
+    this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
+  xassert(this->destArray && JS_AddRoot(this->cx, &this->rootedArgDestArray));
 
   //stateArray = JS_NewArrayObject(cx, 1, NULL);
   //xassert(stateArray && JS_AddRoot(cx, &stateArray));
@@ -185,7 +175,7 @@ void dehydra_init(Dehydra *this, const char *script) {
   //typeArrayArray = JS_NewArrayObject(cx, 0, NULL);
   //xassert(typeArrayArray && JS_AddRoot(cx, &typeArrayArray));
 
- // JS_SetVersion(cx, (JSVersion) 170);
+  JS_SetVersion(this->cx, (JSVersion) 170);
   //  loadScript(libScript);
   dehydra_loadScript(this, script);
 }
@@ -205,20 +195,69 @@ static jsval dehydra_getCallback(Dehydra *this, char const *name) {
           && JS_TypeOfValue(this->cx, val) == JSTYPE_FUNCTION) ? val : JSVAL_VOID;
 }
 
+static jsuint dehydra_getArrayLength(Dehydra *this, JSObject *array) {
+  jsuint length = 0;
+  xassert(JS_GetArrayLength(this->cx, array, &length));
+  return length;
+}
+
+static void 
+dehydra_defineProperty(Dehydra *this, JSObject *obj,
+                       char const *name, jsval value)
+{
+  xassert(JS_DefineProperty(this->cx, obj, name, value,
+                            NULL, NULL, JSPROP_ENUMERATE));
+}
+
+static void 
+dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
+                             char const *name, char const *value)
+{
+  JSString *str = JS_NewStringCopyZ(this->cx, value);
+  xassert(str);
+  dehydra_defineProperty(this, obj, name, STRING_TO_JSVAL(str));
+}
+
+static void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
+  dehydra_defineStringProperty(this, obj, LOC, loc(t));
+}
+
+static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
+  if(!parentArray) parentArray = this->destArray;
+  unsigned int length = dehydra_getArrayLength(this, parentArray);
+  JSObject *obj = JS_ConstructObject(this->cx, &js_ObjectClass, NULL, 
+                                     this->globalObj);
+  //append object to array(rooting it)
+  xassert(obj && JS_DefineElement(this->cx, parentArray, length,
+                                  OBJECT_TO_JSVAL(obj),
+                                  NULL, NULL, JSPROP_ENUMERATE));
+  if (TYPE_P(v)) {
+    dehydra_defineStringProperty(this, obj, NAME, 
+                                 type_as_string(v, 0));
+  }
+  dehydra_setLoc(this, obj, v);
+  return obj;
+}
+
 static int dehydra_visitClass(Dehydra *this, tree c) {
   jsval process_class = dehydra_getCallback(this, "process_class");
   if (process_class == JSVAL_VOID) return true;
-
+  
+  JSObject *objClass = dehydra_addVar(this, c, NULL);
+  
   jsval rval, argv[1];
-  //argv[0] = OBJECT_TO_JSVAL(objClass);
+  argv[0] = OBJECT_TO_JSVAL(objClass);
   xassert(JS_CallFunctionValue(this->cx, this->globalObj, process_class,
-                               0, argv, &rval));
+                               1, argv, &rval));
   return true;
 }
 
 static Dehydra dehydra = {0};
 int visitClass(tree c) {
   return dehydra_visitClass(&dehydra, c);
+}
+
+void postvisitClass(tree c) {
 }
 
 void initDehydra(const char *script)  {

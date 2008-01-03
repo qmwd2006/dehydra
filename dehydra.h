@@ -6,12 +6,19 @@
 #include "tm.h"
 #include "tree.h"
 
+#define VISIT_DECL(name, param)                 \
+  int visit##name(param);                       \
+  void postvisit##name(param);
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void initDehydra(const char *arg);
-  int visitClass(tree c);
+  // defined in dehydra_main
+  char const * loc(tree t);
 
+  void initDehydra(const char *arg);
+  VISIT_DECL(Class, tree c);
+  
 #ifdef __cplusplus
  }
 #endif
