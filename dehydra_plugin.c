@@ -147,7 +147,7 @@ int gcc_plugin_main(const char* arg) {
   type_pset = pointer_set_create ();
   
   initDehydra(arg);
-  //  process(global_namespace);
+  process(global_namespace);
 
   pointer_set_destroy (pset);
   pointer_set_destroy (type_pset);
@@ -156,13 +156,8 @@ int gcc_plugin_main(const char* arg) {
 }
 
 void gcc_plugin_cp_pre_genericize(tree fndecl) {
-  tree body_chain = DECL_SAVED_TREE(fndecl);
-  if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
-    body_chain = BIND_EXPR_BODY (body_chain);
-  }
-  
-  printf("%s: %s\n", "TARAS", decl_as_string(fndecl, 0xff));
-  //walk_tree_without_duplicates(&body_chain, statement_walker, this);
-  // dump_function_to_file(f, stderr, 0xff);
-  print_generic_stmt_indented(stderr, body_chain, 0, 2);
+  if (DECL_CLONED_FUNCTION_P (fndecl)) return;
+  if (DECL_ARTIFICIAL(fndecl)) return;
+
+  dehydra_cp_pre_genericize(fndecl);
 }

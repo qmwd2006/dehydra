@@ -19,7 +19,7 @@ extern "C" {
   void initDehydra(const char *arg);
   VISIT_DECL(Class, tree c);
   VISIT_DECL(Function, tree f);
-  
+  void dehydra_cp_pre_genericize(tree fndecl);
 #ifdef __cplusplus
  }
 #endif

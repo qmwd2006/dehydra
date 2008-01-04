@@ -290,7 +290,8 @@ statement_walker (tree *tp, int *walk_subtrees, void *data)
 }
 
 static int dehydra_visitFunction(Dehydra *this, tree f) {
-  tree body_chain = DECL_SAVED_TREE(f);
+  printf("b)%p: %s %s\n", f, decl_as_string(f, 0xff), loc(f));
+  /*tree body_chain = DECL_SAVED_TREE(f);
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
@@ -298,7 +299,7 @@ static int dehydra_visitFunction(Dehydra *this, tree f) {
   printf("%s: %s\n", "loc(f)", decl_as_string(f, 0xff));
   //walk_tree_without_duplicates(&body_chain, statement_walker, this);
   // dump_function_to_file(f, stderr, 0xff);
-  print_generic_stmt_indented(stderr, body_chain, 0, 2);
+  print_generic_stmt_indented(stderr, body_chain, 0, 2);*/
   return true;
 }
 
@@ -315,6 +316,19 @@ int visitFunction(tree f) {
 }
 
 void postvisitFunction(tree f) {
+}
+
+
+void dehydra_cp_pre_genericize(tree fndecl) {
+  tree body_chain = DECL_SAVED_TREE(fndecl);
+  if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
+    body_chain = BIND_EXPR_BODY (body_chain);
+  }
+  
+  printf("a) %p %s %s\n", fndecl, decl_as_string(fndecl, 0xff), loc(fndecl));
+  //walk_tree_without_duplicates(&body_chain, statement_walker, this);
+  // dump_function_to_file(f, stderr, 0xff);
+  //  print_generic_stmt_indented(stderr, body_chain, 0, 2);
 }
 
 void initDehydra(const char *script)  {
