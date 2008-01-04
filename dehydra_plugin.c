@@ -1,4 +1,5 @@
 #include "dehydra.h"
+#include "pointer-set.h"
 /*C++ headers*/
 #include "cp-tree.h"
 #include "cxx-pretty-print.h"
@@ -26,6 +27,7 @@ location_of (tree t)
   else if (TREE_CODE (t) == OVERLOAD)
     t = OVL_FUNCTION (t);
 
+  if (!t) return UNKNOWN_LOCATION;
   return DECL_SOURCE_LOCATION (t);
 }
 
@@ -59,13 +61,16 @@ TREE_HANDLER(namespace_decl, ns) {
 
 TREE_HANDLER(function_decl, f) {
   if (DECL_IS_BUILTIN(f)) return;
-  fprintf(stderr, "%s: function %s\n", loc(f), decl_as_string(f, 0xff));
+  if (!visitFunction(f)) return;
+  // fprintf(stderr, "%s: function %s\n", loc(f), decl_as_string(f, 0xff));
+  postvisitFunction(f);
 }
 
 TREE_HANDLER(record_type, c) {
   tree field, func;
-  fprintf(stderr, "class %s\n", type_as_string(c, 0));
-  if (!visitClass(c)) return;
+
+  if (!COMPLETE_TYPE_P (c) || !visitClass(c)) return;
+  //fprintf(stderr, "class %s\n", type_as_string(c, 0));
 
   /* Output all the method declarations in the class.  */
   for (func = TYPE_METHODS (c) ; func ; func = TREE_CHAIN (func)) {
@@ -86,7 +91,7 @@ TREE_HANDLER(record_type, c) {
     //fprintf(stderr, "%s: member %s\n", loc(c), tree_code_name[TREE_CODE(field)]);
   }
   postvisitClass(c);
-  fprintf(stderr, "/class //%s\n", type_as_string(c, 0));
+  //fprintf(stderr, "/class //%s\n", type_as_string(c, 0));
 }
 
 TREE_HANDLER(type_decl, t) {
@@ -100,16 +105,28 @@ TREE_HANDLER(field_decl, f) {
     return process_type(TREE_TYPE(f));
 }
 
+// guard against duplicate visits
+static struct pointer_set_t *pset = NULL;
+static struct pointer_set_t *type_pset = NULL;
+
 static void process_type(tree t) {
- switch (TREE_CODE(t)) {
-    case RECORD_TYPE:
-      return process_record_type(t);
-    default:
-      fprintf(stderr, "Unhandled type:%s\n", tree_code_name[TREE_CODE(t)]);
+  if (pointer_set_insert (type_pset, t)) {
+    return;
+  }
+
+  switch (TREE_CODE(t)) {
+  case RECORD_TYPE:
+    return process_record_type(t);
+  default:
+    fprintf(stderr, "Unhandled type:%s\n", tree_code_name[TREE_CODE(t)]);
   }
 }
 
 static void process(tree t) {
+  if (pointer_set_insert (pset, t)) {
+    return;
+  }
+
   switch(TREE_CODE(t)) {
   case NAMESPACE_DECL:
     return process_namespace_decl(t);
@@ -124,11 +141,28 @@ static void process(tree t) {
   }
 }
 
-int gcc_plugin_main(tree t, const char* arg) {
+int gcc_plugin_main(const char* arg) {
   if (processed) return 0;
+  pset = pointer_set_create ();
+  type_pset = pointer_set_create ();
+  
   initDehydra(arg);
-  process(global_namespace);
+  //  process(global_namespace);
+
+  pointer_set_destroy (pset);
+  pointer_set_destroy (type_pset);
   free(locationbuf);
   return 0;
 }
 
+void gcc_plugin_cp_pre_genericize(tree fndecl) {
+  tree body_chain = DECL_SAVED_TREE(fndecl);
+  if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
+    body_chain = BIND_EXPR_BODY (body_chain);
+  }
+  
+  printf("%s: %s\n", "TARAS", decl_as_string(fndecl, 0xff));
+  //walk_tree_without_duplicates(&body_chain, statement_walker, this);
+  // dump_function_to_file(f, stderr, 0xff);
+  print_generic_stmt_indented(stderr, body_chain, 0, 2);
+}

@@ -24,6 +24,7 @@ typedef struct Dehydra Dehydra;
 
 static const char *NAME = "name";
 static const char *LOC = "loc";
+static const char *BASES = "bases";
 
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
@@ -239,16 +240,65 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
   return obj;
 }
 
+// TODO: add methods, members
 static int dehydra_visitClass(Dehydra *this, tree c) {
   jsval process_class = dehydra_getCallback(this, "process_class");
   if (process_class == JSVAL_VOID) return true;
   
   JSObject *objClass = dehydra_addVar(this, c, NULL);
-  
+
+  JSObject *basesArray = JS_NewArrayObject(this->cx, 0, NULL);
+  dehydra_defineProperty(this, objClass, BASES, OBJECT_TO_JSVAL(basesArray));
+
+  tree binfo = TYPE_BINFO (c);
+  int n_baselinks = BINFO_N_BASE_BINFOS (binfo);
+  int i;
+  for (i = 0; i < n_baselinks; i++)
+    {
+      tree base_binfo = BINFO_BASE_BINFO(binfo, i);
+      JSString *str = 
+        JS_NewStringCopyZ(this->cx, type_as_string(BINFO_TYPE(base_binfo),0));
+      xassert(JS_DefineElement(this->cx, basesArray, i, STRING_TO_JSVAL(str),
+                               NULL, NULL, JSPROP_ENUMERATE));
+    }
+
   jsval rval, argv[1];
   argv[0] = OBJECT_TO_JSVAL(objClass);
   xassert(JS_CallFunctionValue(this->cx, this->globalObj, process_class,
                                1, argv, &rval));
+  return true;
+}
+
+static tree
+statement_walker (tree *tp, int *walk_subtrees, void *data)
+{
+  //  Dehydra *this = data;
+  if (TREE_CODE(*tp) == STATEMENT_LIST) return NULL_TREE;
+
+  printf("%s:", "loc(*tp)");
+  printf("walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
+         expr_as_string(*tp, 0xff));
+  print_generic_stmt_indented(stderr, *tp, 0, 2);
+  /*  if (TYPE_P (*tp))
+    *walk_subtrees = 0;
+
+  else if (DECL_P (*tp)
+	   && auto_var_in_fn_p (*tp, fn))
+           return *tp;*/
+
+  return NULL_TREE;
+}
+
+static int dehydra_visitFunction(Dehydra *this, tree f) {
+  tree body_chain = DECL_SAVED_TREE(f);
+  if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
+    body_chain = BIND_EXPR_BODY (body_chain);
+  }
+
+  printf("%s: %s\n", "loc(f)", decl_as_string(f, 0xff));
+  //walk_tree_without_duplicates(&body_chain, statement_walker, this);
+  // dump_function_to_file(f, stderr, 0xff);
+  print_generic_stmt_indented(stderr, body_chain, 0, 2);
   return true;
 }
 
@@ -258,6 +308,13 @@ int visitClass(tree c) {
 }
 
 void postvisitClass(tree c) {
+}
+
+int visitFunction(tree f) {
+  return dehydra_visitFunction(&dehydra, f);
+}
+
+void postvisitFunction(tree f) {
 }
 
 void initDehydra(const char *script)  {
