@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include "cp-tree.h"
 #include "cxx-pretty-print.h"
+#include "tree-iterator.h"
+#include "pointer-set.h"
 
 #define xassert(cond) \
   if (!(cond)) {      \
@@ -18,6 +20,10 @@ struct Dehydra {
   JSObject *globalObj;
   JSObject *destArray;
   JSObject *rootedArgDestArray;
+  // Where the statements go;
+  JSObject *statementHierarchyArray;
+  //keeps track of function decls to map gimplified ones to verbose ones
+  struct pointer_map_t *fndeclMap;
 };
 
 typedef struct Dehydra Dehydra;
@@ -25,6 +31,9 @@ typedef struct Dehydra Dehydra;
 static const char *NAME = "name";
 static const char *LOC = "loc";
 static const char *BASES = "bases";
+static const char *DECL = "decl";
+static const char *ASSIGN = "assign";
+static const char *VALUE = "value";
 
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
@@ -154,7 +163,7 @@ static void dehydra_init(Dehydra *this, const char *script) {
     {"error",           Error,          1},
     {0}
   };
-
+  this->fndeclMap = pointer_map_create ();
   xassert((this->rt = JS_NewRuntime(0x9000000L)));
   xassert((this->cx = JS_NewContext(this->rt, 8192)));
 
@@ -168,7 +177,9 @@ static void dehydra_init(Dehydra *this, const char *script) {
   this->rootedArgDestArray = 
     this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
   xassert(this->destArray && JS_AddRoot(this->cx, &this->rootedArgDestArray));
-
+  // this is to be added at function_decl time
+  this->statementHierarchyArray = NULL;
+ 
   //stateArray = JS_NewArrayObject(cx, 1, NULL);
   //xassert(stateArray && JS_AddRoot(cx, &stateArray));
   //state = JSVAL_VOID;
@@ -232,9 +243,13 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
   xassert(obj && JS_DefineElement(this->cx, parentArray, length,
                                   OBJECT_TO_JSVAL(obj),
                                   NULL, NULL, JSPROP_ENUMERATE));
+  if (!v) return obj;
   if (TYPE_P(v)) {
     dehydra_defineStringProperty(this, obj, NAME, 
                                  type_as_string(v, 0));
+  } else if (DECL_P(v)) {
+    dehydra_defineStringProperty(this, obj, NAME, 
+                                 decl_as_string(v, 0));
   }
   dehydra_setLoc(this, obj, v);
   return obj;
@@ -269,38 +284,46 @@ static int dehydra_visitClass(Dehydra *this, tree c) {
   return true;
 }
 
-static tree
-statement_walker (tree *tp, int *walk_subtrees, void *data)
-{
-  //  Dehydra *this = data;
-  if (TREE_CODE(*tp) == STATEMENT_LIST) return NULL_TREE;
-
-  printf("%s:", "loc(*tp)");
-  printf("walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
-         expr_as_string(*tp, 0xff));
-  print_generic_stmt_indented(stderr, *tp, 0, 2);
-  /*  if (TYPE_P (*tp))
-    *walk_subtrees = 0;
-
-  else if (DECL_P (*tp)
-	   && auto_var_in_fn_p (*tp, fn))
-           return *tp;*/
-
-  return NULL_TREE;
+static void gdb() {
 }
 
 static int dehydra_visitFunction(Dehydra *this, tree f) {
+  jsval process_function = dehydra_getCallback(this, "process_function");
+  if (process_function == JSVAL_VOID) return true;
+  
   printf("b)%p: %s %s\n", f, decl_as_string(f, 0xff), loc(f));
-  /*tree body_chain = DECL_SAVED_TREE(f);
-  if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
-    body_chain = BIND_EXPR_BODY (body_chain);
-  }
+  void **v = pointer_map_contains(this->fndeclMap, f);
+  xassert(v);
+  this->statementHierarchyArray = (JSObject*) *v;
+  
+  jsval rval, argv[1];
+  argv[0] = OBJECT_TO_JSVAL(this->statementHierarchyArray);
+  // the array is now rooted as a function argument
+  xassert(JS_RemoveRoot(this->cx, &this->statementHierarchyArray));
+  xassert(JS_CallFunctionValue(this->cx, this->globalObj, process_function,
+                               1, argv, &rval));
+    return true;
+}
 
-  printf("%s: %s\n", "loc(f)", decl_as_string(f, 0xff));
-  //walk_tree_without_duplicates(&body_chain, statement_walker, this);
-  // dump_function_to_file(f, stderr, 0xff);
-  print_generic_stmt_indented(stderr, body_chain, 0, 2);*/
-  return true;
+/* Creates next array to dump dehydra objects onto */
+static void dehydra_nextStatement(Dehydra *this) {
+  unsigned int length = dehydra_getArrayLength(this,
+                                               this->statementHierarchyArray);
+  if (length) {
+    unsigned int destLength = 0;
+    jsval obj;
+    xassert(JS_GetElement(this->cx, this->statementHierarchyArray, length - 1,
+                          &obj));
+    this->destArray = JSVAL_TO_OBJECT(obj);
+    destLength = dehydra_getArrayLength(this, this->destArray);
+    /* last element is already setup & empty, we are done */
+    if (destLength == 0) return;
+  }
+  this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
+  xassert(this->destArray
+          && JS_DefineElement(this->cx, this->statementHierarchyArray, length,
+                              OBJECT_TO_JSVAL(this->destArray),
+                              NULL, NULL, JSPROP_ENUMERATE));
 }
 
 static Dehydra dehydra = {0};
@@ -318,14 +341,92 @@ int visitFunction(tree f) {
 void postvisitFunction(tree f) {
 }
 
+static void dehydra_iterate_statementlist (Dehydra *, tree);
+
+static tree
+statement_walker (tree *tp, int *walk_subtrees, void *data)
+{
+  Dehydra *this = data;
+  enum tree_code code = TREE_CODE(*tp); 
+  switch (code) {
+  case STATEMENT_LIST:
+    *walk_subtrees = 0;
+    dehydra_iterate_statementlist(this, *tp);
+    return NULL_TREE;
+  case DECL_EXPR:
+    if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (code)))
+	{
+	  int i, len;
+	  /* Walk over all the sub-trees of this operand.  */
+          tree e = *tp;
+          len = TREE_OPERAND_LENGTH (e);
+          xassert(len == 1);
+          for (i = 0; i < len; ++i) {
+            tree decl = GENERIC_TREE_OPERAND (e, i);
+            tree init = DECL_INITIAL (decl);
+            JSObject *obj = dehydra_addVar(this, decl, NULL);
+            dehydra_defineProperty(this, obj, DECL, JSVAL_TRUE);
+            if (init) {
+              JSObject *tmp = this->destArray;
+              this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
+              dehydra_defineProperty(this, obj, ASSIGN,
+                                     OBJECT_TO_JSVAL(this->destArray));
+              cp_walk_tree_without_duplicates(&init, statement_walker, this);
+              this->destArray = tmp;
+            }
+          }
+        }
+    *walk_subtrees = 0;
+    break;
+  case INTEGER_CST:
+    {
+      dehydra_defineStringProperty(this, 
+                                   dehydra_addVar(this, NULL, NULL), VALUE, 
+                                   expr_as_string(*tp, 0));
+    }
+    break;
+  default:
+    printf("%s:", loc(*tp));
+    printf("walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
+           expr_as_string(*tp, 0));
+  }
+  //  if (TREE_CODE(*tp) == PARM_DECL) gdb();
+  //print_generic_stmt_indented(stderr, *tp, 0, 2);
+  ///cxx_print_xnode(stderr, *tp, 0);
+  /*  if (TYPE_P (*tp))
+    *walk_subtrees = 0;
+
+  else if (DECL_P (*tp)
+	   && auto_var_in_fn_p (*tp, fn))
+           return *tp;*/
+
+  return NULL_TREE;
+}
+
+static void dehydra_iterate_statementlist (Dehydra *this, tree statement_list) {
+  xassert(TREE_CODE (statement_list) == STATEMENT_LIST);
+  tree_stmt_iterator i;
+  for (i = tsi_start (statement_list); !tsi_end_p (i); tsi_next (&i)) {
+    dehydra_nextStatement (this);
+    cp_walk_tree_without_duplicates(tsi_stmt_ptr (i), statement_walker, this);
+  }
+}
 
 void dehydra_cp_pre_genericize(tree fndecl) {
+  Dehydra *this = &dehydra;
+  this->statementHierarchyArray = JS_NewArrayObject(this->cx, 0, NULL);
+  xassert(this->statementHierarchyArray 
+          && JS_AddRoot(this->cx, &this->statementHierarchyArray));
+  *pointer_map_insert(this->fndeclMap, fndecl) = 
+    (void*) this->statementHierarchyArray; 
+
   tree body_chain = DECL_SAVED_TREE(fndecl);
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
-  
   printf("a) %p %s %s\n", fndecl, decl_as_string(fndecl, 0xff), loc(fndecl));
+  dehydra_iterate_statementlist(this, body_chain);
+  //cp_walk_tree_without_duplicates(&body_chain, statement_walker, &dehydra);
   //walk_tree_without_duplicates(&body_chain, statement_walker, this);
   // dump_function_to_file(f, stderr, 0xff);
   //  print_generic_stmt_indented(stderr, body_chain, 0, 2);

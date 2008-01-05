@@ -27,8 +27,12 @@ location_of (tree t)
   else if (TREE_CODE (t) == OVERLOAD)
     t = OVL_FUNCTION (t);
 
-  if (!t) return UNKNOWN_LOCATION;
-  return DECL_SOURCE_LOCATION (t);
+  if (DECL_P(t))
+    return DECL_SOURCE_LOCATION (t);
+  else if (EXPR_P(t) && EXPR_HAS_LOCATION(t))
+    return EXPR_LOCATION(t);
+  else
+    return UNKNOWN_LOCATION;
 }
 
 static char *locationbuf = NULL;
@@ -141,12 +145,19 @@ static void process(tree t) {
   }
 }
 
-int gcc_plugin_main(const char* arg) {
+int gcc_plugin_init(const char* arg) {
+  initDehydra(arg);
+  return 0;
+}
+
+int gcc_plugin_post_parse() {
   if (processed) return 0;
+  processed = 1;
+
   pset = pointer_set_create ();
   type_pset = pointer_set_create ();
   
-  initDehydra(arg);
+
   process(global_namespace);
 
   pointer_set_destroy (pset);
@@ -155,9 +166,10 @@ int gcc_plugin_main(const char* arg) {
   return 0;
 }
 
-void gcc_plugin_cp_pre_genericize(tree fndecl) {
-  if (DECL_CLONED_FUNCTION_P (fndecl)) return;
-  if (DECL_ARTIFICIAL(fndecl)) return;
+int gcc_plugin_cp_pre_genericize(tree fndecl) {
+  if (DECL_CLONED_FUNCTION_P (fndecl)) return 0;
+  if (DECL_ARTIFICIAL(fndecl)) return 0;
 
   dehydra_cp_pre_genericize(fndecl);
+  return 0;
 }
