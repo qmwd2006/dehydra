@@ -1,7 +1,7 @@
 function process_class(c) {
-  print("process_class "+ uneval(c))
+  print("process_class "+ (c))
 }
 
-function process_function(f) {
-  print(uneval(f))
+function process(vars) {
+  print(vars)
 }

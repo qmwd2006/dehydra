@@ -15,6 +15,7 @@
    }
 
 struct Dehydra {
+  char* dir;
   JSRuntime *rt;
   JSContext *cx;
   JSObject *globalObj;
@@ -34,6 +35,8 @@ static const char *BASES = "bases";
 static const char *DECL = "decl";
 static const char *ASSIGN = "assign";
 static const char *VALUE = "value";
+static const char *TYPE = "type";
+static const char *FUNCTION = "isFunction";
 
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
@@ -130,6 +133,25 @@ JSBool Version(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
   return JS_TRUE;
 }
 
+static void
+ReportError(JSContext *cx, const char *message, JSErrorReport *report)
+{
+  fflush(stdout);
+  int error = JSREPORT_IS_EXCEPTION(report->flags);
+  fprintf(stderr, "%s:%d: ", (report->filename ? report->filename : "NULL"),
+          report->lineno);
+  if (JSREPORT_IS_WARNING(report->flags)) fprintf(stderr, "JS Warning");
+  if (JSREPORT_IS_STRICT(report->flags)) fprintf(stderr, "JS STRICT");
+  if (error) fprintf(stderr, "JS Exception");
+ 
+  fprintf(stderr, ": %s\n", message);
+  if (report->linebuf) {
+    fprintf(stderr, "%s\n", report->linebuf);
+  }
+  fflush(stderr);
+  exit(1);
+}
+
 JSBool Error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
                         jsval *rval)
 {
@@ -146,7 +168,7 @@ JSBool Error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
   return JS_TRUE;
 }
 
-static void dehydra_init(Dehydra *this, const char *script) {
+static void dehydra_init(Dehydra *this, const char *file, const char *script) {
   static JSClass global_class = {
     "global", JSCLASS_NEW_RESOLVE,
     JS_PropertyStub,  JS_PropertyStub,
@@ -163,6 +185,15 @@ static void dehydra_init(Dehydra *this, const char *script) {
     {"error",           Error,          1},
     {0}
   };
+  char *c = strrchr(file, '/');
+  if (c) {
+    // include / in the copy
+    int len = c - file + 1;
+    this->dir = xmalloc(len + 1);
+    strncpy(this->dir, file, len);
+    this->dir[len] = 0;
+  }
+
   this->fndeclMap = pointer_map_create ();
   xassert((this->rt = JS_NewRuntime(0x9000000L)));
   xassert((this->cx = JS_NewContext(this->rt, 8192)));
@@ -172,14 +203,14 @@ static void dehydra_init(Dehydra *this, const char *script) {
   this->globalObj = JS_NewObject(this->cx, &global_class, 0, 0);
   JS_InitStandardClasses(this->cx, this->globalObj);
   /* register error handler */
-  //JS_SetErrorReporter(cx, printError);
+  JS_SetErrorReporter(this->cx, ReportError);
   xassert(JS_DefineFunctions(this->cx, this->globalObj, shell_functions));
   this->rootedArgDestArray = 
     this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
   xassert(this->destArray && JS_AddRoot(this->cx, &this->rootedArgDestArray));
   // this is to be added at function_decl time
   this->statementHierarchyArray = NULL;
- 
+  
   //stateArray = JS_NewArrayObject(cx, 1, NULL);
   //xassert(stateArray && JS_AddRoot(cx, &stateArray));
   //state = JSVAL_VOID;
@@ -189,12 +220,13 @@ static void dehydra_init(Dehydra *this, const char *script) {
 
   JS_SetVersion(this->cx, (JSVersion) 170);
   //  loadScript(libScript);
+  dehydra_loadScript(this, "system.js");
   dehydra_loadScript(this, script);
 }
 
 static void dehydra_loadScript(Dehydra *this, const char *filename) {
   long size = 0;
-  char *buf = readFile(filename, NULL, &size);
+  char *buf = readFile(filename, this->dir, &size);
   jsval rval;
   xassert(JS_EvaluateScript(this->cx, this->globalObj, buf, size,
                           filename, 1, &rval));
@@ -250,6 +282,8 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
   } else if (DECL_P(v)) {
     dehydra_defineStringProperty(this, obj, NAME, 
                                  decl_as_string(v, 0));
+    dehydra_defineStringProperty(this, obj, TYPE,
+                                 type_as_string(TREE_TYPE(v), 0));
   }
   dehydra_setLoc(this, obj, v);
   return obj;
@@ -419,12 +453,15 @@ void dehydra_cp_pre_genericize(tree fndecl) {
           && JS_AddRoot(this->cx, &this->statementHierarchyArray));
   *pointer_map_insert(this->fndeclMap, fndecl) = 
     (void*) this->statementHierarchyArray; 
+  dehydra_nextStatement (this);
 
   tree body_chain = DECL_SAVED_TREE(fndecl);
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
   printf("a) %p %s %s\n", fndecl, decl_as_string(fndecl, 0xff), loc(fndecl));
+  JSObject *obj = dehydra_addVar (this, fndecl, NULL);
+  dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);
   dehydra_iterate_statementlist(this, body_chain);
   //cp_walk_tree_without_duplicates(&body_chain, statement_walker, &dehydra);
   //walk_tree_without_duplicates(&body_chain, statement_walker, this);
@@ -432,6 +469,6 @@ void dehydra_cp_pre_genericize(tree fndecl) {
   //  print_generic_stmt_indented(stderr, body_chain, 0, 2);
 }
 
-void initDehydra(const char *script)  {
-  dehydra_init(&dehydra, script);
+void initDehydra(const char *file, const char *script)  {
+  dehydra_init(&dehydra, file,  script);
 }

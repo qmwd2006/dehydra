@@ -54,17 +54,16 @@ char const * loc(tree t) {
 #define TREE_HANDLER(name, var) static void process_##name(tree var)
 
 TREE_HANDLER(namespace_decl, ns) {
-    if (DECL_NAMESPACE_ALIAS (ns)) return;
-
-    fprintf(stderr, "namespace %s\n", DECL_NAME(ns) 
-            ? IDENTIFIER_POINTER(DECL_NAME(ns))
-            : "<anon>");
-    struct cp_binding_level *level = NAMESPACE_LEVEL (ns);
-    dfs_process_chain(level->names);
+  if (DECL_NAMESPACE_ALIAS (ns)) return;
+  
+  struct cp_binding_level *level = NAMESPACE_LEVEL (ns);
+  dfs_process_chain(level->names);
+  for (ns = level->namespaces; ns; ns = TREE_CHAIN(ns)) {
+    process_namespace_decl(ns);
+  }
 }
 
 TREE_HANDLER(function_decl, f) {
-  if (DECL_IS_BUILTIN(f)) return;
   if (!visitFunction(f)) return;
   // fprintf(stderr, "%s: function %s\n", loc(f), decl_as_string(f, 0xff));
   postvisitFunction(f);
@@ -99,8 +98,6 @@ TREE_HANDLER(record_type, c) {
 }
 
 TREE_HANDLER(type_decl, t) {
-  if (DECL_IS_BUILTIN(t)) return;
-
   process_type(TREE_TYPE(t));
   fprintf(stderr, "%s: %s\n", loc(t), decl_as_string(t, TFF_DECL_SPECIFIERS));
 }
@@ -130,7 +127,10 @@ static void process(tree t) {
   if (pointer_set_insert (pset, t)) {
     return;
   }
-
+  if  (TREE_CODE(t) != NAMESPACE_DECL 
+       && DECL_P(t) && DECL_IS_BUILTIN(t)) {
+    return;
+  }
   switch(TREE_CODE(t)) {
   case NAMESPACE_DECL:
     return process_namespace_decl(t);
@@ -145,8 +145,8 @@ static void process(tree t) {
   }
 }
 
-int gcc_plugin_init(const char* arg) {
-  initDehydra(arg);
+int gcc_plugin_init(const char *file, const char* arg) {
+  initDehydra(file, arg);
   return 0;
 }
 
