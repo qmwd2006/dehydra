@@ -380,7 +380,6 @@ function iter(f, vars) {
 }
 
 function process_function (statements) {
-  print("BAAAAH:  "+statements)
   if (!process) return;
   Array.forEach(statements, process);
 }

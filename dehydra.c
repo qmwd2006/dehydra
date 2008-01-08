@@ -8,11 +8,11 @@
 #include "tree-iterator.h"
 #include "pointer-set.h"
 
-#define xassert(cond) \
-  if (!(cond)) {      \
+#define xassert(cond)                                                   \
+  if (!(cond)) {                                                        \
     fprintf(stderr, "%s:%d: Assertion failed:" #cond "\n",  __FILE__, __LINE__); \
-    _exit(1);         \
-   }
+    _exit(1);                                                           \
+  }
 
 struct Dehydra {
   char* dir;
@@ -25,6 +25,7 @@ struct Dehydra {
   JSObject *statementHierarchyArray;
   //keeps track of function decls to map gimplified ones to verbose ones
   struct pointer_map_t *fndeclMap;
+  int inReturn;
 };
 
 typedef struct Dehydra Dehydra;
@@ -37,6 +38,8 @@ static const char *ASSIGN = "assign";
 static const char *VALUE = "value";
 static const char *TYPE = "type";
 static const char *FUNCTION = "isFunction";
+static const char *USE = "isUse";
+static const char *RETURN = "isReturn";
 
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
@@ -66,43 +69,43 @@ static char *readFile(const char *filename, const char *dir, long *size) {
 }
 
 static JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
-                           jsval *argv, jsval *rval) {
+                       jsval *argv, jsval *rval) {
   /*  if (!(argc == 1 && JSVAL_IS_STRING(argv[0]))) return JS_TRUE;
-  fopen(JS_GetStringBytes(JSVAL_TO_STRING(argv[0])), std::ios::binary);
-  if(!f.is_open())
-  {
-    return JS_TRUE;
-  }
-  f.seekg(0, std::ios::end);
-  size_t len = f.tellg();
-  char *buf = (char*)JS_malloc(cx, len);
-  f.seekg(0, std::ios::beg);
-  f.read(buf, len);
-  f.close();
-  *rval = STRING_TO_JSVAL(JS_NewString(cx, buf, len));*/
+      fopen(JS_GetStringBytes(JSVAL_TO_STRING(argv[0])), std::ios::binary);
+      if(!f.is_open())
+      {
+      return JS_TRUE;
+      }
+      f.seekg(0, std::ios::end);
+      size_t len = f.tellg();
+      char *buf = (char*)JS_malloc(cx, len);
+      f.seekg(0, std::ios::beg);
+      f.read(buf, len);
+      f.close();
+      *rval = STRING_TO_JSVAL(JS_NewString(cx, buf, len));*/
   return JS_TRUE;
 }
 
 static JSBool WriteFile(JSContext *cx, JSObject *obj, uintN argc,
-                            jsval *argv, jsval *rval) {
+                        jsval *argv, jsval *rval) {
   /*if (!(argc == 2 && JSVAL_IS_STRING(argv[0]) && JSVAL_IS_STRING(argv[1]))) {
     return JS_TRUE;
-  }
-  JSString *str = JSVAL_TO_STRING(argv[1]);
-  std::ofstream out(JS_GetStringBytes(JSVAL_TO_STRING(argv[0])),
-                    std::ios::out | std::ios::binary);
-  out.write(JS_GetStringBytes(str), JS_GetStringLength(str));
-  out.close();*/
+    }
+    JSString *str = JSVAL_TO_STRING(argv[1]);
+    std::ofstream out(JS_GetStringBytes(JSVAL_TO_STRING(argv[0])),
+    std::ios::out | std::ios::binary);
+    out.write(JS_GetStringBytes(str), JS_GetStringLength(str));
+    out.close();*/
   return JS_TRUE;
 }
 
 static JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-                        jsval *rval)
+                    jsval *rval)
 {
   uintN i;
   /*Dehydra* jsv = (Dehydra*) JS_GetContextPrivate(cx);
   
-  if(jsv->loc != SL_UNKNOWN) {
+    if(jsv->loc != SL_UNKNOWN) {
     char const * file(NULL); 
     int line(0); 
     int col(0);  
@@ -113,10 +116,10 @@ static JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
     cout << file << ":"<< line << ": ";
     }*/
   for (i = 0; i < argc; i++) {
-      JSString *str = JS_ValueToString(cx, argv[i]);
-      if (!str)
-          return JS_FALSE;
-      fprintf(stdout, "%s", JS_GetStringBytes(str));
+    JSString *str = JS_ValueToString(cx, argv[i]);
+    if (!str)
+      return JS_FALSE;
+    fprintf(stdout, "%s", JS_GetStringBytes(str));
   }
   fprintf(stdout, "\n");
   return JS_TRUE;
@@ -124,7 +127,7 @@ static JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
 
 
 JSBool Version(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-                          jsval *rval)
+               jsval *rval)
 {
   if (argc > 0 && JSVAL_IS_INT(argv[0]))
     *rval = INT_TO_JSVAL(JS_SetVersion(cx, (JSVersion) JSVAL_TO_INT(argv[0])));
@@ -153,11 +156,11 @@ ReportError(JSContext *cx, const char *message, JSErrorReport *report)
 }
 
 JSBool Error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-                        jsval *rval)
+             jsval *rval)
 {
   fprintf(stderr, "Error ");
   /*Dehydra* c = (Dehydra*) JS_GetContextPrivate(cx);
-  if(c->loc != SL_UNKNOWN) {
+    if(c->loc != SL_UNKNOWN) {
     cerr << toString(c->loc);
     } */
   fprintf(stderr,  ": %s\n",
@@ -229,7 +232,7 @@ static void dehydra_loadScript(Dehydra *this, const char *filename) {
   char *buf = readFile(filename, this->dir, &size);
   jsval rval;
   xassert(JS_EvaluateScript(this->cx, this->globalObj, buf, size,
-                          filename, 1, &rval));
+                            filename, 1, &rval));
 }
 
 static jsval dehydra_getCallback(Dehydra *this, char const *name) {
@@ -284,6 +287,8 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
                                  decl_as_string(v, 0));
     dehydra_defineStringProperty(this, obj, TYPE,
                                  type_as_string(TREE_TYPE(v), 0));
+    if (this->inReturn)
+      dehydra_defineProperty(this, obj, RETURN, JSVAL_TRUE);
   }
   dehydra_setLoc(this, obj, v);
   return obj;
@@ -318,15 +323,16 @@ static int dehydra_visitClass(Dehydra *this, tree c) {
   return true;
 }
 
-static void gdb() {
-}
-
 static int dehydra_visitFunction(Dehydra *this, tree f) {
   jsval process_function = dehydra_getCallback(this, "process_function");
   if (process_function == JSVAL_VOID) return true;
-  
-  printf("b)%p: %s %s\n", f, decl_as_string(f, 0xff), loc(f));
+
   void **v = pointer_map_contains(this->fndeclMap, f);
+  if (!v) {
+    fprintf(stderr, "%s: ", loc(f));
+    fprintf(stderr, "%s is empty\n", decl_as_string(f, 0));
+    return true;
+  }
   xassert(v);
   this->statementHierarchyArray = (JSObject*) *v;
   
@@ -336,7 +342,7 @@ static int dehydra_visitFunction(Dehydra *this, tree f) {
   xassert(JS_RemoveRoot(this->cx, &this->statementHierarchyArray));
   xassert(JS_CallFunctionValue(this->cx, this->globalObj, process_function,
                                1, argv, &rval));
-    return true;
+  return true;
 }
 
 /* Creates next array to dump dehydra objects onto */
@@ -389,27 +395,27 @@ statement_walker (tree *tp, int *walk_subtrees, void *data)
     return NULL_TREE;
   case DECL_EXPR:
     if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (code)))
-	{
-	  int i, len;
-	  /* Walk over all the sub-trees of this operand.  */
-          tree e = *tp;
-          len = TREE_OPERAND_LENGTH (e);
-          xassert(len == 1);
-          for (i = 0; i < len; ++i) {
-            tree decl = GENERIC_TREE_OPERAND (e, i);
-            tree init = DECL_INITIAL (decl);
-            JSObject *obj = dehydra_addVar(this, decl, NULL);
-            dehydra_defineProperty(this, obj, DECL, JSVAL_TRUE);
-            if (init) {
-              JSObject *tmp = this->destArray;
-              this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
-              dehydra_defineProperty(this, obj, ASSIGN,
-                                     OBJECT_TO_JSVAL(this->destArray));
-              cp_walk_tree_without_duplicates(&init, statement_walker, this);
-              this->destArray = tmp;
-            }
+      {
+        int i, len;
+        /* Walk over all the sub-trees of this operand.  */
+        tree e = *tp;
+        len = TREE_OPERAND_LENGTH (e);
+        xassert(len == 1);
+        for (i = 0; i < len; ++i) {
+          tree decl = GENERIC_TREE_OPERAND (e, i);
+          tree init = DECL_INITIAL (decl);
+          JSObject *obj = dehydra_addVar(this, decl, NULL);
+          dehydra_defineProperty(this, obj, DECL, JSVAL_TRUE);
+          if (init) {
+            JSObject *tmp = this->destArray;
+            this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
+            dehydra_defineProperty(this, obj, ASSIGN,
+                                   OBJECT_TO_JSVAL(this->destArray));
+            cp_walk_tree_without_duplicates(&init, statement_walker, this);
+            this->destArray = tmp;
           }
         }
+      }
     *walk_subtrees = 0;
     break;
   case INTEGER_CST:
@@ -419,21 +425,37 @@ statement_walker (tree *tp, int *walk_subtrees, void *data)
                                    expr_as_string(*tp, 0));
     }
     break;
+  case RETURN_EXPR: 
+    {
+      int len = TREE_OPERAND_LENGTH (*tp);
+      if (len == 1) {
+        xassert(!this->inReturn);
+        this->inReturn = true;;
+        tree decl = GENERIC_TREE_OPERAND (*tp, 0);
+        cp_walk_tree_without_duplicates(&decl, statement_walker, this);
+        this->inReturn = false;
+      } else {
+        xassert (!len);
+      }
+      *walk_subtrees = 0;
+    }
+  case VAR_DECL:
+    {
+      JSObject *obj = dehydra_addVar(this, *tp, NULL);
+      dehydra_defineProperty(this, obj, USE, JSVAL_TRUE);
+      break;
+    }
+    /*magic compiler stuff we probably couldn't care less about */
+  case CLEANUP_POINT_EXPR:
+  case RESULT_DECL:
+    /* this isn't magic, but breaks pretty-printing */
+  case LABEL_DECL:
+    break;
   default:
     printf("%s:", loc(*tp));
     printf("walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
            expr_as_string(*tp, 0));
   }
-  //  if (TREE_CODE(*tp) == PARM_DECL) gdb();
-  //print_generic_stmt_indented(stderr, *tp, 0, 2);
-  ///cxx_print_xnode(stderr, *tp, 0);
-  /*  if (TYPE_P (*tp))
-    *walk_subtrees = 0;
-
-  else if (DECL_P (*tp)
-	   && auto_var_in_fn_p (*tp, fn))
-           return *tp;*/
-
   return NULL_TREE;
 }
 
@@ -459,14 +481,9 @@ void dehydra_cp_pre_genericize(tree fndecl) {
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
-  printf("a) %p %s %s\n", fndecl, decl_as_string(fndecl, 0xff), loc(fndecl));
   JSObject *obj = dehydra_addVar (this, fndecl, NULL);
   dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);
-  dehydra_iterate_statementlist(this, body_chain);
-  //cp_walk_tree_without_duplicates(&body_chain, statement_walker, &dehydra);
-  //walk_tree_without_duplicates(&body_chain, statement_walker, this);
-  // dump_function_to_file(f, stderr, 0xff);
-  //  print_generic_stmt_indented(stderr, body_chain, 0, 2);
+  cp_walk_tree_without_duplicates(&body_chain, statement_walker, this);
 }
 
 void initDehydra(const char *file, const char *script)  {
