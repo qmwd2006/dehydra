@@ -1,11 +1,11 @@
-GCCDIR=$(HOME)/work/gcc
-GCCBUILDDIR=$(GCCDIR)/../gcc-build
+GCCDIR=../gcc
+GCCBUILDDIR=../gcc-build
 GCCSTAGE=gcc
 INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc \
 	-I$(GCCDIR)/gcc/. -I$(GCCDIR)/gcc/../include -I$(GCCDIR)/gcc/../libcpp/include \
 	-I$(GCCDIR)/gcc/../libdecnumber -I$(GCCDIR)/gcc/../libdecnumber/bid \
 	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp \
-        -I/home/tglek/local/include/js/
+        -I $(HOME)/local/include/js/
 
 CFLAGS=-Wall -fPIC  -g $(INCLUDE)
 CXXFLAGS=$(CFLAGS)
