@@ -98,8 +98,13 @@ TREE_HANDLER(record_type, c) {
 }
 
 TREE_HANDLER(type_decl, t) {
-  process_type(TREE_TYPE(t));
-  fprintf(stderr, "%s: %s\n", loc(t), decl_as_string(t, TFF_DECL_SPECIFIERS));
+  /*  fprintf(stderr, "Taras:%s: %s, abstract:%d\n", loc(t),
+      decl_as_string(t, TFF_DECL_SPECIFIERS), DECL_ABSTRACT(t));*/
+  if (!DECL_ARTIFICIAL (t)) {
+    // this is a typedef..i think
+  } else {
+    process_type(TREE_TYPE(t));
+  }
 }
 
 TREE_HANDLER(field_decl, f) {
@@ -141,7 +146,7 @@ static void process(tree t) {
   case FIELD_DECL:
     return process_field_decl(t);
   default:
-    printf("unknown tree element: %s\n", tree_code_name[TREE_CODE(t)]);
+    fprintf(stderr, "unknown tree element: %s\n", tree_code_name[TREE_CODE(t)]);
   }
 }
 
@@ -163,6 +168,7 @@ int gcc_plugin_post_parse() {
   pointer_set_destroy (pset);
   pointer_set_destroy (type_pset);
   free(locationbuf);
+  locationbuf = NULL;
   return 0;
 }
 

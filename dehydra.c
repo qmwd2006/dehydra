@@ -266,7 +266,10 @@ dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
 }
 
 static void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
-  dehydra_defineStringProperty(this, obj, LOC, loc(t));
+  char const *strLoc = loc(t);
+  /* Don't attach empty locations */
+  if (strLoc && *strLoc)
+    dehydra_defineStringProperty(this, obj, LOC, strLoc);
 }
 
 static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
@@ -420,8 +423,9 @@ statement_walker (tree *tp, int *walk_subtrees, void *data)
     break;
   case INTEGER_CST:
     {
+      JSObject *obj = dehydra_addVar(this, *tp, NULL);
       dehydra_defineStringProperty(this, 
-                                   dehydra_addVar(this, NULL, NULL), VALUE, 
+                                   obj, VALUE, 
                                    expr_as_string(*tp, 0));
     }
     break;
@@ -452,9 +456,9 @@ statement_walker (tree *tp, int *walk_subtrees, void *data)
   case LABEL_DECL:
     break;
   default:
-    printf("%s:", loc(*tp));
-    printf("walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
-           expr_as_string(*tp, 0));
+    fprintf(stderr, "%s:", loc(*tp));
+    /*fprintf(stderr, "walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
+      expr_as_string(*tp, 0));*/
   }
   return NULL_TREE;
 }
