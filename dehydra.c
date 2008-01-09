@@ -284,6 +284,9 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
   xassert(obj && JS_DefineElement(this->cx, parentArray, length,
                                   OBJECT_TO_JSVAL(obj),
                                   NULL, NULL, JSPROP_ENUMERATE));
+  if (this->inReturn)
+    dehydra_defineProperty(this, obj, RETURN, JSVAL_TRUE);
+
   if (!v) return obj;
   if (TYPE_P(v)) {
     dehydra_defineStringProperty(this, obj, NAME, 
@@ -293,8 +296,6 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
                                  decl_as_string(v, 0));
     dehydra_defineStringProperty(this, obj, TYPE,
                                  type_as_string(TREE_TYPE(v), 0));
-    if (this->inReturn)
-      dehydra_defineProperty(this, obj, RETURN, JSVAL_TRUE);
   }
   dehydra_setLoc(this, obj, v);
   this->lastVar = obj;
@@ -305,8 +306,10 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
 static int dehydra_visitClass(Dehydra *this, tree c) {
   jsval process_class = dehydra_getCallback(this, "process_class");
   if (process_class == JSVAL_VOID) return true;
-  
-  JSObject *objClass = dehydra_addVar(this, c, NULL);
+
+  unsigned int length = dehydra_getArrayLength(this, this->rootedArgDestArray);
+
+  JSObject *objClass = dehydra_addVar(this, c, this->rootedArgDestArray);
 
   JSObject *basesArray = JS_NewArrayObject(this->cx, 0, NULL);
   dehydra_defineProperty(this, objClass, BASES, OBJECT_TO_JSVAL(basesArray));
@@ -327,6 +330,7 @@ static int dehydra_visitClass(Dehydra *this, tree c) {
   argv[0] = OBJECT_TO_JSVAL(objClass);
   xassert(JS_CallFunctionValue(this->cx, this->globalObj, process_class,
                                1, argv, &rval));
+  xassert (JS_SetArrayLength(this->cx, this->rootedArgDestArray, length));
   return true;
 }
 
@@ -437,31 +441,38 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     break;
   case INIT_EXPR:
     {
-      JSObject *obj = NULL;
       JSObject *tmp = NULL;
-      /* don't handle inits in all cases yet */
-      if (this->inReturn) break;
       xassert(2 == TREE_OPERAND_LENGTH (*tp) && this->lastVar);
-      /* var that we are assigning to */
-      /* GENERIC_TREE_OPERAND (e, 0);*/
-      tree init = GENERIC_TREE_OPERAND (*tp, 1);
-      xassert (TREE_CODE (init) == TARGET_EXPR);
-      tree aggr_init = TARGET_EXPR_INITIAL (init);
+      
+      /* now add constructor */
+      tmp = this->destArray;
+      this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+      dehydra_defineProperty (this, this->lastVar, ASSIGN,
+                             OBJECT_TO_JSVAL (this->destArray));
+      /* op 0 is an anonymous temporary..i think..so use last var instead */
+      cp_walk_tree_without_duplicates(&GENERIC_TREE_OPERAND(*tp, 1),
+                                      statement_walker, this);        
+      
+      this->destArray = tmp;
+      *walk_subtrees = 0;
+      break;
+    }
+  case TARGET_EXPR:
+    { 
+      /* For constructors INIT_EXPR above contains TARGET_EXPR here */
+      tree aggr_init = TARGET_EXPR_INITIAL (*tp);
       xassert (TREE_CODE (aggr_init) == AGGR_INIT_EXPR);
       /* operand 1 is func that performs init .3+ are params */
       int paramCount = TREE_INT_CST_LOW (GENERIC_TREE_OPERAND (aggr_init, 0));
-      init = GENERIC_TREE_OPERAND (aggr_init, 1);
+      tree init = GENERIC_TREE_OPERAND (aggr_init, 1);
       xassert (TREE_CODE (init) == ADDR_EXPR);
       init = GENERIC_TREE_OPERAND (init, 0);
-      /* now add constructor */
-      tmp = JS_NewArrayObject (this->cx, 0, NULL);
-      dehydra_defineProperty (this, this->lastVar, ASSIGN,
-                             OBJECT_TO_JSVAL (tmp));
-      obj = dehydra_addVar (this, init, tmp);      
+
+      JSObject *obj = dehydra_addVar (this, init, NULL);      
       if (DECL_CONSTRUCTOR_P (init))
         dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);        
       dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
-      tmp = this->destArray;
+      JSObject *tmp = this->destArray;
       this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
       dehydra_defineProperty (this, obj, PARAMETERS,
                               OBJECT_TO_JSVAL (this->destArray));
@@ -511,16 +522,20 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       if (len == 1) {
         xassert(!this->inReturn);
         this->inReturn = true;;
-        tree decl = GENERIC_TREE_OPERAND (*tp, 0);
-        cp_walk_tree_without_duplicates(&decl, statement_walker, this);
+        tree expr = GENERIC_TREE_OPERAND (*tp, 0);
+        xassert (TREE_CODE (expr) == INIT_EXPR);
+        expr = GENERIC_TREE_OPERAND (expr, 1);
+        cp_walk_tree_without_duplicates(&expr, statement_walker, this);
         this->inReturn = false;
       } else {
         xassert (!len);
       }
       *walk_subtrees = 0;
+      break;
     }
   case VAR_DECL:
   case FUNCTION_DECL:
+  case PARM_DECL:
     {
       JSObject *obj = dehydra_addVar(this, *tp, NULL);
       dehydra_defineProperty(this, obj, USE, JSVAL_TRUE);
