@@ -3,7 +3,8 @@ PLUGIN = ../gcc_dehydra.so
 all: test.o
 
 %.o: %.cc  $(PLUGIN)
-	$(CC1PLUS) -plugin=$(PLUGIN) -plugin-arg=test.js -O0 $< -o $@ -fsyntax-only  || rm -f $@
+	$(CC1PLUS) -plugin=$(PLUGIN) -plugin-arg=test.js -O0 $< -o $@ -fsyntax-only 
+	rm -f $@
 
 clean:
 	rm -f *.o *~

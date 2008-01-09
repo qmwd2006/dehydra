@@ -392,6 +392,7 @@ void postvisitFunction(tree f) {
 
 static void dehydra_iterate_statementlist (Dehydra *, tree);
 static tree statement_walker (tree *, int *walk_, void *);
+
 /* messes with dest-array */
 static void dehydra_attachNestedFields(Dehydra *this, JSObject *obj, char const *name, tree t) {
   JSObject *tmp = this->destArray;
@@ -436,6 +437,8 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     break;
   case INIT_EXPR:
     {
+      JSObject *obj = NULL;
+      JSObject *tmp = NULL;
       /* don't handle inits in all cases yet */
       if (this->inReturn) break;
       xassert(2 == TREE_OPERAND_LENGTH (*tp) && this->lastVar);
@@ -443,13 +446,54 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       /* GENERIC_TREE_OPERAND (e, 0);*/
       tree init = GENERIC_TREE_OPERAND (*tp, 1);
       xassert (TREE_CODE (init) == TARGET_EXPR);
-      init = TARGET_EXPR_INITIAL (init);
-      xassert (TREE_CODE (init) == AGGR_INIT_EXPR);
+      tree aggr_init = TARGET_EXPR_INITIAL (init);
+      xassert (TREE_CODE (aggr_init) == AGGR_INIT_EXPR);
       /* operand 1 is func that performs init .3+ are params */
-      init = GENERIC_TREE_OPERAND (init, 1);
+      int paramCount = TREE_INT_CST_LOW (GENERIC_TREE_OPERAND (aggr_init, 0));
+      init = GENERIC_TREE_OPERAND (aggr_init, 1);
       xassert (TREE_CODE (init) == ADDR_EXPR);
       init = GENERIC_TREE_OPERAND (init, 0);
-      dehydra_attachNestedFields(this, this->lastVar, ASSIGN, init);
+      /* now add constructor */
+      tmp = JS_NewArrayObject (this->cx, 0, NULL);
+      dehydra_defineProperty (this, this->lastVar, ASSIGN,
+                             OBJECT_TO_JSVAL (tmp));
+      obj = dehydra_addVar (this, init, tmp);      
+      if (DECL_CONSTRUCTOR_P (init))
+        dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);        
+      dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
+      tmp = this->destArray;
+      this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+      dehydra_defineProperty (this, obj, PARAMETERS,
+                              OBJECT_TO_JSVAL (this->destArray));
+      /* iterate through constructor params */
+      int i;
+      /* TODO, figure sup with paramCount and all of of the strange INTEGER_CST nodes */
+      for (i = 4; i < paramCount; ++i) {
+        cp_walk_tree_without_duplicates(&GENERIC_TREE_OPERAND(aggr_init, i),
+                                        statement_walker, this);        
+      }
+      this->destArray = tmp;
+      *walk_subtrees = 0;
+      break;
+    }
+  case CALL_EXPR:
+    {
+      int paramCount = TREE_INT_CST_LOW (GENERIC_TREE_OPERAND (*tp, 0));
+      tree fndecl = GENERIC_TREE_OPERAND (*tp, 1);
+      xassert (TREE_CODE (fndecl) == ADDR_EXPR);
+      fndecl = GENERIC_TREE_OPERAND (fndecl, 0);
+      JSObject *obj = dehydra_addVar (this, fndecl, NULL);
+      dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
+      JSObject *tmp = this->destArray;
+      this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+      dehydra_defineProperty (this, obj, PARAMETERS,
+                              OBJECT_TO_JSVAL (this->destArray));
+      int i;
+      for (i = 3; i < paramCount;i++) {
+        cp_walk_tree_without_duplicates(&GENERIC_TREE_OPERAND(*tp, i),
+                                        statement_walker, this);        
+      }
+      this->destArray = tmp;
       *walk_subtrees = 0;
       break;
     }
@@ -476,20 +520,10 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       *walk_subtrees = 0;
     }
   case VAR_DECL:
+  case FUNCTION_DECL:
     {
       JSObject *obj = dehydra_addVar(this, *tp, NULL);
       dehydra_defineProperty(this, obj, USE, JSVAL_TRUE);
-      break;
-    }
-  case FUNCTION_DECL:
-    {
-      JSObject *obj = dehydra_addVar (this, *tp, NULL);
-      JSObject *params = JS_NewArrayObject (this->cx, 0, NULL);
-      dehydra_defineProperty (this, obj, PARAMETERS, OBJECT_TO_JSVAL (params));
-      dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
-      if (DECL_CONSTRUCTOR_P (*tp))
-        dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);        
-      *walk_subtrees = 1;
       break;
     }
     /*magic compiler stuff we probably couldn't care less about */
