@@ -34,7 +34,7 @@ typedef struct Dehydra Dehydra;
 static const char *NAME = "name";
 static const char *LOC = "loc";
 static const char *BASES = "bases";
-static const char *DECL = "decl";
+static const char *DECL = "isDecl";
 static const char *ASSIGN = "assign";
 static const char *VALUE = "value";
 static const char *TYPE = "type";
@@ -44,6 +44,8 @@ static const char *RETURN = "isReturn";
 static const char *FCALL = "isFcall";
 static const char *PARAMETERS = "parameters";
 static const char *DH_CONSTRUCTOR = "isConstructor";
+static const char *FIELD_OF = "fieldOf";
+
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
 static char *readFile(const char *filename, const char *dir, long *size) {
@@ -417,18 +419,13 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     dehydra_iterate_statementlist(this, *tp);
     return NULL_TREE;
   case DECL_EXPR:
-    return NULL_TREE;
-    
-    if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (code)))
-      {
+    {
         int i, len;
         tree e = *tp;
         len = TREE_OPERAND_LENGTH (e);
         xassert(len == 1);
         for (i = 0; i < len; ++i) {
           tree decl = GENERIC_TREE_OPERAND (e, i);
-          fprintf(stderr, "The TREE_PURPOSE is an initial value for that field when"
-                  "an object of this type is initialized via an INIT_EXPR. = %p\n", TREE_PURPOSE(decl));
           tree init = DECL_INITIAL (decl);
           JSObject *obj = dehydra_addVar(this, decl, NULL);
           dehydra_defineProperty(this, obj, DECL, JSVAL_TRUE);
@@ -436,9 +433,9 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
             dehydra_attachNestedFields(this, obj, ASSIGN, init);
           }
         }
-      }
-    *walk_subtrees = 0;
-    break;
+        *walk_subtrees = 0;
+        break;
+    }
   case INIT_EXPR:
     {
       JSObject *tmp = NULL;
@@ -449,6 +446,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
       dehydra_defineProperty (this, this->lastVar, ASSIGN,
                              OBJECT_TO_JSVAL (this->destArray));
+
       /* op 0 is an anonymous temporary..i think..so use last var instead */
       cp_walk_tree_without_duplicates(&GENERIC_TREE_OPERAND(*tp, 1),
                                       statement_walker, this);        
@@ -490,18 +488,36 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case CALL_EXPR:
     {
       int paramCount = TREE_INT_CST_LOW (GENERIC_TREE_OPERAND (*tp, 0));
-      tree fndecl = GENERIC_TREE_OPERAND (*tp, 1);
-      xassert (TREE_CODE (fndecl) == ADDR_EXPR);
-      fndecl = GENERIC_TREE_OPERAND (fndecl, 0);
-      JSObject *obj = dehydra_addVar (this, fndecl, NULL);
+      tree fn = CALL_EXPR_FN (*tp);
+      /* index of first param */
+      int i = 3;
+      xassert (TREE_CODE (fn) == ADDR_EXPR);
+      fn = GENERIC_TREE_OPERAND (fn, 0);
+      
+      JSObject *obj = dehydra_addVar (this, fn, NULL);
+      if (TREE_TYPE (fn) != NULL_TREE && TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE) {
+        if (DECL_CONSTRUCTOR_P (fn))
+          dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);        
+     
+        tree o = GENERIC_TREE_OPERAND(*tp, i);
+        ++i;
+        unsigned int length = dehydra_getArrayLength(this, this->destArray);
+        cp_walk_tree_without_duplicates(&o,
+                                        statement_walker, this);        
+        jsval v;
+        xassert(JS_GetElement(this->cx, this->destArray, length, &v));
+        dehydra_defineProperty (this, obj, FIELD_OF, v);
+        xassert (JS_SetArrayLength(this->cx, this->destArray, length));
+      }
+
       dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
       JSObject *tmp = this->destArray;
       this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
       dehydra_defineProperty (this, obj, PARAMETERS,
                               OBJECT_TO_JSVAL (this->destArray));
-      int i;
-      for (i = 3; i < paramCount;i++) {
-        cp_walk_tree_without_duplicates(&GENERIC_TREE_OPERAND(*tp, i),
+      for (; i < paramCount;i++) {
+        tree e = GENERIC_TREE_OPERAND(*tp, i);
+        cp_walk_tree_without_duplicates(&e,
                                         statement_walker, this);        
       }
       this->destArray = tmp;
