@@ -396,6 +396,14 @@ int visitFunction(tree f) {
 void postvisitFunction(tree f) {
 }
 
+static void dehydra_print(Dehydra *this, JSObject *obj) {
+  jsval print = dehydra_getCallback(this, "print");
+  jsval rval, argv[1];
+  argv[0] = OBJECT_TO_JSVAL(obj);
+  xassert(JS_CallFunctionValue(this->cx, this->globalObj, print,
+                               1, argv, &rval));
+}
+
 static void dehydra_iterate_statementlist (Dehydra *, tree);
 static tree statement_walker (tree *, int *walk_, void *);
 
@@ -444,6 +452,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       /* now add constructor */
       tmp = this->destArray;
       this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+      /* note here we are assuming that last addVar as the last declaration */
       dehydra_defineProperty (this, this->lastVar, ASSIGN,
                              OBJECT_TO_JSVAL (this->destArray));
 
@@ -455,36 +464,15 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       *walk_subtrees = 0;
       break;
     }
-  case TARGET_EXPR:
-    { 
-      /* For constructors INIT_EXPR above contains TARGET_EXPR here */
-      tree aggr_init = TARGET_EXPR_INITIAL (*tp);
-      xassert (TREE_CODE (aggr_init) == AGGR_INIT_EXPR);
-      /* operand 1 is func that performs init .3+ are params */
-      int paramCount = TREE_INT_CST_LOW (GENERIC_TREE_OPERAND (aggr_init, 0));
-      tree init = GENERIC_TREE_OPERAND (aggr_init, 1);
-      xassert (TREE_CODE (init) == ADDR_EXPR);
-      init = GENERIC_TREE_OPERAND (init, 0);
-
-      JSObject *obj = dehydra_addVar (this, init, NULL);      
-      if (DECL_CONSTRUCTOR_P (init))
-        dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);        
-      dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
-      JSObject *tmp = this->destArray;
-      this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
-      dehydra_defineProperty (this, obj, PARAMETERS,
-                              OBJECT_TO_JSVAL (this->destArray));
-      /* iterate through constructor params */
-      int i;
-      /* TODO, figure sup with paramCount and all of of the strange INTEGER_CST nodes */
-      for (i = 4; i < paramCount; ++i) {
-        cp_walk_tree_without_duplicates(&GENERIC_TREE_OPERAND(aggr_init, i),
-                                        statement_walker, this);        
-      }
-      this->destArray = tmp;
-      *walk_subtrees = 0;
-      break;
-    }
+   case TARGET_EXPR:
+     {
+       /* this is a weird initializer tree node, however it's usually with INIT_EXPR
+          so info in it is redudent */
+       cp_walk_tree_without_duplicates(&TARGET_EXPR_INITIAL(*tp),
+                                      statement_walker, this);        
+       *walk_subtrees = 0;
+       break;
+     }
   case CALL_EXPR:
     {
       int paramCount = TREE_INT_CST_LOW (GENERIC_TREE_OPERAND (*tp, 0));
@@ -495,6 +483,10 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       fn = GENERIC_TREE_OPERAND (fn, 0);
       
       JSObject *obj = dehydra_addVar (this, fn, NULL);
+      /* inreturn doesnt make sense very deep. I would love a generic way
+         of turning it off */
+      int inReturn = this->inReturn;
+      this->inReturn = 0;
       if (TREE_TYPE (fn) != NULL_TREE && TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE) {
         if (DECL_CONSTRUCTOR_P (fn))
           dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);        
@@ -521,6 +513,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
                                         statement_walker, this);        
       }
       this->destArray = tmp;
+      this->inReturn = inReturn;
       *walk_subtrees = 0;
       break;
     }
@@ -600,11 +593,11 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
 }
 
 static void dehydra_iterate_statementlist (Dehydra *this, tree statement_list) {
-  xassert(TREE_CODE (statement_list) == STATEMENT_LIST);
+  xassert (TREE_CODE (statement_list) == STATEMENT_LIST);
   tree_stmt_iterator i;
   for (i = tsi_start (statement_list); !tsi_end_p (i); tsi_next (&i)) {
     dehydra_nextStatement (this);
-    cp_walk_tree_without_duplicates(tsi_stmt_ptr (i), statement_walker, this);
+    cp_walk_tree_without_duplicates (tsi_stmt_ptr (i), statement_walker, this);
   }
 }
 
