@@ -524,6 +524,20 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       *walk_subtrees = 0;
       break;
     }
+  case MODIFY_EXPR:
+    {
+      unsigned int length = dehydra_getArrayLength (this, this->destArray);
+      cp_walk_tree_without_duplicates (&GENERIC_TREE_OPERAND (*tp, 0),
+                                      statement_walker, this);
+      jsval v;
+      xassert (JS_GetElement (this->cx, this->destArray, length, &v));
+      if (v != JSVAL_VOID) {
+        dehydra_attachNestedFields (this, JSVAL_TO_OBJECT(v),
+                                    ASSIGN, GENERIC_TREE_OPERAND (*tp, 1));
+        *walk_subtrees = 0;
+      }
+      break;
+    }
   case INTEGER_CST:
     {
       JSObject *obj = dehydra_addVar(this, *tp, NULL);
