@@ -113,7 +113,7 @@ public:
 
   nsCOMPtr<nsIXULPrototypeCache> mProtoCache;
 };
-#if 0
+
 already_AddRefed<nsIXULPrototypeCache> foo(nsIXULPrototypeCache *cbs);
 
 
@@ -145,7 +145,7 @@ void test(LoadData *aLoadData, Bah *test) {
     }
   }
 }
-
+#if 0
 void foeo();
 
 void bleh() {
