@@ -505,9 +505,9 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
         cp_walk_tree_without_duplicates(&o,
                                         statement_walker, this);        
         jsval v;
-        xassert(JS_GetElement(this->cx, this->destArray, length, &v));
+        xassert (JS_GetElement (this->cx, this->destArray, length, &v));
         dehydra_defineProperty (this, obj, FIELD_OF, v);
-        xassert (JS_SetArrayLength(this->cx, this->destArray, length));
+        xassert (JS_SetArrayLength (this->cx, this->destArray, length));
       }
 
       dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
@@ -534,10 +534,24 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       if (v != JSVAL_VOID) {
         dehydra_attachNestedFields (this, JSVAL_TO_OBJECT(v),
                                     ASSIGN, GENERIC_TREE_OPERAND (*tp, 1));
-        *walk_subtrees = 0;
       }
+      *walk_subtrees = 0;
       break;
     }
+  case COMPONENT_REF:
+    {
+      JSObject *obj = dehydra_addVar (this, GENERIC_TREE_OPERAND(*tp, 1), 
+                                      NULL);
+      unsigned int length = dehydra_getArrayLength (this, this->destArray);
+      cp_walk_tree_without_duplicates (&GENERIC_TREE_OPERAND (*tp, 0),
+                                       statement_walker, this);
+      jsval v;
+      xassert (JS_GetElement (this->cx, this->destArray, length, &v));
+      dehydra_defineProperty (this, obj, FIELD_OF, v);
+      xassert (JS_SetArrayLength(this->cx, this->destArray, length));
+    }
+    *walk_subtrees = 0;
+    break;
   case INTEGER_CST:
     {
       JSObject *obj = dehydra_addVar(this, *tp, NULL);
