@@ -40,10 +40,11 @@ static const char *TYPE = "type";
 static const char *FUNCTION = "isFunction";
 static const char *RETURN = "isReturn";
 static const char *FCALL = "isFcall";
-static const char *PARAMETERS = "parameters";
+static const char *ARGUMENTS = "arguments";
 static const char *DH_CONSTRUCTOR = "isConstructor";
 static const char *FIELD_OF = "fieldOf";
 static const char *MEMBERS = "members";
+static const char *PARAMETERS = "parameters";
 
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
@@ -276,6 +277,11 @@ static void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
     dehydra_defineStringProperty(this, obj, LOC, strLoc);
 }
 
+static char const * identifierName (tree t) {
+  tree n = DECL_NAME (t);
+  return n ? IDENTIFIER_POINTER (DECL_NAME (t)) : NULL;
+}
+
 static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
   if(!parentArray) parentArray = this->destArray;
   unsigned int length = dehydra_getArrayLength(this, parentArray);
@@ -287,7 +293,43 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
                                   NULL, NULL, JSPROP_ENUMERATE));
   
   if (!v) return obj;
-  if (TYPE_P(v)) {
+  if (TREE_CODE (v) == FUNCTION_DECL) {
+    dehydra_defineStringProperty(this, obj, NAME, 
+                                 identifierName (v));
+    if (DECL_CONSTRUCTOR_P (v))
+      dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
+    else
+      dehydra_defineStringProperty (this, obj, TYPE, 
+                                    type_as_string (TREE_TYPE (TREE_TYPE (v)), 0));
+    tree arg = DECL_ARGUMENTS (v);
+    tree arg_type = TYPE_ARG_TYPES (TREE_TYPE (v));
+    if (DECL_NONSTATIC_MEMBER_FUNCTION_P (v))
+      {
+        /* Skip "this" argument.  */
+        if(arg) arg = TREE_CHAIN (arg);
+        arg_type = TREE_CHAIN (arg_type);
+      }
+    JSObject *params = JS_NewArrayObject (this->cx, 0, NULL);
+    dehydra_defineProperty (this, obj, PARAMETERS, OBJECT_TO_JSVAL (params));
+    int i = 0;
+    while (arg_type && (arg_type != void_list_node))
+      {
+        //xml_output_argument (xdi, arg, arg_type, dn->complete);
+        JSObject *objArg = JS_ConstructObject(this->cx, &js_ObjectClass, NULL, 
+                                              this->globalObj);
+        xassert(objArg && JS_DefineElement(this->cx, params, i++,
+                                        OBJECT_TO_JSVAL(objArg),
+                                        NULL, NULL, JSPROP_ENUMERATE));
+        if(arg) {
+          dehydra_defineStringProperty (this, objArg, NAME, 
+                                        identifierName (arg));
+          arg = TREE_CHAIN (arg);
+        }
+        dehydra_defineStringProperty (this, objArg, TYPE,
+                                      type_as_string (TREE_VALUE (arg_type), 0));
+        arg_type = TREE_CHAIN (arg_type);
+      }
+  } else if (TYPE_P(v)) {
     dehydra_defineStringProperty(this, obj, NAME, 
                                  type_as_string(v, 0));
   } else if (DECL_P(v)) {
@@ -296,8 +338,6 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
                                  name);
     dehydra_defineStringProperty(this, obj, TYPE,
                                  type_as_string(TREE_TYPE(v), 0));
-    if (TREE_CODE (v) == FUNCTION_DECL && DECL_CONSTRUCTOR_P (v))
-      dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);        
   }
   dehydra_setLoc(this, obj, v);
   this->lastVar = obj;
@@ -313,12 +353,12 @@ static int dehydra_visitClass(Dehydra *this, tree c) {
   jsval process_class = dehydra_getCallback(this, "process_class");
   if (process_class == JSVAL_VOID) return true;
 
-  unsigned int length = dehydra_getArrayLength(this, this->rootedArgDestArray);
+  unsigned int length = dehydra_getArrayLength (this, this->rootedArgDestArray);
 
-  JSObject *objClass = dehydra_addVar(this, c, this->rootedArgDestArray);
+  JSObject *objClass = dehydra_addVar (this, c, this->rootedArgDestArray);
 
-  this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
-  dehydra_defineProperty(this, objClass, BASES, 
+  this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+  dehydra_defineProperty (this, objClass, BASES, 
                          OBJECT_TO_JSVAL(this->destArray));
 
   tree binfo = TYPE_BINFO (c);
@@ -457,7 +497,7 @@ dehydra_fcallDoArgs (Dehydra *this, JSObject *obj, tree expr,
                                  int i, int count) {
   JSObject *tmp = this->destArray;
   this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
-  dehydra_defineProperty (this, obj, PARAMETERS,
+  dehydra_defineProperty (this, obj, ARGUMENTS,
                           OBJECT_TO_JSVAL (this->destArray));
   for (; i < count;i++) {
     tree e = GENERIC_TREE_OPERAND(expr, i);
