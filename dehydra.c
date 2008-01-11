@@ -43,6 +43,7 @@ static const char *FCALL = "isFcall";
 static const char *PARAMETERS = "parameters";
 static const char *DH_CONSTRUCTOR = "isConstructor";
 static const char *FIELD_OF = "fieldOf";
+static const char *MEMBERS = "members";
 
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
@@ -295,11 +296,17 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
                                  name);
     dehydra_defineStringProperty(this, obj, TYPE,
                                  type_as_string(TREE_TYPE(v), 0));
+    if (TREE_CODE (v) == FUNCTION_DECL && DECL_CONSTRUCTOR_P (v))
+      dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);        
   }
   dehydra_setLoc(this, obj, v);
   this->lastVar = obj;
   return obj;
 }
+
+
+static void dehydra_iterate_statementlist (Dehydra *, tree);
+static tree statement_walker (tree *, int *walk_, void *);
 
 // TODO: add methods, members
 static int dehydra_visitClass(Dehydra *this, tree c) {
@@ -310,8 +317,9 @@ static int dehydra_visitClass(Dehydra *this, tree c) {
 
   JSObject *objClass = dehydra_addVar(this, c, this->rootedArgDestArray);
 
-  JSObject *basesArray = JS_NewArrayObject(this->cx, 0, NULL);
-  dehydra_defineProperty(this, objClass, BASES, OBJECT_TO_JSVAL(basesArray));
+  this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
+  dehydra_defineProperty(this, objClass, BASES, 
+                         OBJECT_TO_JSVAL(this->destArray));
 
   tree binfo = TYPE_BINFO (c);
   int n_baselinks = BINFO_N_BASE_BINFOS (binfo);
@@ -321,10 +329,35 @@ static int dehydra_visitClass(Dehydra *this, tree c) {
       tree base_binfo = BINFO_BASE_BINFO(binfo, i);
       JSString *str = 
         JS_NewStringCopyZ(this->cx, type_as_string(BINFO_TYPE(base_binfo),0));
-      xassert(JS_DefineElement(this->cx, basesArray, i, STRING_TO_JSVAL(str),
+      xassert(JS_DefineElement(this->cx, this->destArray, i, 
+                               STRING_TO_JSVAL(str),
                                NULL, NULL, JSPROP_ENUMERATE));
     }
+  
+  this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
+  dehydra_defineProperty(this, objClass, MEMBERS,
+                         OBJECT_TO_JSVAL(this->destArray));
+  tree func;
+  /* Output all the method declarations in the class.  */
+  for (func = TYPE_METHODS (c) ; func ; func = TREE_CHAIN (func)) {
+    if (DECL_ARTIFICIAL(func)) continue;
+    /* Don't output the cloned functions.  */
+    if (DECL_CLONED_FUNCTION_P (func)) continue;
+    dehydra_addVar (this, func, this->destArray);
+  }
 
+  tree field;
+  for (field = TYPE_FIELDS (c) ; field ; field = TREE_CHAIN (field)) {
+    if (DECL_ARTIFICIAL(field) && !DECL_IMPLICIT_TYPEDEF_P(field)) continue;
+    // ignore typedef of self field
+    // my theory is that the guard above takes care of this one too
+    if (TREE_CODE (field) == TYPE_DECL 
+        && TREE_TYPE (field) == c) continue;
+    if (TREE_CODE (field) != FIELD_DECL) continue;
+    dehydra_addVar (this, field, this->destArray);
+  }
+
+  this->destArray = NULL;
   jsval rval, argv[1];
   argv[0] = OBJECT_TO_JSVAL(objClass);
   xassert(JS_CallFunctionValue(this->cx, this->globalObj, process_class,
@@ -401,9 +434,6 @@ static void dehydra_print(Dehydra *this, JSObject *obj) {
                                1, argv, &rval));
 }
 
-static void dehydra_iterate_statementlist (Dehydra *, tree);
-static tree statement_walker (tree *, int *walk_, void *);
-
 /* messes with dest-array */
 static void dehydra_attachNestedFields(Dehydra *this, JSObject *obj, char const *name, tree t) {
   JSObject *tmp = this->destArray;
@@ -418,9 +448,7 @@ static JSObject* dehydra_addFcall (Dehydra *this, tree fndecl) {
   xassert (TREE_CODE (fndecl) == FUNCTION_DECL);
   JSObject *obj = dehydra_addVar (this, fndecl, NULL);
   dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
-  if (DECL_CONSTRUCTOR_P (fndecl))
-    dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);        
-
+  
   return obj;
 }
 
@@ -605,10 +633,9 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     break;
   default:
     fprintf(stderr, "%s:", loc(*tp));
-    //    fprintf(stderr, "walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
-    //expr_as_string(*tp, 0));
+    fprintf(stderr, "walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
+      expr_as_string(*tp, 0));
   }
-  fprintf(stderr, "walking tree element: %s\n", tree_code_name[TREE_CODE(*tp)]);
   return NULL_TREE;
 }
 
