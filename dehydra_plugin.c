@@ -172,10 +172,16 @@ int gcc_plugin_post_parse() {
   return 0;
 }
 
-int gcc_plugin_cp_pre_genericize(tree fndecl) {
-  if (DECL_CLONED_FUNCTION_P (fndecl)) return 0;
-  if (DECL_ARTIFICIAL(fndecl)) return 0;
+void gcc_plugin_cp_pre_genericize(tree fndecl) {
+  if (DECL_CLONED_FUNCTION_P (fndecl)) return;
+  if (DECL_ARTIFICIAL(fndecl)) return;
 
   dehydra_cp_pre_genericize(fndecl);
-  return 0;
+}
+
+/* Attach attributes that would otherwise be dropped */
+void gcc_plugin_decl_attributes (tree node, tree attributes, int flags) {
+  if (TREE_CODE (node) == RECORD_TYPE) {
+    TYPE_ATTRIBUTES (node) = attributes;
+  }
 }

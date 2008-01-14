@@ -47,6 +47,7 @@ static const char *DH_CONSTRUCTOR = "isConstructor";
 static const char *FIELD_OF = "fieldOf";
 static const char *MEMBERS = "members";
 static const char *PARAMETERS = "parameters";
+static const char *ATTRIBUTES = "attributes";
 
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
@@ -300,7 +301,8 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
   if (!v) return obj;
   if (TREE_CODE (v) == FUNCTION_DECL) {
     dehydra_defineStringProperty(this, obj, NAME, 
-                                 identifierName (v));
+                                 decl_as_string (v, 0));
+    dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
     if (DECL_CONSTRUCTOR_P (v))
       dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
     else
@@ -401,7 +403,25 @@ static int dehydra_visitClass(Dehydra *this, tree c) {
     if (TREE_CODE (field) != FIELD_DECL) continue;
     dehydra_addVar (this, field, this->destArray);
   }
-
+  
+  tree attributes = TYPE_ATTRIBUTES (c);
+  if (attributes) {
+    this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+    dehydra_defineProperty (this, objClass, ATTRIBUTES,
+                           OBJECT_TO_JSVAL (this->destArray));
+  }
+  i = 0;
+  tree a;
+  for (a = attributes; a; a = TREE_CHAIN (a)) {
+    tree name = TREE_PURPOSE (a);
+    /* tree args = TREE_VALUE (a);*/
+    JSString *str = JS_NewStringCopyZ (this->cx, IDENTIFIER_POINTER (name));
+    xassert (str 
+             && JS_DefineElement (this->cx, this->destArray, i++,
+                                  STRING_TO_JSVAL(str),
+                                  NULL, NULL, JSPROP_ENUMERATE));
+  }
+  
   this->destArray = NULL;
   jsval rval, argv[1];
   argv[0] = OBJECT_TO_JSVAL(objClass);
