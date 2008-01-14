@@ -14,7 +14,8 @@
 extern "C" {
 #endif
   // defined in dehydra_main
-  char const * loc(tree t);
+  location_t location_of (tree t);
+  char const * loc_as_string (location_t loc);
 
   void initDehydra(const char *file, const char *arg);
   VISIT_DECL(Class, tree c);

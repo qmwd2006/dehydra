@@ -13,5 +13,7 @@ CXXFLAGS=$(CFLAGS)
 gcc_dehydra.so: dehydra.o dehydra_plugin.o
 	$(CXX) -L$(HOME)/local/lib -ljs -shared -o $@ $+
 
+%.o: %.c dehydra.h
+
 clean:
 	rm -f *.o gcc_dehydra.so *~

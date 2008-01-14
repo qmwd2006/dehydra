@@ -17,7 +17,7 @@ void dfs_process_chain(tree t) {
 }
 
 /* stolen from gcc/cp/error.h */
-static location_t
+location_t
 location_of (tree t)
 {
   if (TREE_CODE (t) == PARM_DECL && DECL_CONTEXT (t))
@@ -37,8 +37,7 @@ location_of (tree t)
 
 static char *locationbuf = NULL;
 
-char const * loc(tree t) {
-  location_t loc = location_of(t);
+char const * loc_as_string (location_t loc) {
   if (!loc || loc == UNKNOWN_LOCATION) return NULL;
   size_t n = 0;
   n = locationbuf ? strlen(locationbuf) : 0;
@@ -51,6 +50,7 @@ char const * loc(tree t) {
   sprintf(locationbuf, "%s:%d:%d", eloc.file, eloc.line, eloc.column);
   return locationbuf;
 }
+
 #define TREE_HANDLER(name, var) static void process_##name(tree var)
 
 TREE_HANDLER(namespace_decl, ns) {
