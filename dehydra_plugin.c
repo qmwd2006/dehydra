@@ -181,10 +181,36 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
 
 /* Attach attributes that would otherwise be dropped */
 void gcc_plugin_decl_attributes (tree node, tree attributes, int flags) {
-  if (TREE_CODE (node) == RECORD_TYPE && !TYPE_ATTRIBUTES (node) && attributes && !strcmp("nsRegion", type_as_string (node, 0))) {
-    /*tree name = TREE_PURPOSE (a);
-    tree old_attrs = TYPE_ATTRIBUTES (*anode);
-    TYPE_ATTRIBUTES (node) = tree_cons (name, args, old_attrs);*/
-    //    TYPE_ATTRIBUTES (node) = attributes;
+  if (TREE_CODE (node) == RECORD_TYPE && !TYPE_ATTRIBUTES (node) && attributes && !strcmp("nsRegion", type_as_string (node, 0))
+      && (flags & ATTR_FLAG_TYPE_IN_PLACE)) {
+    tree a;
+    /* big hack to make gcc happy
+       The variants diverge if they aren't kept in sync and then gcc complains angrily 
+       see decl_attributes in gcc if something breaks
+    */
+    for (a = attributes; a; a = TREE_CHAIN (a))
+      {
+        tree name = TREE_PURPOSE (a);
+        tree args = TREE_VALUE (a);
+        tree old_attrs = TYPE_ATTRIBUTES (node);
+        TYPE_ATTRIBUTES (node) = tree_cons (name, args, old_attrs);
+        /* If this is the main variant, also push the attributes
+           out to the other variants.  */
+        if (node == TYPE_MAIN_VARIANT (node))
+          {
+            tree variant;
+            for (variant = node; variant;
+                 variant = TYPE_NEXT_VARIANT (variant))
+              {
+                if (TYPE_ATTRIBUTES (variant) == old_attrs)
+                  TYPE_ATTRIBUTES (variant)
+                    = TYPE_ATTRIBUTES (node);
+                /*else if (!lookup_attribute
+                         (spec->name, TYPE_ATTRIBUTES (variant)))
+                  TYPE_ATTRIBUTES (variant) = tree_cons
+                  (name, args, TYPE_ATTRIBUTES (variant));*/
+              }
+          }
+      }
   }
 }
