@@ -181,7 +181,10 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
 
 /* Attach attributes that would otherwise be dropped */
 void gcc_plugin_decl_attributes (tree node, tree attributes, int flags) {
-  if (TREE_CODE (node) == RECORD_TYPE) {
-    TYPE_ATTRIBUTES (node) = attributes;
+  if (TREE_CODE (node) == RECORD_TYPE && !TYPE_ATTRIBUTES (node) && attributes && !strcmp("nsRegion", type_as_string (node, 0))) {
+    /*tree name = TREE_PURPOSE (a);
+    tree old_attrs = TYPE_ATTRIBUTES (*anode);
+    TYPE_ATTRIBUTES (node) = tree_cons (name, args, old_attrs);*/
+    //    TYPE_ATTRIBUTES (node) = attributes;
   }
 }
