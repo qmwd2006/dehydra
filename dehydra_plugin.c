@@ -69,11 +69,20 @@ TREE_HANDLER(function_decl, f) {
   postvisitFunction(f);
 }
 
-TREE_HANDLER(record_type, c) {
+TREE_HANDLER (record_type, c) {
   tree field, func;
-
-  if (!COMPLETE_TYPE_P (c) || !visitClass(c)) return;
+  if (!COMPLETE_TYPE_P (c)) return;
   //fprintf(stderr, "class %s\n", type_as_string(c, 0));
+
+  /* iterate over base classes to ensure they are visited first */
+  tree binfo = TYPE_BINFO (c);
+  int n_baselinks = BINFO_N_BASE_BINFOS (binfo);
+  int i;
+  for (i = 0; i < n_baselinks; i++)
+    {
+      tree base_binfo = BINFO_BASE_BINFO (binfo, i);
+      process_type (BINFO_TYPE (base_binfo));
+    }
 
   /* Output all the method declarations in the class.  */
   for (func = TYPE_METHODS (c) ; func ; func = TREE_CHAIN (func)) {
@@ -93,6 +102,7 @@ TREE_HANDLER(record_type, c) {
     process(field);
     //fprintf(stderr, "%s: member %s\n", loc(c), tree_code_name[TREE_CODE(field)]);
   }
+  if (!visitClass(c)) return;
   postvisitClass(c);
   //fprintf(stderr, "/class //%s\n", type_as_string(c, 0));
 }
@@ -124,7 +134,8 @@ static void process_type(tree t) {
   case RECORD_TYPE:
     return process_record_type(t);
   default:
-    fprintf(stderr, "Unhandled type:%s\n", tree_code_name[TREE_CODE(t)]);
+    /*    fprintf(stderr, "Unhandled type:%s\n", tree_code_name[TREE_CODE(t)]);*/
+    break;
   }
 }
 
@@ -146,7 +157,8 @@ static void process(tree t) {
   case FIELD_DECL:
     return process_field_decl(t);
   default:
-    fprintf(stderr, "unknown tree element: %s\n", tree_code_name[TREE_CODE(t)]);
+    /*    fprintf(stderr, "unknown tree element: %s\n", tree_code_name[TREE_CODE(t)]);*/
+    break;
   }
 }
 
