@@ -221,7 +221,7 @@ function process_class(c) {
 function processVar(v) {
   // undeclared constructors return the type itself, not a reference
   // constructors will assign to the type directly as a fieldOf
-  if (v.name != 'constructor-special' &&
+  if (!v.isConstructor &&
       !v.fieldOf &&
       gClassMap.hasOwnProperty(v.type)) {
     if (gClassMap[v.type].gc) {

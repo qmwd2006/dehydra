@@ -53,7 +53,17 @@ char const * loc_as_string (location_t loc) {
 
 #define TREE_HANDLER(name, var) static void process_##name(tree var)
 
-TREE_HANDLER(namespace_decl, ns) {
+TREE_HANDLER (template_decl, td) {
+  tree inst;
+  for (inst = DECL_VINDEX (td); inst; inst = TREE_CHAIN (inst)) {
+    tree record_type = TREE_VALUE (inst);
+    xassert (TREE_CODE (record_type) == RECORD_TYPE);
+    process_type (record_type);
+  }
+
+}
+
+TREE_HANDLER (namespace_decl, ns) {
   if (DECL_NAMESPACE_ALIAS (ns)) return;
   
   struct cp_binding_level *level = NAMESPACE_LEVEL (ns);
@@ -63,9 +73,13 @@ TREE_HANDLER(namespace_decl, ns) {
   }
 }
 
-TREE_HANDLER(function_decl, f) {
+TREE_HANDLER (function_decl, f) {
+  tree body_chain = DECL_SAVED_TREE(f);
+  if (!body_chain) return;
+
+  /* cp_walk_tree_without_duplicates(&body_chain, decl_walker, NULL);*/
   if (!visitFunction(f)) return;
-  // fprintf(stderr, "%s: function %s\n", loc(f), decl_as_string(f, 0xff));
+  /* fprintf(stderr, "%s: function %s\n", loc(f), decl_as_string(f, 0xff));*/
   postvisitFunction(f);
 }
 
@@ -139,23 +153,26 @@ static void process_type(tree t) {
   }
 }
 
-static void process(tree t) {
+static void process (tree t) {
+  xassert (DECL_P (t));
   if (pointer_set_insert (pset, t)) {
     return;
   }
-  if  (TREE_CODE(t) != NAMESPACE_DECL 
-       && DECL_P(t) && DECL_IS_BUILTIN(t)) {
+  if  (TREE_CODE (t) != NAMESPACE_DECL
+       && DECL_IS_BUILTIN (t)) {
     return;
   }
-  switch(TREE_CODE(t)) {
+  switch (TREE_CODE (t)) {
   case NAMESPACE_DECL:
-    return process_namespace_decl(t);
+    return process_namespace_decl (t);
   case FUNCTION_DECL:
-    return process_function_decl(t);
+    return process_function_decl (t);
   case TYPE_DECL:
-    return process_type_decl(t);
+    return process_type_decl (t);
   case FIELD_DECL:
-    return process_field_decl(t);
+    return process_field_decl (t);
+  case TEMPLATE_DECL:
+    return process_template_decl (t);
   default:
     /*    fprintf(stderr, "unknown tree element: %s\n", tree_code_name[TREE_CODE(t)]);*/
     break;
@@ -174,11 +191,12 @@ int gcc_plugin_post_parse() {
   pset = pointer_set_create ();
   type_pset = pointer_set_create ();
   
-
   process(global_namespace);
 
   pointer_set_destroy (pset);
   pointer_set_destroy (type_pset);
+
+  dehydra_input_end();
   free(locationbuf);
   locationbuf = NULL;
   return 0;

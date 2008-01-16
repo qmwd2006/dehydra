@@ -8,12 +8,6 @@
 #include "tree-iterator.h"
 #include "pointer-set.h"
 
-#define xassert(cond)                                                   \
-  if (!(cond)) {                                                        \
-    fprintf(stderr, "%s:%d: Assertion failed:" #cond "\n",  __FILE__, __LINE__); \
-    _exit(1);                                                           \
-  }
-
 struct Dehydra {
   char* dir;
   JSRuntime *rt;
@@ -337,14 +331,16 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
         arg_type = TREE_CHAIN (arg_type);
       }
   } else if (TYPE_P(v)) {
+    char const *name = type_as_string(v, 0);
     dehydra_defineStringProperty(this, obj, NAME, 
-                                 type_as_string(v, 0));
+                                 name);
   } else if (DECL_P(v)) {
     char const *name = decl_as_string(v, 0);
     dehydra_defineStringProperty(this, obj, NAME, 
                                  name);
+    char const *type = type_as_string(TREE_TYPE(v), 0);
     dehydra_defineStringProperty(this, obj, TYPE,
-                                 type_as_string(TREE_TYPE(v), 0));
+                                 type);
   }
   dehydra_setLoc(this, obj, v);
   this->lastVar = obj;
@@ -435,10 +431,12 @@ static int dehydra_visitFunction(Dehydra *this, tree f) {
   jsval process_function = dehydra_getCallback(this, "process_function");
   if (process_function == JSVAL_VOID) return true;
 
-  if (!DECL_SAVED_TREE(f)) return true;
-  
   void **v = pointer_map_contains(this->fndeclMap, f);
-  xassert(v);
+  if (!v) {
+    fprintf (stderr, "%s: ", loc_as_string (location_of (f)));
+    fprintf (stderr, "No body for %s\n", decl_as_string (f, 0));
+    return true;
+  }
   this->statementHierarchyArray = (JSObject*) *v;
   
   jsval rval, argv[1];
@@ -546,21 +544,16 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     return NULL_TREE;
   case DECL_EXPR:
     {
-        int i, len;
-        tree e = *tp;
-        len = TREE_OPERAND_LENGTH (e);
-        xassert(len == 1);
-        for (i = 0; i < len; ++i) {
-          tree decl = GENERIC_TREE_OPERAND (e, i);
-          tree init = DECL_INITIAL (decl);
-          JSObject *obj = dehydra_addVar(this, decl, NULL);
-          dehydra_defineProperty(this, obj, DECL, JSVAL_TRUE);
-          if (init) {
-            dehydra_attachNestedFields(this, obj, ASSIGN, init);
-          }
-        }
-        *walk_subtrees = 0;
-        break;
+      tree e = *tp;
+      tree decl = GENERIC_TREE_OPERAND (e, 0);
+      tree init = DECL_INITIAL (decl);
+      JSObject *obj = dehydra_addVar(this, decl, NULL);
+      dehydra_defineProperty(this, obj, DECL, JSVAL_TRUE);
+      if (init) {
+        dehydra_attachNestedFields(this, obj, ASSIGN, init);
+      }
+      *walk_subtrees = 0;
+      break;
     }
   case INIT_EXPR:
     {
@@ -733,4 +726,13 @@ void dehydra_cp_pre_genericize(tree fndecl) {
 
 void initDehydra(const char *file, const char *script)  {
   dehydra_init(&dehydra, file,  script);
+}
+
+void dehydra_input_end () {
+  jsval input_end = dehydra_getCallback(&dehydra, "input_end");
+  if (input_end == JSVAL_VOID) return;
+  
+  jsval rval;
+  xassert(JS_CallFunctionValue(dehydra.cx, dehydra.globalObj, input_end,
+                               0, NULL, &rval));
 }
