@@ -42,6 +42,7 @@ static const char *FIELD_OF = "fieldOf";
 static const char *MEMBERS = "members";
 static const char *PARAMETERS = "parameters";
 static const char *ATTRIBUTES = "attributes";
+static const char *STATEMENTS = "statements";
 
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
@@ -68,37 +69,6 @@ static char *readFile(const char *filename, const char *dir, long *size) {
   buf[*size] = 0;
   fclose(f);
   return buf;
-}
-
-static JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
-                       jsval *argv, jsval *rval) {
-  /*  if (!(argc == 1 && JSVAL_IS_STRING(argv[0]))) return JS_TRUE;
-      fopen(JS_GetStringBytes(JSVAL_TO_STRING(argv[0])), std::ios::binary);
-      if(!f.is_open())
-      {
-      return JS_TRUE;
-      }
-      f.seekg(0, std::ios::end);
-      size_t len = f.tellg();
-      char *buf = (char*)JS_malloc(cx, len);
-      f.seekg(0, std::ios::beg);
-      f.read(buf, len);
-      f.close();
-      *rval = STRING_TO_JSVAL(JS_NewString(cx, buf, len));*/
-  return JS_TRUE;
-}
-
-static JSBool WriteFile(JSContext *cx, JSObject *obj, uintN argc,
-                        jsval *argv, jsval *rval) {
-  /*if (!(argc == 2 && JSVAL_IS_STRING(argv[0]) && JSVAL_IS_STRING(argv[1]))) {
-    return JS_TRUE;
-    }
-    JSString *str = JSVAL_TO_STRING(argv[1]);
-    std::ofstream out(JS_GetStringBytes(JSVAL_TO_STRING(argv[0])),
-    std::ios::out | std::ios::binary);
-    out.write(JS_GetStringBytes(str), JS_GetStringLength(str));
-    out.close();*/
-  return JS_TRUE;
 }
 
 static JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
@@ -157,22 +127,6 @@ ReportError(JSContext *cx, const char *message, JSErrorReport *report)
   exit(1);
 }
 
-JSBool Error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-             jsval *rval)
-{
-  fprintf(stderr, "Error ");
-  /*Dehydra* c = (Dehydra*) JS_GetContextPrivate(cx);
-    if(c->loc != SL_UNKNOWN) {
-    cerr << toString(c->loc);
-    } */
-  fprintf(stderr,  ": %s\n",
-          (argc > 0 && JSVAL_IS_STRING(argv[0]))
-          ? JS_GetStringBytes(JSVAL_TO_STRING(argv[0]))
-          : "Unspecified error");
-  _exit(1);
-  return JS_TRUE;
-}
-
 static void dehydra_init(Dehydra *this, const char *file, const char *script) {
   static JSClass global_class = {
     "global", JSCLASS_NEW_RESOLVE,
@@ -183,13 +137,13 @@ static void dehydra_init(Dehydra *this, const char *file, const char *script) {
   };
 
   static JSFunctionSpec shell_functions[] = {
-    {"write_file",      WriteFile,      1},
-    {"read_file",       ReadFile,       1},
-    {"print",           Print,          0},
+    /* {"write_file",      WriteFile,      1},
+       {"read_file",       ReadFile,       1},*/
+    {"_print",           Print,          0},
     {"version",         Version,        0},
-    {"error",           Error,          1},
     {0}
   };
+
   char *c = strrchr(file, '/');
   if (c) {
     // include / in the copy
@@ -450,24 +404,41 @@ static int dehydra_visitFunction(Dehydra *this, tree f) {
 
 /* Creates next array to dump dehydra objects onto */
 static void dehydra_nextStatement(Dehydra *this, location_t loc) {
-  unsigned int length = dehydra_getArrayLength(this,
-                                               this->statementHierarchyArray);
+  unsigned int length = dehydra_getArrayLength (this,
+                                                this->statementHierarchyArray);
   this->loc = loc;
+  this->destArray = NULL;
+  JSObject *obj = NULL;
+  /* Check that the last statement array was used, otherwise reuse it */
   if (length) {
-    unsigned int destLength = 0;
-    jsval obj;
-    xassert(JS_GetElement(this->cx, this->statementHierarchyArray, length - 1,
-                          &obj));
-    this->destArray = JSVAL_TO_OBJECT(obj);
-    destLength = dehydra_getArrayLength(this, this->destArray);
+    jsval val;
+    xassert (JS_GetElement (this->cx, this->statementHierarchyArray, length - 1,
+                          &val));
+    obj = JSVAL_TO_OBJECT (val);
+    xassert (JS_GetProperty(this->cx, obj, STATEMENTS, &val));
+    this->destArray = JSVAL_TO_OBJECT (val);
+    int destLength = dehydra_getArrayLength (this, this->destArray);
     /* last element is already setup & empty, we are done */
-    if (destLength == 0) return;
+    if (destLength != 0) {
+      this->destArray = NULL;
+    }
   }
-  this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
-  xassert(this->destArray
-          && JS_DefineElement(this->cx, this->statementHierarchyArray, length,
-                              OBJECT_TO_JSVAL(this->destArray),
-                              NULL, NULL, JSPROP_ENUMERATE));
+  if (!this->destArray) {
+    obj = JS_NewObject(this->cx, &js_ObjectClass, 0, 0);
+    xassert(obj
+            && JS_DefineElement(this->cx, this->statementHierarchyArray, length,
+                                OBJECT_TO_JSVAL(obj),
+                                NULL, NULL, JSPROP_ENUMERATE));
+    this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
+    xassert (this->destArray);
+    dehydra_defineProperty (this, obj, STATEMENTS, 
+                            OBJECT_TO_JSVAL (this->destArray));
+  }
+  /* always update location */
+  const char *loc_str = loc_as_string (this->loc);
+  const char *s = strrchr (loc_str, '/');
+  if (s) loc_str = s + 1;
+  dehydra_defineStringProperty (this, obj, LOC, loc_str);
 }
 
 static Dehydra dehydra = {0};

@@ -380,6 +380,17 @@ function iter(f, vars) {
 }
 
 function process_function (statements) {
-  if (!process) return;
-  Array.forEach(statements, process);
+  if (!process) return
+  for each (var o in statements) {
+    this._loc = o.loc
+    process (o.statements)
+  }
+  delete this._loc
+}
+
+function print (msg) {
+  if (this._loc)
+    _print (this._loc + ": " + msg);
+  else
+    _print (msg);
 }
