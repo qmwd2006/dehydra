@@ -542,25 +542,16 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       break;
     }
   case INIT_EXPR:
-    {
-      JSObject *tmp = NULL;
-      xassert(2 == TREE_OPERAND_LENGTH (*tp) && this->lastVar);
-      
-      /* now add constructor */
-      tmp = this->destArray;
-      this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
-      /* note here we are assuming that last addVar as the last declaration */
-      dehydra_defineProperty (this, this->lastVar, ASSIGN,
-                             OBJECT_TO_JSVAL (this->destArray));
-
-      /* op 0 is an anonymous temporary..i think..so use last var instead */
-      cp_walk_tree_without_duplicates(&GENERIC_TREE_OPERAND(*tp, 1),
-                                      statement_walker, this);        
-      
-      this->destArray = tmp;
-      *walk_subtrees = 0;
-      break;
-    }
+    
+    xassert (this->lastVar);
+    
+    /* now add constructor */
+    /* note here we are assuming that last addVar as the last declaration */
+    /* op 0 is an anonymous temporary..i think..so use last var instead */
+    dehydra_attachNestedFields (this, this->lastVar, ASSIGN, 
+                                GENERIC_TREE_OPERAND(*tp, 1));
+    *walk_subtrees = 0;
+    break;
    case TARGET_EXPR:
      {
        /* this is a weird initializer tree node, however it's usually with INIT_EXPR

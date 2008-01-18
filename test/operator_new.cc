@@ -1,6 +1,3 @@
-class Foo {
-};
-
 void f () {
-  Foo *f = new Foo();
+  char *c = new char;
 }
