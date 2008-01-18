@@ -43,6 +43,7 @@ static const char *MEMBERS = "members";
 static const char *PARAMETERS = "parameters";
 static const char *ATTRIBUTES = "attributes";
 static const char *STATEMENTS = "statements";
+static const char *BITFIELD = "bitfieldBits";
 
 static void dehydra_loadScript(Dehydra *this, const char *filename);
 
@@ -285,16 +286,18 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
         arg_type = TREE_CHAIN (arg_type);
       }
   } else if (TYPE_P(v)) {
-    char const *name = type_as_string(v, 0);
-    dehydra_defineStringProperty(this, obj, NAME, 
-                                 name);
+    char const *name = type_as_string (v, 0);
+    dehydra_defineStringProperty (this, obj, NAME, 
+                                  name);
   } else if (DECL_P(v)) {
-    char const *name = decl_as_string(v, 0);
-    dehydra_defineStringProperty(this, obj, NAME, 
-                                 name);
-    char const *type = type_as_string(TREE_TYPE(v), 0);
-    dehydra_defineStringProperty(this, obj, TYPE,
-                                 type);
+    char const *name = decl_as_string (v, 0);
+    dehydra_defineStringProperty (this, obj, NAME, 
+                                  name);
+    tree typ = TREE_TYPE (v);
+    /*tree type_name = TYPE_NAME (typ);*/
+    char const *type = type_as_string (typ, 0/*TFF_CHASE_TYPEDEF*/);
+    dehydra_defineStringProperty (this, obj, TYPE,
+                                  type);
   }
   dehydra_setLoc(this, obj, v);
   this->lastVar = obj;
@@ -351,7 +354,19 @@ static int dehydra_visitClass(Dehydra *this, tree c) {
     if (TREE_CODE (field) == TYPE_DECL 
         && TREE_TYPE (field) == c) continue;
     if (TREE_CODE (field) != FIELD_DECL) continue;
-    dehydra_addVar (this, field, this->destArray);
+    JSObject *obj = dehydra_addVar (this, field, this->destArray);
+    if (DECL_BIT_FIELD_TYPE (field))
+      {
+        tree size_tree = DECL_SIZE (field);
+        if (size_tree && host_integerp (size_tree, 1))
+          {
+            unsigned HOST_WIDE_INT bits = tree_low_cst(size_tree, 1);
+            char buf[100];
+            sprintf (buf, "%lu", bits);
+            dehydra_defineStringProperty (this, obj, BITFIELD, buf);
+          }
+      }
+
   }
   
   tree attributes = TYPE_ATTRIBUTES (c);
