@@ -225,7 +225,7 @@ function processVar(v) {
       !v.fieldOf &&
       gClassMap.hasOwnProperty(v.type)) {
     if (gClassMap[v.type].gc) {
-      print("ERROR: class '" + v.type + "' allocated on the stack.");
+      print("ERROR: class '" + v.type + "' allocated on the stack." + v);
     }
   }
 
