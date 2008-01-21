@@ -542,14 +542,13 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       break;
     }
   case INIT_EXPR:
-    
     xassert (this->lastVar);
-    
     /* now add constructor */
     /* note here we are assuming that last addVar as the last declaration */
     /* op 0 is an anonymous temporary..i think..so use last var instead */
     dehydra_attachNestedFields (this, this->lastVar, ASSIGN, 
                                 GENERIC_TREE_OPERAND(*tp, 1));
+    this->lastVar = NULL;
     *walk_subtrees = 0;
     break;
    case TARGET_EXPR:
@@ -572,11 +571,12 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       *walk_subtrees = 0;
       break;
     }
-    /* these wrappers are pretty similar */
+    /* these wrappers all contain important stuff as first arg */
   case POINTER_PLUS_EXPR:
   case ADDR_EXPR:
   case OBJ_TYPE_REF:
   case INDIRECT_REF:
+  case CLEANUP_POINT_EXPR:
     cp_walk_tree_without_duplicates (&GENERIC_TREE_OPERAND (*tp, 0),
                                      statement_walker, this);        
     *walk_subtrees = 0;
@@ -658,17 +658,17 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       break;
     }
     /*magic compiler stuff we probably couldn't care less about */
-  case CLEANUP_POINT_EXPR:
   case RESULT_DECL:
     /* this isn't magic, but breaks pretty-printing */
   case LABEL_DECL:
     break;
   default:
-    //fprintf(stderr, "%s:", loc_as_string(this->loc));
-    //    fprintf(stderr, "walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
-    //expr_as_string(*tp, 0));
+    /*fprintf(stderr, "%s:", loc_as_string(this->loc));
+    fprintf(stderr, "walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
+    expr_as_string(*tp, 0));*/
     break;
   }
+
   return NULL_TREE;
 }
 
