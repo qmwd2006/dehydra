@@ -396,8 +396,8 @@ static int dehydra_visitClass(Dehydra *this, tree c) {
   return true;
 }
 
-static int dehydra_visitFunction(Dehydra *this, tree f) {
-  jsval process_function = dehydra_getCallback(this, "process_function");
+static int dehydra_visitFunction (Dehydra *this, tree f) {
+  jsval process_function = dehydra_getCallback (this, "process_function");
   if (process_function == JSVAL_VOID) return true;
 
   void **v = pointer_map_contains(this->fndeclMap, f);
@@ -408,12 +408,21 @@ static int dehydra_visitFunction(Dehydra *this, tree f) {
   }
   this->statementHierarchyArray = (JSObject*) *v;
   
-  jsval rval, argv[1];
-  argv[0] = OBJECT_TO_JSVAL(this->statementHierarchyArray);
+  
+  /* temporarily add a variable to this->statementHierarchyArray;
+   this way is it is rooted while various properties are defined */
+  unsigned int length = dehydra_getArrayLength (this,
+                                                this->statementHierarchyArray);
+  JSObject *fobj = dehydra_addVar (this, f, this->statementHierarchyArray);
+  /* hopefully reducing size of an array does not trigger gc */
+  xassert (JS_SetArrayLength (this->cx, this->statementHierarchyArray, length));
+  jsval rval, argv[2];
+  argv[0] = OBJECT_TO_JSVAL (fobj);
+  argv[1] = OBJECT_TO_JSVAL (this->statementHierarchyArray);
   // the array is now rooted as a function argument
-  xassert(JS_RemoveRoot(this->cx, &this->statementHierarchyArray));
-  xassert(JS_CallFunctionValue(this->cx, this->globalObj, process_function,
-                               1, argv, &rval));
+  xassert (JS_RemoveRoot (this->cx, &this->statementHierarchyArray));
+  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_function,
+                                 sizeof (argv)/sizeof (argv[0]), argv, &rval));
   return true;
 }
 

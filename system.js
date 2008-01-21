@@ -379,7 +379,7 @@ function iter(f, vars) {
     var_iter(f, v)
 }
 
-function process_function (statements) {
+function process_function (decl, statements) {
   if (!process) return
   for each (var o in statements) {
     this._loc = o.loc
