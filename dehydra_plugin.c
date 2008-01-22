@@ -1,5 +1,6 @@
 #include "dehydra.h"
 #include "pointer-set.h"
+#include "errors.h"
 /*C++ headers*/
 #include "cp-tree.h"
 #include "cxx-pretty-print.h"
@@ -180,6 +181,10 @@ static void process (tree t) {
 }
 
 int gcc_plugin_init(const char *file, const char* arg) {
+  if (!arg) {
+    error ("Use -fplugin-arg=<scriptname> to specify the dehydra script to run");
+    return 1;
+  }
   initDehydra(file, arg);
   return 0;
 }

@@ -4,7 +4,6 @@ all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o
 
 %.o: %.cc  $(PLUGIN)
 	$(CC1PLUS) -fplugin=$(PLUGIN) -fplugin-arg=test.js -O0 $< -o $@ -fsyntax-only
-#  -fno-exceptions
 	rm -f $@
 
 clean:
