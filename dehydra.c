@@ -89,6 +89,32 @@ static JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
   return JS_TRUE;
 }
 
+static JSBool Error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
+                    jsval *rval)
+{
+  uintN i;
+  for (i = 0; i < argc; i++) {
+    JSString *str = JS_ValueToString(cx, argv[i]);
+    if (!str)
+      return JS_FALSE;
+    error ("%s", JS_GetStringBytes(str));
+  }
+  return JS_TRUE;
+}
+
+static JSBool Warning(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
+                    jsval *rval)
+{
+  uintN i;
+  for (i = 0; i < argc; i++) {
+    JSString *str = JS_ValueToString(cx, argv[i]);
+    if (!str)
+      return JS_FALSE;
+    warning (0, "%s", JS_GetStringBytes(str));
+  }
+  return JS_TRUE;
+}
+
 
 JSBool Version(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
                jsval *rval)
@@ -132,6 +158,8 @@ static void dehydra_init(Dehydra *this, const char *file, const char *script) {
     /* {"write_file",      WriteFile,      1},
        {"read_file",       ReadFile,       1},*/
     {"_print",           Print,          0},
+    {"error",           Error,          0},
+    {"warning",         Warning,          0},
     {"version",         Version,        0},
     {0}
   };
