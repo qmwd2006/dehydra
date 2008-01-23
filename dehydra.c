@@ -451,10 +451,14 @@ static void dehydra_nextStatement(Dehydra *this, location_t loc) {
                             OBJECT_TO_JSVAL (this->destArray));
   }
   /* always update location */
-  const char *loc_str = loc_as_string (this->loc);
-  const char *s = strrchr (loc_str, '/');
-  if (s) loc_str = s + 1;
-  dehydra_defineStringProperty (this, obj, LOC, loc_str);
+  if (this->loc) {
+    const char *loc_str = loc_as_string (this->loc);
+    const char *s = strrchr (loc_str, '/');
+    if (s) loc_str = s + 1;
+    dehydra_defineStringProperty (this, obj, LOC, loc_str);
+  } else {
+    dehydra_defineProperty (this, obj, LOC, JSVAL_VOID);
+  }
 }
 
 static Dehydra dehydra = {0};
