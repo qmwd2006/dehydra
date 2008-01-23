@@ -659,12 +659,12 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case VAR_DECL:
   case FUNCTION_DECL:
   case PARM_DECL:
+    /* result decl is a funky special case return values*/
+  case RESULT_DECL:
     {
       dehydra_addVar(this, *tp, NULL);
       break;
     }
-    /*magic compiler stuff we probably couldn't care less about */
-  case RESULT_DECL:
     /* this isn't magic, but breaks pretty-printing */
   case LABEL_DECL:
     break;
