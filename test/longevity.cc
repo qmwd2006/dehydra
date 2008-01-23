@@ -145,7 +145,7 @@ void test(LoadData *aLoadData, Bah *test) {
     }
   }
 }
-#if 0
+
 void foeo();
 
 void bleh() {
@@ -223,5 +223,3 @@ int testPointers(void *foo) {
   p1 = sc.mPointer;
   p1 = (nsCOMPtr<nsIInterfaceRequestor>*) foo;
 }
-
-#endif

@@ -1,10 +1,16 @@
-CC1PLUS = ../../gcc-build/gcc/g++
+CXX = ../../gcc-build/gcc/g++
 PLUGIN = ../gcc_dehydra.so
-all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o
+CXXFLAGS = -fplugin=$(PLUGIN) -fplugin-arg=test.js 
+all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o
 
 %.o: %.cc  $(PLUGIN)
-	$(CC1PLUS) -fplugin=$(PLUGIN) -fplugin-arg=test.js -O0 $< -o $@ -fsyntax-only
+	$(CXX) $(CXXFLAGS) -fsyntax-only -fpreprocessed $< -o $@ 
 	rm -f $@
 
+#tests workaround for outputing to stdout when shouldn't
+destr_order.o: destr_order.cc
+	$(CXX) -c $< $(CXXFLAGS) -pipe -o $@
+	rm $@
+
 clean:
-	rm -f *.o *~
+	rm -f *.o *~ a.out

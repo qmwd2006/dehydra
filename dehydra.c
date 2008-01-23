@@ -7,6 +7,7 @@
 #include "cxx-pretty-print.h"
 #include "tree-iterator.h"
 #include "pointer-set.h"
+#include "toplev.h"
 
 struct Dehydra {
   char* dir;
@@ -76,25 +77,16 @@ static JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
                     jsval *rval)
 {
   uintN i;
-  /*Dehydra* jsv = (Dehydra*) JS_GetContextPrivate(cx);
-  
-    if(jsv->loc != SL_UNKNOWN) {
-    char const * file(NULL); 
-    int line(0); 
-    int col(0);  
-    sourceLocManager->decodeLineCol(jsv->loc, file, line, col);
-   
-    char *c = strrchr(file, '/');
-    if(c) file = c + 1;
-    cout << file << ":"<< line << ": ";
-    }*/
+  /* don't touch stdout if it's being piped to assembler */
+  FILE *out = (!strcmp(asm_file_name, "-") && ! flag_syntax_only)
+    ? stderr : stdout;
   for (i = 0; i < argc; i++) {
     JSString *str = JS_ValueToString(cx, argv[i]);
     if (!str)
       return JS_FALSE;
-    fprintf(stdout, "%s", JS_GetStringBytes(str));
+    fprintf(out, "%s", JS_GetStringBytes(str));
   }
-  fprintf(stdout, "\n");
+  fprintf(out, "\n");
   return JS_TRUE;
 }
 
