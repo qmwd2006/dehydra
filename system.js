@@ -394,3 +394,13 @@ function print (msg) {
   else
     _print (msg);
 }
+
+function sameVar (v1, v2) {
+  // allow both to be undefined or both to be defined
+  if (!v1 && !v2) return true;
+  else if (! (v1 && v2)) return false;
+
+  if (!(v1.name == v2.name && v1.type == v2.type)) return false;
+  
+  return sameVar(v1.fieldOf, v2.fieldOf);
+}
