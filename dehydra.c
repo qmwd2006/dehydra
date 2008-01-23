@@ -319,7 +319,7 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
                                   name);
     tree typ = TREE_TYPE (v);
     /*tree type_name = TYPE_NAME (typ);*/
-    char const *type = type_as_string (typ, 0/*TFF_CHASE_TYPEDEF*/);
+    char const *type = type_as_string (typ, TFF_CHASE_TYPEDEF);
     dehydra_defineStringProperty (this, obj, TYPE,
                                   type);
   }
