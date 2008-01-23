@@ -21,6 +21,7 @@ struct Dehydra {
   //keeps track of function decls to map gimplified ones to verbose ones
   struct pointer_map_t *fndeclMap;
   location_t loc;
+  int inExpr;
 };
 
 typedef struct Dehydra Dehydra;
@@ -418,6 +419,7 @@ static int dehydra_visitFunction (Dehydra *this, tree f) {
 static void dehydra_nextStatement(Dehydra *this, location_t loc) {
   unsigned int length = dehydra_getArrayLength (this,
                                                 this->statementHierarchyArray);
+  xassert (!this->inExpr);
   this->loc = loc;
   this->destArray = NULL;
   JSObject *obj = NULL;
@@ -508,7 +510,9 @@ dehydra_fcallDoArgs (Dehydra *this, JSObject *obj, tree expr,
 static JSObject* dehydra_makeVar (Dehydra *this, tree t, 
                                   char const *prop, JSObject *attachToObj) {
   unsigned int length = dehydra_getArrayLength (this, this->destArray);
+  this->inExpr++;
   cp_walk_tree_without_duplicates (&t, statement_walker, this);        
+  this->inExpr--;
   xassert (length < dehydra_getArrayLength (this, this->destArray));
   jsval v;
   xassert (JS_GetElement (this->cx, this->destArray, length, &v));
@@ -683,7 +687,10 @@ static void dehydra_iterate_statementlist (Dehydra *this, tree statement_list) {
   tree_stmt_iterator i;
   for (i = tsi_start (statement_list); !tsi_end_p (i); tsi_next (&i)) {
     tree s = *tsi_stmt_ptr (i);
-    dehydra_nextStatement (this, location_of (s));
+    /* weird statements within expression shouldn't 
+       trigger dehydra_nextStatement */
+    if (! this->inExpr)
+      dehydra_nextStatement (this, location_of (s));
     cp_walk_tree_without_duplicates (&s, statement_walker, this);
   }
 }
