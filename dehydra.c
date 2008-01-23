@@ -20,8 +20,6 @@ struct Dehydra {
   JSObject *statementHierarchyArray;
   //keeps track of function decls to map gimplified ones to verbose ones
   struct pointer_map_t *fndeclMap;
-  /* last var added by dehydra_addVar */
-  JSObject *lastVar;
   location_t loc;
 };
 
@@ -292,7 +290,6 @@ static JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
                                   type);
   }
   dehydra_setLoc(this, obj, v);
-  this->lastVar = obj;
   return obj;
 }
 
@@ -399,7 +396,6 @@ static int dehydra_visitFunction (Dehydra *this, tree f) {
     return true;
   }
   this->statementHierarchyArray = (JSObject*) *v;
-  
   
   /* temporarily add a variable to this->statementHierarchyArray;
    this way is it is rooted while various properties are defined */
@@ -546,14 +542,22 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       *walk_subtrees = 0;
       break;
     }
-  case INIT_EXPR:
-    xassert (this->lastVar);
-    /* now add constructor */
-    /* note here we are assuming that last addVar as the last declaration */
-    /* op 0 is an anonymous temporary..i think..so use last var instead */
-    dehydra_attachNestedFields (this, this->lastVar, ASSIGN, 
-                                GENERIC_TREE_OPERAND(*tp, 1));
-    this->lastVar = NULL;
+  case INIT_EXPR: 
+    {
+      tree lval = GENERIC_TREE_OPERAND (*tp, 0);
+      /* TODO dehydra_makeVar should check the entry prior to the one it adds
+         to see if it's the same thing and then nuke the new one and return old one
+         this will avoid gcc annoynace with
+         declar foo = boo; beaing broken up into declare foo; foo = boo;
+       */
+      JSObject *obj = dehydra_makeVar (this, lval, NULL, NULL);
+      xassert (obj);
+      /* now add constructor */
+      /* note here we are assuming that last addVar as the last declaration */
+      /* op 0 is an anonymous temporary..i think..so use last var instead */
+      dehydra_attachNestedFields (this, obj, ASSIGN, 
+                                  GENERIC_TREE_OPERAND(*tp, 1));
+    }
     *walk_subtrees = 0;
     break;
    case TARGET_EXPR:
@@ -641,9 +645,6 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case RETURN_EXPR: 
     {
       tree expr = GENERIC_TREE_OPERAND (*tp, 0);
-      /* it would be nice if there was a better place to reset lastVar */
-      this->lastVar = NULL;
-
       if (expr && TREE_CODE (expr) != RESULT_DECL) {
         if (TREE_CODE (expr) == INIT_EXPR) {
           expr = GENERIC_TREE_OPERAND (expr, 1);
@@ -668,11 +669,11 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case LABEL_DECL:
     break;
   default:
-    /*fprintf(stderr, "%s:", loc_as_string(this->loc));
-    fprintf(stderr, "walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
-    expr_as_string(*tp, 0));*/
     break;
   }
+  /*    fprintf(stderr, "%s:", loc_as_string(this->loc));
+    fprintf(stderr, "walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
+    expr_as_string(*tp, 0));*/
 
   return NULL_TREE;
 }

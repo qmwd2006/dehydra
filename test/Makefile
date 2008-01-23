@@ -1,7 +1,7 @@
 CXX = ../../gcc-build/gcc/g++
 PLUGIN = ../gcc_dehydra.so
 CXXFLAGS = -fplugin=$(PLUGIN) -fplugin-arg=test.js 
-all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o
+all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o init.o
 
 %.o: %.cc  $(PLUGIN)
 	$(CXX) $(CXXFLAGS) -fsyntax-only -fpreprocessed $< -o $@ 
