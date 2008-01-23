@@ -106,11 +106,16 @@ static JSBool Warning(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
                     jsval *rval)
 {
   uintN i;
+  int code = 0;
   for (i = 0; i < argc; i++) {
+    if (i == 0 && JSVAL_IS_INT (argv[i])) {
+      code = JSVAL_TO_INT (argv[i]);
+      continue;
+    }
     JSString *str = JS_ValueToString(cx, argv[i]);
     if (!str)
       return JS_FALSE;
-    warning (0, "%s", JS_GetStringBytes(str));
+    warning (code, "%s", JS_GetStringBytes(str));
   }
   return JS_TRUE;
 }

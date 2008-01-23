@@ -1,6 +1,7 @@
 CXX = ../../gcc-build/gcc/g++
 PLUGIN = ../gcc_dehydra.so
-CXXFLAGS = -fplugin=$(PLUGIN) -fplugin-arg=test.js 
+PLUGINARG = -fplugin=$(PLUGIN)
+CXXFLAGS = $(PLUGINARG) -fplugin-arg=test.js 
 all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o init.o
 
 %.o: %.cc  $(PLUGIN)
@@ -11,6 +12,10 @@ all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_ord
 destr_order.o: destr_order.cc
 	$(CXX) -c $< $(CXXFLAGS) -pipe -o $@
 	rm $@
+
+warning: test.cc
+	$(CXX) -c $< $(PLUGINARG) -fplugin-arg=warning.js -o $@
+	rm -f $@
 
 clean:
 	rm -f *.o *~ a.out
