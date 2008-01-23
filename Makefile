@@ -7,7 +7,7 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp \
         -I/$(HOME)/local/include/js/ -I/usr/local/include/js
 
-CFLAGS=-Wall -fPIC -DXP_UNIX -g $(INCLUDE)
+CFLAGS=-Wall -fPIC -DXP_UNIX -g3 $(INCLUDE)
 
 gcc_dehydra.so: dehydra.o dehydra_plugin.o
 	$(CC) -L$(HOME)/local/lib -L/usr/local/lib -ljs -shared -o $@ $+

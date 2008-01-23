@@ -1,6 +1,7 @@
 #include "dehydra.h"
 #include "pointer-set.h"
 #include "errors.h"
+#include "diagnostic.h"
 /*C++ headers*/
 #include "cp-tree.h"
 #include "cxx-pretty-print.h"
@@ -190,7 +191,7 @@ int gcc_plugin_init(const char *file, const char* arg) {
 }
 
 int gcc_plugin_post_parse() {
-  if (processed) return 0;
+  if (processed || errorcount) return 0;
   processed = 1;
 
   pset = pointer_set_create ();
