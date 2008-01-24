@@ -1,30 +1,53 @@
 #ifndef DEHYDRA_H
 #define DEHYDRA_H
-#include "config.h"
-#include "system.h"
-#include "coretypes.h"
-#include "tm.h"
-#include "tree.h"
 
-#define VISIT_DECL(name, param)                 \
-  int visit##name(param);                       \
-  void postvisit##name(param);
+struct Dehydra {
+  char* dir;
+  JSRuntime *rt;
+  JSContext *cx;
+  JSObject *globalObj;
+  JSObject *destArray;
+  JSObject *rootedArgDestArray;
+  // Where the statements go;
+  JSObject *statementHierarchyArray;
+  //keeps track of function decls to map gimplified ones to verbose ones
+  struct pointer_map_t *fndeclMap;
+  location_t loc;
+  int inExpr;
+};
 
-#define xassert(cond)                                                   \
-  if (!(cond)) {                                                        \
-    fprintf(stderr, "%s:%d: Assertion failed:" #cond "\n",  __FILE__, __LINE__); \
-    _exit(1);                                                           \
-  }
+typedef struct Dehydra Dehydra;
 
-// defined in dehydra_main
-location_t location_of (tree t);
-char const * loc_as_string (location_t loc);
+extern const char *NAME;
+extern const char *LOC;
+extern const char *BASES;
+extern const char *DECL;
+extern const char *ASSIGN;
+extern const char *VALUE;
+extern const char *TYPE;
+extern const char *FUNCTION;
+extern const char *RETURN;
+extern const char *FCALL;
+extern const char *ARGUMENTS;
+extern const char *DH_CONSTRUCTOR;
+extern const char *DH_EXTERN;
+extern const char *FIELD_OF;
+extern const char *MEMBERS;
+extern const char *PARAMETERS;
+extern const char *ATTRIBUTES;
+extern const char *STATEMENTS;
+extern const char *BITFIELD;
 
-void initDehydra (const char *file, const char *arg);
-VISIT_DECL (Class, tree c);
-VISIT_DECL (Function, tree f);
-void dehydra_cp_pre_genericize (tree fndecl);
-void dehydra_input_end (void);
+jsuint dehydra_getArrayLength(Dehydra *this, JSObject *array);
+void dehydra_defineProperty(Dehydra *this, JSObject *obj,
+                            char const *name, jsval value);
+void dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
+                                  char const *name, char const *value);
 
-
-#endif // DEHYDRA_H
+void dehydra_init(Dehydra *this, const char *file, const char *script);
+int dehydra_visitClass(Dehydra *this, tree c);
+int dehydra_visitFunction (Dehydra *this, tree f);
+void dehydra_nextStatement(Dehydra *this, location_t loc);
+JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray);
+void dehydra_input_end (Dehydra *this);
+#endif

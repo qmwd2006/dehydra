@@ -9,10 +9,15 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 
 CFLAGS=-Wall -fPIC -DXP_UNIX -g3 $(INCLUDE)
 
-gcc_dehydra.so: dehydra.o dehydra_plugin.o
+gcc_dehydra.so: dehydra.o plugin.o builtins.o dehydra_ast.o dehydra_callbacks.o util.o
 	$(CC) -L$(HOME)/local/lib -L/usr/local/lib -ljs -shared -o $@ $+
 
-%.o: %.c dehydra.h
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<
+
+dehydra_ast.o: dehydra_ast.c dehydra_ast.h
+
+dehydra_callbacks.o: dehydra_callbacks.c dehydra_callbacks.h dehydra_ast.h dehydra.h
 
 clean:
 	rm -f *.o gcc_dehydra.so *~
