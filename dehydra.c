@@ -18,6 +18,7 @@
 #include "builtins.h"
 #include "util.h"
 #include "dehydra.h"
+#include "dehydra_types.h"
 
 const char *NAME = "name";
 const char *LOC = "loc";
@@ -39,11 +40,6 @@ const char *STATEMENTS = "statements";
 const char *BITFIELD = "bitfieldBits";
 
 static void dehydra_loadScript(Dehydra *this, const char *filename);
-
-static char const * identifierName (tree t) {
-  tree n = DECL_NAME (t);
-  return n ? IDENTIFIER_POINTER (DECL_NAME (t)) : NULL;
-}
 
 static char *readFile(const char *filename, const char *dir, long *size) {
   char *buf;
@@ -176,7 +172,7 @@ static void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
 }
 
 JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
-  if(!parentArray) parentArray = this->destArray;
+  if (!parentArray) parentArray = this->destArray;
   unsigned int length = dehydra_getArrayLength(this, parentArray);
   JSObject *obj = JS_ConstructObject(this->cx, &js_ObjectClass, NULL, 
                                      this->globalObj);
@@ -184,46 +180,7 @@ JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
   xassert(obj && JS_DefineElement(this->cx, parentArray, length,
                                   OBJECT_TO_JSVAL(obj),
                                   NULL, NULL, JSPROP_ENUMERATE));
-  
-  if (!v) return obj;
-  if (TREE_CODE (v) == FUNCTION_DECL) {
-    dehydra_defineStringProperty(this, obj, NAME, 
-                                 decl_as_string (v, 0));
-    dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
-    if (DECL_CONSTRUCTOR_P (v))
-      dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
-    else
-      dehydra_defineStringProperty (this, obj, TYPE, 
-                                    type_as_string (TREE_TYPE (TREE_TYPE (v)), 0));
-    tree arg = DECL_ARGUMENTS (v);
-    tree arg_type = TYPE_ARG_TYPES (TREE_TYPE (v));
-    if (DECL_NONSTATIC_MEMBER_FUNCTION_P (v))
-      {
-        /* Skip "this" argument.  */
-        if(arg) arg = TREE_CHAIN (arg);
-        arg_type = TREE_CHAIN (arg_type);
-      }
-    JSObject *params = JS_NewArrayObject (this->cx, 0, NULL);
-    dehydra_defineProperty (this, obj, PARAMETERS, OBJECT_TO_JSVAL (params));
-    int i = 0;
-    while (arg_type && (arg_type != void_list_node))
-      {
-        //xml_output_argument (xdi, arg, arg_type, dn->complete);
-        JSObject *objArg = JS_ConstructObject(this->cx, &js_ObjectClass, NULL, 
-                                              this->globalObj);
-        xassert(objArg && JS_DefineElement(this->cx, params, i++,
-                                        OBJECT_TO_JSVAL(objArg),
-                                        NULL, NULL, JSPROP_ENUMERATE));
-        if(arg) {
-          dehydra_defineStringProperty (this, objArg, NAME, 
-                                        identifierName (arg));
-          arg = TREE_CHAIN (arg);
-        }
-        dehydra_defineStringProperty (this, objArg, TYPE,
-                                      type_as_string (TREE_VALUE (arg_type), 0));
-        arg_type = TREE_CHAIN (arg_type);
-      }
-  } else if (TYPE_P(v)) {
+  if (TYPE_P(v)) {
     char const *name = type_as_string (v, 0);
     dehydra_defineStringProperty (this, obj, NAME, 
                                   name);
@@ -231,11 +188,18 @@ JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
     char const *name = decl_as_string (v, 0);
     dehydra_defineStringProperty (this, obj, NAME, 
                                   name);
+    if (TREE_CODE (v) == FUNCTION_DECL) {
+      dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
+      if (DECL_CONSTRUCTOR_P (v))
+        dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
+      else
+        dehydra_defineStringProperty (this, obj, TYPE, 
+                                      type_as_string (TREE_TYPE (TREE_TYPE (v)), 0));
+    }
     tree typ = TREE_TYPE (v);
     /*tree type_name = TYPE_NAME (typ);*/
-    char const *type = type_as_string (typ, TFF_CHASE_TYPEDEF);
-    dehydra_defineStringProperty (this, obj, TYPE,
-                                  type);
+    dehydra_defineProperty (this, obj, TYPE, 
+                            dehydra_convertType (this, typ));
   }
   dehydra_setLoc(this, obj, v);
   return obj;
