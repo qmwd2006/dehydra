@@ -369,7 +369,7 @@ void dehydra_nextStatement(Dehydra *this, location_t loc) {
   }
 }
 
-static void dehydra_print(Dehydra *this, JSObject *obj) {
+void dehydra_print(Dehydra *this, JSObject *obj) {
   jsval print = dehydra_getCallback(this, "print");
   jsval rval, argv[1];
   argv[0] = OBJECT_TO_JSVAL(obj);

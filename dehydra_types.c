@@ -89,6 +89,7 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
   case POINTER_TYPE:
     dehydra_defineProperty (this, obj, POINTER, JSVAL_TRUE);
     next_type = TREE_TYPE (type);
+    break;
   case REFERENCE_TYPE:
     dehydra_defineProperty (this, obj, REFERENCE, JSVAL_TRUE);
     next_type = TREE_TYPE (type);
