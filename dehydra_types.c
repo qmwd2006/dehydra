@@ -99,6 +99,9 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
   case BOOLEAN_TYPE:
   case COMPLEX_TYPE:
   case VECTOR_TYPE:
+    /* maybe should add an isTemplateParam? */
+  case TEMPLATE_TYPE_PARM:
+  case TYPENAME_TYPE:
     dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
     break;
   case RECORD_TYPE:
@@ -121,7 +124,7 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
       }
     break;
   default:
-    error ("Unhandled %s: %s", tree_code_name[TREE_CODE(type)],
+    warning (0, "Unhandled %s: %s", tree_code_name[TREE_CODE(type)],
            type_as_string (type, TFF_CHASE_TYPEDEF));
     dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
     break;

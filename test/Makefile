@@ -1,15 +1,20 @@
-CXX = ../../gcc-build/gcc/g++
+GCCDIR = ../../gcc-build/gcc
+CXX = $(GCCDIR)/g++
+CC1PLUS = $(GCCDIR)/cc1plus
 PLUGIN = ../gcc_dehydra.so
 PLUGINARG = -fplugin=$(PLUGIN)
 CXXFLAGS = $(PLUGINARG) -fplugin-arg=test.js 
 all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o init.o
 
+# these aren't run by default because the PATH has contain $GCCDIR
+g++: pipe warning
+
 %.o: %.cc  $(PLUGIN)
-	$(CXX) $(CXXFLAGS) -fsyntax-only -fpreprocessed $< -o $@ 
+	$(CC1PLUS) $(CXXFLAGS) -fsyntax-only -fpreprocessed $< -o $@ 
 	rm -f $@
 
 #tests workaround for outputing to stdout when shouldn't
-destr_order.o: destr_order.cc
+pipe: destr_order.cc
 	$(CXX) -c $< $(CXXFLAGS) -pipe -o $@
 	rm $@
 

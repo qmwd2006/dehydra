@@ -78,11 +78,13 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     {
       tree e = *tp;
       tree decl = GENERIC_TREE_OPERAND (e, 0);
-      tree init = DECL_INITIAL (decl);
-      JSObject *obj = dehydra_addVar(this, decl, NULL);
-      dehydra_defineProperty(this, obj, DECL, JSVAL_TRUE);
-      if (init) {
-        dehydra_attachNestedFields(this, obj, ASSIGN, init);
+      if (TREE_CODE (decl) != USING_DECL) {
+        tree init = DECL_INITIAL (decl);
+        JSObject *obj = dehydra_addVar(this, decl, NULL);
+        dehydra_defineProperty(this, obj, DECL, JSVAL_TRUE);
+        if (init) {
+          dehydra_attachNestedFields(this, obj, ASSIGN, init);
+        }
       }
       *walk_subtrees = 0;
       break;

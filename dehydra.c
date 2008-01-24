@@ -298,8 +298,8 @@ int dehydra_visitFunction (Dehydra *this, tree f) {
 
   void **v = pointer_map_contains(this->fndeclMap, f);
   if (!v) {
-    fprintf (stderr, "%s: ", loc_as_string (location_of (f)));
-    fprintf (stderr, "No body for %s\n", decl_as_string (f, 0));
+    /*fprintf (stderr, "%s: ", loc_as_string (location_of (f)));
+      fprintf (stderr, "No body for %s\n", decl_as_string (f, 0));*/
     return true;
   }
   this->statementHierarchyArray = (JSObject*) *v;
