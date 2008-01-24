@@ -162,8 +162,7 @@ int gcc_plugin_init(const char *file, const char* arg) {
     error ("Use -fplugin-arg=<scriptname> to specify the dehydra script to run");
     return 1;
   }
-  initDehydra(file, arg);
-  return 0;
+  return initDehydra(file, arg);
 }
 
 int gcc_plugin_post_parse() {

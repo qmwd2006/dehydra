@@ -21,22 +21,22 @@
 
 static Dehydra dehydra = {0};
 
-void visitClass(tree c) {
-  dehydra_visitClass(&dehydra, c);
+void visitClass (tree c) {
+  dehydra_visitClass (&dehydra, c);
 }
 
-void visitFunction(tree f) {
-  dehydra_visitFunction(&dehydra, f);
+void visitFunction (tree f) {
+  dehydra_visitFunction (&dehydra, f);
 }
 
-void initDehydra(const char *file, const char *script)  {
-  dehydra_init(&dehydra, file,  script);
+int initDehydra (const char *file, const char *script)  {
+  return dehydra_init (&dehydra, file,  script);
 }
 
-void cp_pre_genericizeDehydra(tree fndecl) {
+void cp_pre_genericizeDehydra (tree fndecl) {
   dehydra_cp_pre_genericize(&dehydra, fndecl);
 }
 
-void input_endDehydra() {
+void input_endDehydra () {
   dehydra_input_end (&dehydra);
 }

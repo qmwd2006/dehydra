@@ -39,21 +39,20 @@ const char *ATTRIBUTES = "attributes";
 const char *STATEMENTS = "statements";
 const char *BITFIELD = "bitfieldBits";
 
-static void dehydra_loadScript(Dehydra *this, const char *filename);
+static int dehydra_loadScript(Dehydra *this, const char *filename);
 
 static char *readFile(const char *filename, const char *dir, long *size) {
   char *buf;
   FILE *f = fopen(filename, "r");
   if (!f) {
     if (dir && *filename && filename[0] != '/') {
-      buf = xmalloc(strlen(dir) + strlen(filename) + 1);
+      buf = xmalloc(strlen(dir) + strlen(filename) + 2);
       sprintf(buf, "%s/%s", dir, filename);
       f = fopen(buf, "r");
       free(buf);
     }
     if (!f) {
-      fprintf(stderr, "Could not open %s\n", filename);
-      _exit(1);
+      return NULL;
     }
   }
   xassert(!fseek(f, 0, SEEK_END));
@@ -67,7 +66,7 @@ static char *readFile(const char *filename, const char *dir, long *size) {
 }
 
 
-void dehydra_init(Dehydra *this, const char *file, const char *script) {
+int dehydra_init(Dehydra *this, const char *file, const char *script) {
   static JSClass global_class = {
     "global", JSCLASS_NEW_RESOLVE,
     JS_PropertyStub,  JS_PropertyStub,
@@ -121,8 +120,8 @@ void dehydra_init(Dehydra *this, const char *file, const char *script) {
 
   JS_SetVersion(this->cx, (JSVersion) 170);
   //  loadScript(libScript);
-  dehydra_loadScript(this, "system.js");
-  dehydra_loadScript(this, script);
+  if (dehydra_loadScript (this, "system.js")) return 1;
+  return dehydra_loadScript (this, script);
 }
 
 jsuint dehydra_getArrayLength(Dehydra *this, JSObject *array) {
@@ -146,12 +145,17 @@ void dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
   dehydra_defineProperty(this, obj, name, STRING_TO_JSVAL(str));
 }
 
-static void dehydra_loadScript(Dehydra *this, const char *filename) {
+static int dehydra_loadScript(Dehydra *this, const char *filename) {
   long size = 0;
   char *buf = readFile(filename, this->dir, &size);
+  if (!buf) {
+    error ("Could not load dehydra script: %s", filename);
+    return 1;
+  }
   jsval rval;
   xassert(JS_EvaluateScript(this->cx, this->globalObj, buf, size,
                             filename, 1, &rval));
+  return 0;
 }
 
 static jsval dehydra_getCallback(Dehydra *this, char const *name) {
