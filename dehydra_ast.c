@@ -65,6 +65,22 @@ static void dehydra_attachNestedFields(Dehydra *this, JSObject *obj, char const 
   this->destArray = tmp;
 }
 
+/* borrowed from cp/error.c */
+static tree
+resolve_virtual_fun_from_obj_type_ref (tree ref)
+{
+  tree obj_type = TREE_TYPE (OBJ_TYPE_REF_OBJECT (ref));
+  HOST_WIDE_INT index = tree_low_cst (OBJ_TYPE_REF_TOKEN (ref), 1);
+  tree fun = BINFO_VIRTUALS (TYPE_BINFO (TREE_TYPE (obj_type)));
+  while (index)
+    {
+      fun = TREE_CHAIN (fun);
+      index -= (TARGET_VTABLE_USES_DESCRIPTORS
+		? TARGET_VTABLE_USES_DESCRIPTORS : 1);
+    }
+  return BV_FN (fun);
+}
+
 static tree
 statement_walker (tree *tp, int *walk_subtrees, void *data) {
   Dehydra *this = data;
@@ -128,9 +144,18 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       break;
     }
     /* these wrappers all contain important stuff as first arg */
+  case OBJ_TYPE_REF:
+    /* resovle virtual calls */
+    {
+      tree fn = resolve_virtual_fun_from_obj_type_ref (*tp);
+      JSObject *obj = dehydra_addVar (this, fn, NULL);
+      xassert (dehydra_makeVar (this, OBJ_TYPE_REF_OBJECT (*tp),
+                                FIELD_OF, obj));
+    }
+    *walk_subtrees = 0;
+    break;
   case POINTER_PLUS_EXPR:
   case ADDR_EXPR:
-  case OBJ_TYPE_REF:
   case INDIRECT_REF:
   case CLEANUP_POINT_EXPR:
     cp_walk_tree_without_duplicates (&GENERIC_TREE_OPERAND (*tp, 0),

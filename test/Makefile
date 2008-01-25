@@ -4,7 +4,7 @@ CC1PLUS = $(GCCDIR)/cc1plus
 PLUGIN = ../gcc_dehydra.so
 PLUGINARG = -fplugin=$(PLUGIN)
 CXXFLAGS = $(PLUGINARG) -fplugin-arg=test.js 
-all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o init.o
+all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o init.o virtual.o
 
 # these aren't run by default because the PATH has contain $GCCDIR
 g++: pipe warning
@@ -22,5 +22,8 @@ warning: test.cc
 	$(CXX) -c $< $(PLUGINARG) -fplugin-arg=warning.js -o $@
 	rm -f $@
 
+virtual.o: virtual.cc
+	$(CC1PLUS) $(PLUGINARG) -fplugin-arg=print-functions.js -fpreprocessed $< -o $@ 	
+	rm -f $@
 clean:
 	rm -f *.o *~ a.out
