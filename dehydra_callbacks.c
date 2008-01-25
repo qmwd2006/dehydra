@@ -18,6 +18,7 @@
 #include "dehydra.h"
 #include "dehydra_ast.h"
 #include "dehydra_callbacks.h"
+#include "dehydra_tree.h"
 
 static Dehydra dehydra = {0};
 
@@ -39,4 +40,8 @@ void cp_pre_genericizeDehydra (tree fndecl) {
 
 void input_endDehydra () {
   dehydra_input_end (&dehydra);
+}
+
+void plugin_passDehydra () {
+  dehydra_plugin_pass (&dehydra);
 }

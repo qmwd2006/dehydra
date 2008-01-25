@@ -222,3 +222,7 @@ void gcc_plugin_decl_attributes (tree node, tree attributes, int flags) {
       }
   }
 }
+
+void gcc_plugin_pass (void) {
+  plugin_passDehydra ();  
+}

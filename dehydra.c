@@ -158,7 +158,7 @@ static int dehydra_loadScript(Dehydra *this, const char *filename) {
   return 0;
 }
 
-static jsval dehydra_getCallback(Dehydra *this, char const *name) {
+jsval dehydra_getCallback(Dehydra *this, char const *name) {
   jsval val = JSVAL_VOID;
   return (JS_GetProperty(this->cx, this->globalObj, name, &val)
           && val != JSVAL_VOID
@@ -314,6 +314,7 @@ int dehydra_visitFunction (Dehydra *this, tree f) {
                                                 this->statementHierarchyArray);
   JSObject *fobj = dehydra_addVar (this, f, this->statementHierarchyArray);
   /* hopefully reducing size of an array does not trigger gc */
+  /* TODO setup a temp rooted jsval */
   xassert (JS_SetArrayLength (this->cx, this->statementHierarchyArray, length));
   jsval rval, argv[2];
   argv[0] = OBJECT_TO_JSVAL (fobj);

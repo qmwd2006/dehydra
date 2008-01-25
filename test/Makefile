@@ -10,7 +10,7 @@ all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_ord
 g++: pipe warning
 
 %.o: %.cc  $(PLUGIN)
-	$(CC1PLUS) $(CXXFLAGS) -fsyntax-only -fpreprocessed $< -o $@ 
+	$(CC1PLUS) $(CXXFLAGS) -fpreprocessed $< -o $@ 
 	rm -f $@
 
 #tests workaround for outputing to stdout when shouldn't

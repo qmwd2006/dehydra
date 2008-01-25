@@ -145,7 +145,6 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       int i = 3;
       
       JSObject *obj = dehydra_makeVar (this, fn, NULL, NULL);
-      dehydra_print (this, obj);
       dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
       if (TREE_TYPE (fn) != NULL_TREE && TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE) {
         tree o = GENERIC_TREE_OPERAND(*tp, i);
