@@ -164,7 +164,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     break;
   case CALL_EXPR:
     {
-      int paramCount = TREE_INT_CST_LOW (GENERIC_TREE_OPERAND (*tp, 0));
+      int paramCount = host_integerp (GENERIC_TREE_OPERAND (*tp, 0), 0);
       tree fn = CALL_EXPR_FN (*tp);
       /* index of first param */
       int i = 3;

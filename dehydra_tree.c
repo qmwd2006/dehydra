@@ -18,6 +18,7 @@
 #include "builtins.h"
 #include "util.h"
 #include "dehydra.h"
+#include "dehydra_types.h"
 
 struct Trees {
   JSObject *rootedTreesArray;
@@ -36,19 +37,16 @@ tree_walker (tree *tp, int *walk_subtrees, void *data) {
   return NULL_TREE;
 }
 
-static jsval tree_convert (Dehydra *this, tree t) {
-  void **v = pointer_map_contains(dtrees.treeMap, t);
-  if (v) {
-    return OBJECT_TO_JSVAL ((JSObject*) *v);
-  }
-  unsigned int length = dehydra_getArrayLength(this, dtrees.rootedTreesArray);
-  JSObject *obj = JS_NewArrayObject(this->cx, 0, NULL);
-  JS_DefineElement(this->cx, dtrees.rootedTreesArray, 
+static void rootObj (Dehydra *this, JSObject *obj) {
+  unsigned int length = dehydra_getArrayLength (this, dtrees.rootedTreesArray);
+  JS_DefineElement (this->cx, dtrees.rootedTreesArray, 
                    length++, OBJECT_TO_JSVAL(obj),
                    NULL, NULL, JSPROP_ENUMERATE);
+}
 
-  *pointer_map_insert (dtrees.treeMap, t) = obj;
-  
+static JSObject* compound_convert (Dehydra *this, tree t) {
+  JSObject *obj = JS_NewArrayObject(this->cx, 0, NULL);
+  rootObj (this, obj);
   enum tree_code code = TREE_CODE (t);
   switch (code) {
   case STATEMENT_LIST:
@@ -56,17 +54,16 @@ static jsval tree_convert (Dehydra *this, tree t) {
       tree_stmt_iterator i;
       int y = 0;
       for (i = tsi_start (t); !tsi_end_p (i); tsi_next (&i)) {
-        JS_DefineElement(this->cx, obj, 
-                         y++, tree_convert (this, *tsi_stmt_ptr (i)),
-                         NULL, NULL, JSPROP_ENUMERATE);
+        JS_DefineElement (this->cx, obj, 
+                          y++, tree_convert (this, *tsi_stmt_ptr (i)),
+                          NULL, NULL, JSPROP_ENUMERATE);
       }
     }
     break;
-  default:
-    error ("Unhandled tree node: %s", tree_code_name[code]);
-    cp_walk_tree_without_duplicates (&t, tree_walker, this);
-    break;
+  case CALL_EXPR:
+  case ADDR_EXPR:
   case GIMPLE_MODIFY_STMT:
+  case RETURN_EXPR:
     if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (code))
         || IS_GIMPLE_STMT_CODE_CLASS (TREE_CODE_CLASS (code)))
       {
@@ -74,7 +71,6 @@ static jsval tree_convert (Dehydra *this, tree t) {
 
         /* Walk over all the sub-trees of this operand.  */
         len = TREE_OPERAND_LENGTH (t);
-
         /* Go through the subtrees.  We need to do this in forward order so
            that the scope of a FOR_EXPR is handled properly.  */
         for (i = 0; i < len; ++i) {
@@ -84,16 +80,81 @@ static jsval tree_convert (Dehydra *this, tree t) {
                            NULL, NULL, JSPROP_ENUMERATE);
         }
       }
-
+    break;
+    /*  {
+      int len = host_integerp (GENERIC_TREE_OPERAND (t, 0));
+      int i = 0;
+      for (; i < len; i++) {
+          JS_DefineElement(this->cx, obj, i,
+                           tree_convert (this, 
+                                         GENERIC_TREE_OPERAND (t, i)),
+                           NULL, NULL, JSPROP_ENUMERATE);
+      }
+    }
+    break;*/
+  default:
+    error ("Unhandled tree node: %s", tree_code_name[code]);
+    cp_walk_tree_without_duplicates (&t, tree_walker, this);
+    break;
   }
+  return obj;
+}
 
-  if (obj) {
-    dehydra_defineProperty (this, obj, "code", 
-                            INT_TO_JSVAL (code));
-    *pointer_map_insert (dtrees.treeMap, t) = obj;
-    return OBJECT_TO_JSVAL (obj);
+static JSObject *newRootedObj (Dehydra *this) {
+  JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
+                                      this->globalObj);
+  rootObj (this, obj);
+  return obj;
+}
+
+static jsval tree_convert (Dehydra *this, tree t) {
+  if (!t) return JSVAL_VOID;
+  void **v = pointer_map_contains(dtrees.treeMap, t);
+  if (v) {
+    return (jsval) *v;
   }
-  return JSVAL_VOID;
+  JSObject *obj = NULL;
+  jsval val = JSVAL_VOID;
+  enum tree_code code = TREE_CODE (t);
+  switch (code) {
+  case VAR_DECL:
+  case FUNCTION_DECL:
+  case RESULT_DECL:
+    obj = newRootedObj (this);
+    if (DECL_NAME (t))
+      dehydra_defineProperty (this, obj, "decl_name", 
+                              tree_convert (this, DECL_NAME (t)));
+    if (DECL_INITIAL (t) && code != RESULT_DECL)
+      dehydra_defineProperty (this, obj, "decl_initial",
+                              tree_convert (this, DECL_INITIAL (t)));
+    val = OBJECT_TO_JSVAL (obj);
+    /* dehydra_defineProperty (this, obj, "tree_type", 
+       dehydra_convertType (this, TREE_TYPE (t)));*/
+    break;
+  case IDENTIFIER_NODE:
+    if (IDENTIFIER_POINTER (t)) {
+      JSString *str = JS_NewStringCopyZ (this->cx, 
+                                         IDENTIFIER_POINTER (t));
+      val = STRING_TO_JSVAL (str);
+    }
+    break;
+  case INTEGER_CST:
+    val = INT_TO_JSVAL (host_integerp (t, 0));
+    break;
+  default:
+    break;
+  }
+  if (val == JSVAL_VOID) {
+    val = OBJECT_TO_JSVAL (compound_convert (this, t));
+  }
+  
+  if (val != JSVAL_VOID) {
+    if (JSVAL_IS_OBJECT (val))
+      dehydra_defineProperty (this, JSVAL_TO_OBJECT (val), "tree_code", 
+                              INT_TO_JSVAL (code));
+    *pointer_map_insert (dtrees.treeMap, t) = (void*) val;
+  }
+  return val;
 }
 
 void dehydra_plugin_pass (Dehydra *this) {
