@@ -4,7 +4,7 @@ template<class T>
 class __attribute__((user("default"))) A
 {
 public:
-  T i;
+  T  __attribute__((user("var")))  i;
 };
 class Klass {
 };

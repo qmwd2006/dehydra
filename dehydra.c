@@ -175,7 +175,33 @@ static void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
     dehydra_defineStringProperty (this, obj, LOC, strLoc);
 }
 
-JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
+void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
+                            tree attributes) {
+  int i = 0;
+  tree a;
+  for (a = attributes; a; a = TREE_CHAIN (a)) {
+    tree name = TREE_PURPOSE (a);
+    tree args = TREE_VALUE (a);
+    JSObject *obj = JS_NewObject(this->cx, &js_ObjectClass, 0, 0);
+    JS_DefineElement (this->cx, destArray, i++,
+                      OBJECT_TO_JSVAL (obj),
+                      NULL, NULL, JSPROP_ENUMERATE);
+    dehydra_defineStringProperty (this, obj, NAME, IDENTIFIER_POINTER (name));
+    JSObject *array = JS_NewArrayObject (this->cx, 0, NULL);
+    dehydra_defineProperty (this, obj, VALUE, OBJECT_TO_JSVAL (array));
+    int i = 0;
+    for (; args; args = TREE_CHAIN (args)) {
+      const char *val = TREE_STRING_POINTER (TREE_VALUE (args));
+      JSString *str = 
+        JS_NewStringCopyZ(this->cx, val);
+      xassert(JS_DefineElement(this->cx, array, i++, 
+                               STRING_TO_JSVAL(str),
+                               NULL, NULL, JSPROP_ENUMERATE));
+    }
+  }
+}
+
+JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   if (!parentArray) parentArray = this->destArray;
   unsigned int length = dehydra_getArrayLength(this, parentArray);
   JSObject *obj = JS_ConstructObject(this->cx, &js_ObjectClass, NULL, 
@@ -204,37 +230,16 @@ JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
     /*tree type_name = TYPE_NAME (typ);*/
     dehydra_defineProperty (this, obj, TYPE, 
                             dehydra_convertType (this, typ));
+    tree attributes = DECL_ATTRIBUTES (v);
+    if (attributes) {
+      JSObject *tmp = JS_NewArrayObject (this->cx, 0, NULL);
+      dehydra_defineProperty (this, obj, ATTRIBUTES, OBJECT_TO_JSVAL (tmp));
+      dehydra_addAttributes (this, obj, attributes);
+    }
   }
   dehydra_setLoc(this, obj, v);
   return obj;
 }
-
-void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
-                            tree attributes) {
-  int i = 0;
-  tree a;
-  for (a = attributes; a; a = TREE_CHAIN (a)) {
-    tree name = TREE_PURPOSE (a);
-    tree args = TREE_VALUE (a);
-    JSObject *obj = JS_NewObject(this->cx, &js_ObjectClass, 0, 0);
-    JS_DefineElement (this->cx, this->destArray, i++,
-                      OBJECT_TO_JSVAL (obj),
-                      NULL, NULL, JSPROP_ENUMERATE);
-    dehydra_defineStringProperty (this, obj, NAME, IDENTIFIER_POINTER (name));
-    JSObject *array = JS_NewArrayObject (this->cx, 0, NULL);
-    dehydra_defineProperty (this, obj, VALUE, OBJECT_TO_JSVAL (array));
-    int i = 0;
-    for (; args; args = TREE_CHAIN (args)) {
-      const char *val = TREE_STRING_POINTER (TREE_VALUE (args));
-      JSString *str = 
-        JS_NewStringCopyZ(this->cx, val);
-      xassert(JS_DefineElement(this->cx, array, i++, 
-                               STRING_TO_JSVAL(str),
-                               NULL, NULL, JSPROP_ENUMERATE));
-    }
-  }
-}
-
 
 int dehydra_visitClass (Dehydra *this, tree c) {
   jsval process_class = dehydra_getCallback(this, "process_class");
