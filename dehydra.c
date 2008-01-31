@@ -209,7 +209,34 @@ JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray) {
   return obj;
 }
 
-int dehydra_visitClass(Dehydra *this, tree c) {
+void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
+                            tree attributes) {
+  int i = 0;
+  tree a;
+  for (a = attributes; a; a = TREE_CHAIN (a)) {
+    tree name = TREE_PURPOSE (a);
+    tree args = TREE_VALUE (a);
+    JSObject *obj = JS_NewObject(this->cx, &js_ObjectClass, 0, 0);
+    JS_DefineElement (this->cx, this->destArray, i++,
+                      OBJECT_TO_JSVAL (obj),
+                      NULL, NULL, JSPROP_ENUMERATE);
+    dehydra_defineStringProperty (this, obj, NAME, IDENTIFIER_POINTER (name));
+    JSObject *array = JS_NewArrayObject (this->cx, 0, NULL);
+    dehydra_defineProperty (this, obj, VALUE, OBJECT_TO_JSVAL (array));
+    int i = 0;
+    for (; args; args = TREE_CHAIN (args)) {
+      const char *val = TREE_STRING_POINTER (TREE_VALUE (args));
+      JSString *str = 
+        JS_NewStringCopyZ(this->cx, val);
+      xassert(JS_DefineElement(this->cx, array, i++, 
+                               STRING_TO_JSVAL(str),
+                               NULL, NULL, JSPROP_ENUMERATE));
+    }
+  }
+}
+
+
+int dehydra_visitClass (Dehydra *this, tree c) {
   jsval process_class = dehydra_getCallback(this, "process_class");
   if (process_class == JSVAL_VOID) return true;
 
@@ -268,25 +295,25 @@ int dehydra_visitClass(Dehydra *this, tree c) {
       }
 
   }
-  
+
+  this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+  dehydra_defineProperty (this, objClass, ATTRIBUTES,
+                          OBJECT_TO_JSVAL (this->destArray));
+  /* first add attributes from template */
+  tree decl_template_info = TYPE_TEMPLATE_INFO (c);
+  if (decl_template_info) {
+    tree template_decl = TREE_PURPOSE (decl_template_info);
+    tree record_type = TREE_TYPE (template_decl);
+    tree attributes = TYPE_ATTRIBUTES (record_type);
+    dehydra_addAttributes (this, this->destArray, attributes);
+  }
   tree attributes = TYPE_ATTRIBUTES (c);
-  if (attributes) {
-    this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
-    dehydra_defineProperty (this, objClass, ATTRIBUTES,
-                           OBJECT_TO_JSVAL (this->destArray));
+  dehydra_addAttributes (this, this->destArray, attributes);
+  /* drop the attributes array if there are none */
+  if (! dehydra_getArrayLength (this, this->destArray)) {
+    JS_DeleteProperty (this->cx, objClass, ATTRIBUTES);
   }
-  i = 0;
-  tree a;
-  for (a = attributes; a; a = TREE_CHAIN (a)) {
-    tree name = TREE_PURPOSE (a);
-    /* tree args = TREE_VALUE (a);*/
-    JSString *str = JS_NewStringCopyZ (this->cx, IDENTIFIER_POINTER (name));
-    xassert (str 
-             && JS_DefineElement (this->cx, this->destArray, i++,
-                                  STRING_TO_JSVAL(str),
-                                  NULL, NULL, JSPROP_ENUMERATE));
-  }
-  
+
   this->destArray = NULL;
   jsval rval, argv[1];
   argv[0] = OBJECT_TO_JSVAL(objClass);
