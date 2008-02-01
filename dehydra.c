@@ -191,7 +191,10 @@ void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
     dehydra_defineProperty (this, obj, VALUE, OBJECT_TO_JSVAL (array));
     int i = 0;
     for (; args; args = TREE_CHAIN (args)) {
-      const char *val = TREE_STRING_POINTER (TREE_VALUE (args));
+      tree t = TREE_VALUE (args);
+      const char *val = TREE_CODE (t) == STRING_CST 
+        ? TREE_STRING_POINTER (t)
+        : expr_as_string (t, 0);
       JSString *str = 
         JS_NewStringCopyZ(this->cx, val);
       xassert(JS_DefineElement(this->cx, array, i++, 
