@@ -95,19 +95,19 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
   }
 
   this->fndeclMap = pointer_map_create ();
-  xassert((this->rt = JS_NewRuntime(0x9000000L)));
-  xassert((this->cx = JS_NewContext(this->rt, 8192)));
+  this->rt = JS_NewRuntime (0x9000000L);
+  this->cx = JS_NewContext (this->rt, 8192);
 
-  JS_SetContextPrivate(this->cx, this);
+  JS_SetContextPrivate (this->cx, this);
   
-  this->globalObj = JS_NewObject(this->cx, &global_class, 0, 0);
-  JS_InitStandardClasses(this->cx, this->globalObj);
+  this->globalObj = JS_NewObject (this->cx, &global_class, 0, 0);
+  JS_InitStandardClasses (this->cx, this->globalObj);
   /* register error handler */
-  JS_SetErrorReporter(this->cx, ReportError);
-  xassert(JS_DefineFunctions(this->cx, this->globalObj, shell_functions));
+  JS_SetErrorReporter (this->cx, ReportError);
+  JS_DefineFunctions (this->cx, this->globalObj, shell_functions);
   this->rootedArgDestArray = 
-    this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
-  xassert(this->destArray && JS_AddRoot(this->cx, &this->rootedArgDestArray));
+    this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+  JS_AddRoot (this->cx, &this->rootedArgDestArray);
   // this is to be added at function_decl time
   this->statementHierarchyArray = NULL;
   
@@ -118,43 +118,42 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
   //typeArrayArray = JS_NewArrayObject(cx, 0, NULL);
   //xassert(typeArrayArray && JS_AddRoot(cx, &typeArrayArray));
 
-  JS_SetVersion(this->cx, (JSVersion) 170);
+  JS_SetVersion (this->cx, (JSVersion) 170);
   //  loadScript(libScript);
   if (dehydra_loadScript (this, "system.js")) return 1;
   return dehydra_loadScript (this, script);
 }
 
-jsuint dehydra_getArrayLength(Dehydra *this, JSObject *array) {
+jsuint dehydra_getArrayLength (Dehydra *this, JSObject *array) {
   jsuint length = 0;
-  xassert(JS_GetArrayLength(this->cx, array, &length));
+  xassert (JS_GetArrayLength (this->cx, array, &length));
   return length;
 }
 
-void dehydra_defineProperty(Dehydra *this, JSObject *obj,
-                       char const *name, jsval value)
+void dehydra_defineProperty (Dehydra *this, JSObject *obj,
+                             char const *name, jsval value)
 {
-  xassert(JS_DefineProperty(this->cx, obj, name, value,
-                            NULL, NULL, JSPROP_ENUMERATE));
+  JS_DefineProperty (this->cx, obj, name, value,
+                     NULL, NULL, JSPROP_ENUMERATE);
 }
 
-void dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
-                             char const *name, char const *value)
+void dehydra_defineStringProperty (Dehydra *this, JSObject *obj,
+                                   char const *name, char const *value)
 {
-  JSString *str = JS_NewStringCopyZ(this->cx, value);
-  xassert(str);
-  dehydra_defineProperty(this, obj, name, STRING_TO_JSVAL(str));
+  JSString *str = JS_NewStringCopyZ (this->cx, value);
+  dehydra_defineProperty (this, obj, name, STRING_TO_JSVAL(str));
 }
 
-static int dehydra_loadScript(Dehydra *this, const char *filename) {
+static int dehydra_loadScript (Dehydra *this, const char *filename) {
   long size = 0;
-  char *buf = readFile(filename, this->dir, &size);
+  char *buf = readFile (filename, this->dir, &size);
   if (!buf) {
     error ("Could not load dehydra script: %s", filename);
     return 1;
   }
   jsval rval;
-  xassert(JS_EvaluateScript(this->cx, this->globalObj, buf, size,
-                            filename, 1, &rval));
+  xassert (JS_EvaluateScript (this->cx, this->globalObj, buf, size,
+                              filename, 1, &rval));
   return 0;
 }
 
@@ -197,27 +196,27 @@ void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
         : expr_as_string (t, 0);
       JSString *str = 
         JS_NewStringCopyZ(this->cx, val);
-      xassert(JS_DefineElement(this->cx, array, i++, 
-                               STRING_TO_JSVAL(str),
-                               NULL, NULL, JSPROP_ENUMERATE));
+      JS_DefineElement(this->cx, array, i++, 
+                       STRING_TO_JSVAL(str),
+                       NULL, NULL, JSPROP_ENUMERATE);
     }
   }
 }
 
 JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   if (!parentArray) parentArray = this->destArray;
-  unsigned int length = dehydra_getArrayLength(this, parentArray);
-  JSObject *obj = JS_ConstructObject(this->cx, &js_ObjectClass, NULL, 
-                                     this->globalObj);
+  unsigned int length = dehydra_getArrayLength (this, parentArray);
+  JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
+                                      this->globalObj);
   //append object to array(rooting it)
-  xassert(obj && JS_DefineElement(this->cx, parentArray, length,
-                                  OBJECT_TO_JSVAL(obj),
-                                  NULL, NULL, JSPROP_ENUMERATE));
-  if (TYPE_P(v)) {
+  JS_DefineElement (this->cx, parentArray, length,
+                    OBJECT_TO_JSVAL(obj),
+                    NULL, NULL, JSPROP_ENUMERATE);
+  if (TYPE_P (v)) {
     char const *name = type_as_string (v, 0);
     dehydra_defineStringProperty (this, obj, NAME, 
                                   name);
-  } else if (DECL_P(v)) {
+  } else if (DECL_P (v)) {
     char const *name = decl_as_string (v, 0);
     dehydra_defineStringProperty (this, obj, NAME, 
                                   name);
@@ -261,12 +260,12 @@ int dehydra_visitClass (Dehydra *this, tree c) {
   int i;
   for (i = 0; i < n_baselinks; i++)
     {
-      tree base_binfo = BINFO_BASE_BINFO(binfo, i);
+      tree base_binfo = BINFO_BASE_BINFO (binfo, i);
       JSString *str = 
-        JS_NewStringCopyZ(this->cx, type_as_string(BINFO_TYPE(base_binfo),0));
-      xassert(JS_DefineElement(this->cx, this->destArray, i, 
-                               STRING_TO_JSVAL(str),
-                               NULL, NULL, JSPROP_ENUMERATE));
+        JS_NewStringCopyZ(this->cx, type_as_string (BINFO_TYPE (base_binfo),0));
+      JS_DefineElement (this->cx, this->destArray, i, 
+                        STRING_TO_JSVAL (str),
+                        NULL, NULL, JSPROP_ENUMERATE);
     }
   
   this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
@@ -325,9 +324,9 @@ int dehydra_visitClass (Dehydra *this, tree c) {
   this->destArray = NULL;
   jsval rval, argv[1];
   argv[0] = OBJECT_TO_JSVAL(objClass);
-  xassert(JS_CallFunctionValue(this->cx, this->globalObj, process_class,
-                               1, argv, &rval));
-  xassert (JS_SetArrayLength(this->cx, this->rootedArgDestArray, length));
+  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_class,
+                                 1, argv, &rval));
+  JS_SetArrayLength (this->cx, this->rootedArgDestArray, length);
   return true;
 }
 
@@ -350,12 +349,12 @@ int dehydra_visitFunction (Dehydra *this, tree f) {
   JSObject *fobj = dehydra_addVar (this, f, this->statementHierarchyArray);
   /* hopefully reducing size of an array does not trigger gc */
   /* TODO setup a temp rooted jsval */
-  xassert (JS_SetArrayLength (this->cx, this->statementHierarchyArray, length));
+  JS_SetArrayLength (this->cx, this->statementHierarchyArray, length);
   jsval rval, argv[2];
   argv[0] = OBJECT_TO_JSVAL (fobj);
   argv[1] = OBJECT_TO_JSVAL (this->statementHierarchyArray);
   // the array is now rooted as a function argument
-  xassert (JS_RemoveRoot (this->cx, &this->statementHierarchyArray));
+  JS_RemoveRoot (this->cx, &this->statementHierarchyArray);
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_function,
                                  sizeof (argv)/sizeof (argv[0]), argv, &rval));
   return true;
@@ -372,10 +371,10 @@ void dehydra_nextStatement(Dehydra *this, location_t loc) {
   /* Check that the last statement array was used, otherwise reuse it */
   if (length) {
     jsval val;
-    xassert (JS_GetElement (this->cx, this->statementHierarchyArray, length - 1,
-                          &val));
+    JS_GetElement (this->cx, this->statementHierarchyArray, length - 1,
+                   &val);
     obj = JSVAL_TO_OBJECT (val);
-    xassert (JS_GetProperty(this->cx, obj, STATEMENTS, &val));
+    JS_GetProperty (this->cx, obj, STATEMENTS, &val);
     this->destArray = JSVAL_TO_OBJECT (val);
     int destLength = dehydra_getArrayLength (this, this->destArray);
     /* last element is already setup & empty, we are done */
@@ -384,13 +383,11 @@ void dehydra_nextStatement(Dehydra *this, location_t loc) {
     }
   }
   if (!this->destArray) {
-    obj = JS_NewObject(this->cx, &js_ObjectClass, 0, 0);
-    xassert(obj
-            && JS_DefineElement(this->cx, this->statementHierarchyArray, length,
-                                OBJECT_TO_JSVAL(obj),
-                                NULL, NULL, JSPROP_ENUMERATE));
+    obj = JS_NewObject (this->cx, &js_ObjectClass, 0, 0);
+    JS_DefineElement (this->cx, this->statementHierarchyArray, length,
+                      OBJECT_TO_JSVAL(obj),
+                      NULL, NULL, JSPROP_ENUMERATE);
     this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
-    xassert (this->destArray);
     dehydra_defineProperty (this, obj, STATEMENTS, 
                             OBJECT_TO_JSVAL (this->destArray));
   }
@@ -409,7 +406,7 @@ void dehydra_print(Dehydra *this, JSObject *obj) {
   jsval print = dehydra_getCallback(this, "print");
   jsval rval, argv[1];
   argv[0] = OBJECT_TO_JSVAL(obj);
-  xassert(JS_CallFunctionValue(this->cx, this->globalObj, print,
+  xassert (JS_CallFunctionValue(this->cx, this->globalObj, print,
                                1, argv, &rval));
 }
 
@@ -418,6 +415,6 @@ void dehydra_input_end (Dehydra *this) {
   if (input_end == JSVAL_VOID) return;
   
   jsval rval;
-  xassert(JS_CallFunctionValue(this->cx, this->globalObj, input_end,
+  xassert (JS_CallFunctionValue(this->cx, this->globalObj, input_end,
                                0, NULL, &rval));
 }

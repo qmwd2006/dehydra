@@ -163,7 +163,7 @@ void dehydra_plugin_pass (Dehydra *this) {
 
   if (!dtrees.rootedTreesArray) {
     dtrees.rootedTreesArray = JS_NewArrayObject(this->cx, 0, NULL);
-    xassert (JS_AddRoot (this->cx, &dtrees.rootedTreesArray));
+    JS_AddRoot (this->cx, &dtrees.rootedTreesArray);
     dtrees.treeMap = pointer_map_create ();
   }
   JSObject *fObj = dehydra_addVar (this, current_function_decl, 

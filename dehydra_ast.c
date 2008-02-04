@@ -31,11 +31,11 @@ static JSObject* dehydra_makeVar (Dehydra *this, tree t,
   this->inExpr--;
   xassert (length < dehydra_getArrayLength (this, this->destArray));
   jsval v;
-  xassert (JS_GetElement (this->cx, this->destArray, length, &v));
+  JS_GetElement (this->cx, this->destArray, length, &v);
   JSObject *obj = v == JSVAL_VOID ? NULL : JSVAL_TO_OBJECT (v);
   if (prop && attachToObj && obj) {
     dehydra_defineProperty (this, attachToObj, prop, v);
-    xassert (JS_SetArrayLength (this->cx, this->destArray, length));
+    JS_SetArrayLength (this->cx, this->destArray, length);
   }
   return obj;
 }
@@ -260,8 +260,7 @@ static void dehydra_iterate_statementlist (Dehydra *this, tree statement_list) {
 
 void dehydra_cp_pre_genericize(Dehydra *this, tree fndecl) {
   this->statementHierarchyArray = JS_NewArrayObject (this->cx, 0, NULL);
-  xassert (this->statementHierarchyArray 
-          && JS_AddRoot (this->cx, &this->statementHierarchyArray));
+  JS_AddRoot (this->cx, &this->statementHierarchyArray);
   *pointer_map_insert (this->fndeclMap, fndecl) = 
     (void*) this->statementHierarchyArray; 
   dehydra_nextStatement (this, location_of (fndecl));

@@ -51,9 +51,9 @@ static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tre
   int i = 0;
   while (arg_type && (arg_type != void_list_node))
     {
-      xassert(JS_DefineElement(this->cx, params, i++,
-                               dehydra_convert (this, TREE_VALUE (arg_type)),      
-                               NULL, NULL, JSPROP_ENUMERATE));
+      JS_DefineElement(this->cx, params, i++,
+                       dehydra_convert (this, TREE_VALUE (arg_type)),      
+                       NULL, NULL, JSPROP_ENUMERATE);
       arg_type = TREE_CHAIN (arg_type);
     }
 }
@@ -63,13 +63,12 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
   if (v) {
     return OBJECT_TO_JSVAL ((JSObject*) *v);
   }
-  JSObject *obj = JS_ConstructObject(this->cx, &js_ObjectClass, NULL, 
+  JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
                                      this->globalObj);
-  unsigned int length = dehydra_getArrayLength(this, dtypes.rootedTypesArray);
-  xassert (obj && 
-           JS_DefineElement(this->cx, dtypes.rootedTypesArray, 
-                            length, OBJECT_TO_JSVAL(obj),
-                            NULL, NULL, JSPROP_ENUMERATE));
+  unsigned int length = dehydra_getArrayLength (this, dtypes.rootedTypesArray);
+  JS_DefineElement (this->cx, dtypes.rootedTypesArray, 
+                    length, OBJECT_TO_JSVAL(obj),
+                    NULL, NULL, JSPROP_ENUMERATE);
   *pointer_map_insert (dtypes.typeMap, type) = obj;
   
   tree next_type = NULL_TREE;
