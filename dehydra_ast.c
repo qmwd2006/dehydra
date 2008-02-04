@@ -258,7 +258,7 @@ static void dehydra_iterate_statementlist (Dehydra *this, tree statement_list) {
   }
 }
 
-void dehydra_cp_pre_genericize(Dehydra *this, tree fndecl) {
+void dehydra_cp_pre_genericize(Dehydra *this, tree fndecl, bool callJS) {
   this->statementHierarchyArray = JS_NewArrayObject (this->cx, 0, NULL);
   JS_AddRoot (this->cx, &this->statementHierarchyArray);
   *pointer_map_insert (this->fndeclMap, fndecl) = 
@@ -273,4 +273,7 @@ void dehydra_cp_pre_genericize(Dehydra *this, tree fndecl) {
   JSObject *obj = dehydra_addVar (this, fndecl, NULL);
   dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);
   cp_walk_tree_without_duplicates (&body_chain, statement_walker, this);
+  if (callJS) {
+    dehydra_visitFunction (this, fndecl);
+  }
 }

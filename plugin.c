@@ -39,7 +39,6 @@ TREE_HANDLER (template_decl, td) {
     tree record_type = TREE_VALUE (inst);
     process_type (RECORD_TYPE_CHECK (record_type));
   }
-
 }
 
 TREE_HANDLER (namespace_decl, ns) {
@@ -151,7 +150,7 @@ static void process (tree t) {
   case TEMPLATE_DECL:
     return process_template_decl (t);
   default:
-    /*    fprintf(stderr, "unknown tree element: %s\n", tree_code_name[TREE_CODE(t)]);*/
+    /*error ( "unknown tree element: %s", tree_code_name[TREE_CODE(t)]);*/
     break;
   }
 }
@@ -163,6 +162,12 @@ int gcc_plugin_init(const char *file, const char* arg) {
   }
   return initDehydra(file, arg);
 }
+
+/* template instations happen late
+   and various code gets nuked so we can't hook into them
+   the generic way. Thus this hack to make
+   dehydra_cp_pre_genericize call dehydra_visitFunction directly */
+static bool postGlobalNamespace = 0;
 
 int gcc_plugin_post_parse() {
   if (processed || errorcount) return 0;
@@ -176,6 +181,7 @@ int gcc_plugin_post_parse() {
   pointer_set_destroy (pset);
   pointer_set_destroy (type_pset);
   input_endDehydra();
+  postGlobalNamespace = 1;
   return 0;
 }
 
@@ -183,7 +189,7 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
   if (DECL_CLONED_FUNCTION_P (fndecl)) return;
   if (DECL_ARTIFICIAL(fndecl)) return;
   
-  cp_pre_genericizeDehydra(fndecl);
+  cp_pre_genericizeDehydra(fndecl, postGlobalNamespace);
 }
 
 void gcc_plugin_pass (void) {

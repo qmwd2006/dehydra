@@ -34,8 +34,8 @@ int initDehydra (const char *file, const char *script)  {
   return dehydra_init (&dehydra, file,  script);
 }
 
-void cp_pre_genericizeDehydra (tree fndecl) {
-  dehydra_cp_pre_genericize(&dehydra, fndecl);
+void cp_pre_genericizeDehydra (tree fndecl,  bool callJS) {
+  dehydra_cp_pre_genericize(&dehydra, fndecl, callJS);
 }
 
 void input_endDehydra () {
