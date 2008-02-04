@@ -37,8 +37,7 @@ TREE_HANDLER (template_decl, td) {
   tree inst;
   for (inst = DECL_VINDEX (td); inst; inst = TREE_CHAIN (inst)) {
     tree record_type = TREE_VALUE (inst);
-    xassert (TREE_CODE (record_type) == RECORD_TYPE);
-    process_type (record_type);
+    process_type (RECORD_TYPE_CHECK (record_type));
   }
 
 }

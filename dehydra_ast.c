@@ -247,9 +247,8 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
 }
 
 static void dehydra_iterate_statementlist (Dehydra *this, tree statement_list) {
-  xassert (TREE_CODE (statement_list) == STATEMENT_LIST);
-  tree_stmt_iterator i;
-  for (i = tsi_start (statement_list); !tsi_end_p (i); tsi_next (&i)) {
+  tree_stmt_iterator i = tsi_start (STATEMENT_LIST_CHECK( statement_list));
+  for (; !tsi_end_p (i); tsi_next (&i)) {
     tree s = *tsi_stmt_ptr (i);
     /* weird statements within expression shouldn't 
        trigger dehydra_nextStatement */
