@@ -26,8 +26,8 @@ void visitClass (tree c) {
   dehydra_visitClass (&dehydra, c);
 }
 
-void visitFunction (tree f) {
-  dehydra_visitFunction (&dehydra, f);
+void visitDecl (tree f) {
+  dehydra_visitDecl (&dehydra, f);
 }
 
 int initDehydra (const char *file, const char *script)  {

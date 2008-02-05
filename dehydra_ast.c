@@ -276,6 +276,6 @@ void dehydra_cp_pre_genericize(Dehydra *this, tree fndecl, bool callJS) {
   dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);
   cp_walk_tree_without_duplicates (&body_chain, statement_walker, this);
   if (callJS) {
-    dehydra_visitFunction (this, fndecl);
+    dehydra_visitDecl (this, fndecl);
   }
 }

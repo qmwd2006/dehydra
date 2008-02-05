@@ -10,8 +10,7 @@ function cleanup (v) {
 
 function processVar(v) {
   cleanup(v)
-  if (v.name == "RequestMapEntry::RequestMapEntry(nsIRequest*)")
-    print(v);
+  print(v);
 }
 
 function iter_over_inits(vars)

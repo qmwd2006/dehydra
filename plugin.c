@@ -31,9 +31,7 @@ void dfs_process_chain(tree t) {
   process(t);
 }
 
-#define TREE_HANDLER(name, var) static void process_##name(tree var)
-
-TREE_HANDLER (template_decl, td) {
+static void process_template_decl (tree td) {
   tree inst;
   for (inst = DECL_VINDEX (td); inst; inst = TREE_CHAIN (inst)) {
     tree record_type = TREE_VALUE (inst);
@@ -41,7 +39,7 @@ TREE_HANDLER (template_decl, td) {
   }
 }
 
-TREE_HANDLER (namespace_decl, ns) {
+static void process_namespace_decl (tree ns) {
   if (DECL_NAMESPACE_ALIAS (ns)) return;
   
   struct cp_binding_level *level = NAMESPACE_LEVEL (ns);
@@ -51,16 +49,11 @@ TREE_HANDLER (namespace_decl, ns) {
   }
 }
 
-TREE_HANDLER (function_decl, f) {
-  tree body_chain = DECL_SAVED_TREE(f);
-  if (!body_chain) return;
-
-  /* cp_walk_tree_without_duplicates(&body_chain, decl_walker, NULL);*/
-  visitFunction(f);
-  /* fprintf(stderr, "%s: function %s\n", loc(f), decl_as_string(f, 0xff));*/
+static void process_decl (tree f) {
+  visitDecl(f);
 }
 
-TREE_HANDLER (record_type, c) {
+static void process_record_type (tree c) {
   tree field, func;
   if (!COMPLETE_TYPE_P (c)) return;
   //fprintf(stderr, "class %s\n", type_as_string(c, 0));
@@ -97,7 +90,7 @@ TREE_HANDLER (record_type, c) {
   //fprintf(stderr, "/class //%s\n", type_as_string(c, 0));
 }
 
-TREE_HANDLER(type_decl, t) {
+static void process_type_decl (tree t) {
   /*  fprintf(stderr, "Taras:%s: %s, abstract:%d\n", loc(t),
       decl_as_string(t, TFF_DECL_SPECIFIERS), DECL_ABSTRACT(t));*/
   if (!DECL_ARTIFICIAL (t)) {
@@ -107,7 +100,7 @@ TREE_HANDLER(type_decl, t) {
   }
 }
 
-TREE_HANDLER(field_decl, f) {
+static void process_field_decl(tree f) {
     return process_type(TREE_TYPE(f));
 }
 
@@ -142,7 +135,8 @@ static void process (tree t) {
   case NAMESPACE_DECL:
     return process_namespace_decl (t);
   case FUNCTION_DECL:
-    return process_function_decl (t);
+  case VAR_DECL:
+    return process_decl (t);
   case TYPE_DECL:
     return process_type_decl (t);
   case FIELD_DECL:
@@ -166,7 +160,7 @@ int gcc_plugin_init(const char *file, const char* arg) {
 /* template instations happen late
    and various code gets nuked so we can't hook into them
    the generic way. Thus this hack to make
-   dehydra_cp_pre_genericize call dehydra_visitFunction directly */
+   dehydra_cp_pre_genericize call dehydra_visitDecl directly */
 static bool postGlobalNamespace = 0;
 
 int gcc_plugin_post_parse() {

@@ -330,15 +330,15 @@ int dehydra_visitClass (Dehydra *this, tree c) {
   return true;
 }
 
-int dehydra_visitFunction (Dehydra *this, tree f) {
+static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
   jsval process_function = dehydra_getCallback (this, "process_function");
-  if (process_function == JSVAL_VOID) return true;
+  if (process_function == JSVAL_VOID) return;
 
   void **v = pointer_map_contains(this->fndeclMap, f);
   if (!v) {
     /*fprintf (stderr, "%s: ", loc_as_string (location_of (f)));
       fprintf (stderr, "No body for %s\n", decl_as_string (f, 0));*/
-    return true;
+    return;
   }
   this->statementHierarchyArray = (JSObject*) *v;
   
@@ -357,7 +357,30 @@ int dehydra_visitFunction (Dehydra *this, tree f) {
   JS_RemoveRoot (this->cx, &this->statementHierarchyArray);
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_function,
                                  sizeof (argv)/sizeof (argv[0]), argv, &rval));
-  return true;
+  return;
+}
+
+static void dehydra_visitVarDecl (Dehydra *this, tree d) {
+  jsval process_var = dehydra_getCallback (this, "process_var");
+  if (process_var == JSVAL_VOID) return;
+
+  unsigned int length = dehydra_getArrayLength (this, this->rootedArgDestArray);
+  JSObject *obj = dehydra_addVar (this, d, this->rootedArgDestArray);
+  jsval rval, argv[1];
+  argv[0] = OBJECT_TO_JSVAL (obj);
+  JS_RemoveRoot (this->cx, &this->statementHierarchyArray);
+  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_var,
+                                 sizeof (argv)/sizeof (argv[0]), argv, &rval));
+  JS_SetArrayLength (this->cx, this->rootedArgDestArray, length);
+}
+
+void dehydra_visitDecl (Dehydra *this, tree d) {
+  if (TREE_CODE (d) == FUNCTION_DECL) {
+    if (DECL_SAVED_TREE(d))
+      dehydra_visitFunctionDecl (this, d);
+  } else {
+    dehydra_visitVarDecl (this, d);
+  }
 }
 
 /* Creates next array to dump dehydra objects onto */
