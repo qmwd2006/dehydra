@@ -206,7 +206,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case REAL_CST:
   case STRING_CST:
     {
-      JSObject *obj = dehydra_addVar(this, *tp, NULL);
+      JSObject *obj = dehydra_addVar(this, NULL_TREE, NULL);
       dehydra_defineStringProperty(this, 
                                    obj, VALUE, 
                                    expr_as_string(*tp, 0));

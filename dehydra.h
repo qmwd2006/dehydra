@@ -52,4 +52,6 @@ JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray);
 void dehydra_input_end (Dehydra *this);
 void dehydra_print(Dehydra *this, JSObject *obj);
 jsval dehydra_getCallback(Dehydra *this, char const *name);
+void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
+                            tree attributes);
 #endif

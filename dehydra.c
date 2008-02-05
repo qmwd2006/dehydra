@@ -214,39 +214,35 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   JS_DefineElement (this->cx, parentArray, length,
                     OBJECT_TO_JSVAL(obj),
                     NULL, NULL, JSPROP_ENUMERATE);
-  if (TYPE_P (v)) {
-    char const *name = type_as_string (v, 0);
-    dehydra_defineStringProperty (this, obj, NAME, 
-                                  name);
-  } else if (DECL_P (v)) {
-    char const *name = decl_as_string (v, 0);
-    dehydra_defineStringProperty (this, obj, NAME, 
-                                  name);
-    if (TREE_CODE (v) == FUNCTION_DECL) {
-      dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
-      if (DECL_CONSTRUCTOR_P (v))
-        dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
-      else
-        dehydra_defineStringProperty (this, obj, TYPE, 
-                                      type_as_string (TREE_TYPE (TREE_TYPE (v)), 0));
-      if (DECL_PURE_VIRTUAL_P (v))
-        dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
-      else if (DECL_VIRTUAL_P (v))
-        dehydra_defineProperty (this, obj, VIRTUAL, JSVAL_TRUE);
-    }
-    tree typ = TREE_TYPE (v);
-    /*tree type_name = TYPE_NAME (typ);*/
-    dehydra_defineProperty (this, obj, TYPE, 
-                            dehydra_convertType (this, typ));
-    tree attributes = DECL_ATTRIBUTES (v);
-    if (attributes) {
-      JSObject *tmp = JS_NewArrayObject (this->cx, 0, NULL);
-      dehydra_defineProperty (this, obj, ATTRIBUTES, OBJECT_TO_JSVAL (tmp));
-      dehydra_addAttributes (this, obj, attributes);
-    }
-    if (TREE_STATIC (v))
-      dehydra_defineProperty (this, obj, STATIC, JSVAL_TRUE);
+  if (!v) return obj;
+  xassert (DECL_P (v));
+  char const *name = decl_as_string (v, 0);
+  dehydra_defineStringProperty (this, obj, NAME, 
+                                name);
+  if (TREE_CODE (v) == FUNCTION_DECL) {
+    dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
+    if (DECL_CONSTRUCTOR_P (v))
+      dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
+    else
+      dehydra_defineStringProperty (this, obj, TYPE, 
+                                    type_as_string (TREE_TYPE (TREE_TYPE (v)), 0));
+    if (DECL_PURE_VIRTUAL_P (v))
+      dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
+    else if (DECL_VIRTUAL_P (v))
+      dehydra_defineProperty (this, obj, VIRTUAL, JSVAL_TRUE);
   }
+  tree typ = TREE_TYPE (v);
+  dehydra_defineProperty (this, obj, TYPE, 
+                          dehydra_convertType (this, typ));
+  tree attributes = DECL_ATTRIBUTES (v);
+  if (attributes) {
+    JSObject *tmp = JS_NewArrayObject (this->cx, 0, NULL);
+    dehydra_defineProperty (this, obj, ATTRIBUTES, OBJECT_TO_JSVAL (tmp));
+    dehydra_addAttributes (this, obj, attributes);
+  }
+  if (TREE_STATIC (v))
+    dehydra_defineProperty (this, obj, STATIC, JSVAL_TRUE);
+
   dehydra_setLoc(this, obj, v);
   return obj;
 }
@@ -254,75 +250,11 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
 int dehydra_visitClass (Dehydra *this, tree c) {
   jsval process_class = dehydra_getCallback(this, "process_class");
   if (process_class == JSVAL_VOID) return true;
-
-  unsigned int length = dehydra_getArrayLength (this, this->rootedArgDestArray);
-
-  JSObject *objClass = dehydra_addVar (this, c, this->rootedArgDestArray);
-
-  this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
-  dehydra_defineProperty (this, objClass, BASES, 
-                         OBJECT_TO_JSVAL(this->destArray));
-
-  tree binfo = TYPE_BINFO (c);
-  int n_baselinks = BINFO_N_BASE_BINFOS (binfo);
-  int i;
-  for (i = 0; i < n_baselinks; i++)
-    {
-      tree base_binfo = BINFO_BASE_BINFO (binfo, i);
-      JSString *str = 
-        JS_NewStringCopyZ(this->cx, type_as_string (BINFO_TYPE (base_binfo),0));
-      JS_DefineElement (this->cx, this->destArray, i, 
-                        STRING_TO_JSVAL (str),
-                        NULL, NULL, JSPROP_ENUMERATE);
-    }
   
-  this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
-  dehydra_defineProperty(this, objClass, MEMBERS,
-                         OBJECT_TO_JSVAL(this->destArray));
-  tree func;
-  /* Output all the method declarations in the class.  */
-  for (func = TYPE_METHODS (c) ; func ; func = TREE_CHAIN (func)) {
-    if (DECL_ARTIFICIAL(func)) continue;
-    /* Don't output the cloned functions.  */
-    if (DECL_CLONED_FUNCTION_P (func)) continue;
-    dehydra_addVar (this, func, this->destArray);
-  }
-
-  tree field;
-  for (field = TYPE_FIELDS (c) ; field ; field = TREE_CHAIN (field)) {
-    if (DECL_ARTIFICIAL(field) && !DECL_IMPLICIT_TYPEDEF_P(field)) continue;
-    // ignore typedef of self field
-    // my theory is that the guard above takes care of this one too
-    if (TREE_CODE (field) == TYPE_DECL 
-        && TREE_TYPE (field) == c) continue;
-    if (TREE_CODE (field) != FIELD_DECL) continue;
-    dehydra_addVar (this, field, this->destArray);
-  }
-
-  this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
-  dehydra_defineProperty (this, objClass, ATTRIBUTES,
-                          OBJECT_TO_JSVAL (this->destArray));
-  /* first add attributes from template */
-  tree decl_template_info = TYPE_TEMPLATE_INFO (c);
-  if (decl_template_info) {
-    tree template_decl = TREE_PURPOSE (decl_template_info);
-    tree record_type = TREE_TYPE (template_decl);
-    tree attributes = TYPE_ATTRIBUTES (record_type);
-    dehydra_addAttributes (this, this->destArray, attributes);
-  }
-  tree attributes = TYPE_ATTRIBUTES (c);
-  dehydra_addAttributes (this, this->destArray, attributes);
-  /* drop the attributes array if there are none */
-  if (! dehydra_getArrayLength (this, this->destArray)) {
-    JS_DeleteProperty (this->cx, objClass, ATTRIBUTES);
-  }
-
-  this->destArray = NULL;
   jsval rval, argv[1];
-  argv[0] = OBJECT_TO_JSVAL(objClass);
+  argv[0] = dehydra_convertType (this, c);
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_class,
                                  1, argv, &rval));
-  JS_SetArrayLength (this->cx, this->rootedArgDestArray, length);
   return true;
 }
 

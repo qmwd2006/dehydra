@@ -37,6 +37,90 @@ static const char *SIZE = "size";
 
 static jsval dehydra_convert (Dehydra *this, tree type);
 
+void dehydra_attachTypeAttributes (Dehydra *this, JSObject *obj, tree type) {
+  JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);
+  dehydra_defineProperty (this, obj, ATTRIBUTES,
+                          OBJECT_TO_JSVAL (destArray));
+  /* first add attributes from template */
+  tree decl_template_info = TYPE_TEMPLATE_INFO (type);
+  if (decl_template_info) {
+    tree template_decl = TREE_PURPOSE (decl_template_info);
+    tree type = TREE_TYPE (template_decl);
+    tree attributes = TYPE_ATTRIBUTES (type);
+    dehydra_addAttributes (this, destArray, attributes);
+  }
+  tree attributes = TYPE_ATTRIBUTES (type);
+  dehydra_addAttributes (this, destArray, attributes);
+  /* drop the attributes array if there are none */
+  if (! dehydra_getArrayLength (this, destArray)) {
+    JS_DeleteProperty (this->cx, obj, ATTRIBUTES);
+  }
+}
+
+static void dehydra_attachEnumStuff (Dehydra *this, JSObject *objEnum, tree enumeral_type) {
+  JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);
+  dehydra_defineProperty (this, objEnum, MEMBERS, 
+                          OBJECT_TO_JSVAL(destArray));
+  tree tv;
+  /* Output the list of possible values for the enumeration type.  */
+  for (tv = TYPE_VALUES (enumeral_type); tv ; tv = TREE_CHAIN (tv))
+    {
+      JSObject *obj = dehydra_addVar (this, NULL_TREE, destArray); 
+      dehydra_defineStringProperty (this, obj, NAME, 
+                                    IDENTIFIER_POINTER (TREE_PURPOSE (tv)));
+      tree v = TREE_VALUE (tv);
+      int value = TREE_INT_CST_LOW (v);
+      dehydra_defineProperty (this, obj, VALUE,
+                              INT_TO_JSVAL (value));
+    }
+  dehydra_attachTypeAttributes (this, objEnum, enumeral_type);
+}
+
+static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree record_type) {
+  JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);
+  tree binfo = TYPE_BINFO (record_type);
+  int n_baselinks = binfo ? BINFO_N_BASE_BINFOS (binfo) : 0;
+  int i;
+  for (i = 0; i < n_baselinks; i++)
+    {
+      if (!i)
+        dehydra_defineProperty (this, objClass, BASES, 
+                                OBJECT_TO_JSVAL(destArray));
+
+      tree base_binfo = BINFO_BASE_BINFO (binfo, i);
+      JSString *str = 
+        JS_NewStringCopyZ(this->cx, 
+                          type_as_string (BINFO_TYPE (base_binfo), 0));
+      JS_DefineElement (this->cx, destArray, i, 
+                        STRING_TO_JSVAL (str),
+                        NULL, NULL, JSPROP_ENUMERATE);
+    }
+  
+  destArray = JS_NewArrayObject(this->cx, 0, NULL);
+  dehydra_defineProperty(this, objClass, MEMBERS,
+                         OBJECT_TO_JSVAL(destArray));
+  tree func;
+  /* Output all the method declarations in the class.  */
+  for (func = TYPE_METHODS (record_type) ; func ; func = TREE_CHAIN (func)) {
+    if (DECL_ARTIFICIAL(func)) continue;
+    /* Don't output the cloned functions.  */
+    if (DECL_CLONED_FUNCTION_P (func)) continue;
+    dehydra_addVar (this, func, destArray);
+  }
+
+  tree field;
+  for (field = TYPE_FIELDS (record_type); field ; field = TREE_CHAIN (field)) {
+    if (DECL_ARTIFICIAL(field) && !DECL_IMPLICIT_TYPEDEF_P(field)) continue;
+    // ignore typedef of self field
+    // my theory is that the guard above takes care of this one too
+    if (TREE_CODE (field) == TYPE_DECL 
+        && TREE_TYPE (field) == record_type) continue;
+    if (TREE_CODE (field) != FIELD_DECL) continue;
+    dehydra_addVar (this, field, destArray);
+  }
+  dehydra_attachTypeAttributes (this, objClass, record_type);
+}
+
 static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tree type) {
   tree arg_type = TYPE_ARG_TYPES (type);
   /* Skip "this" argument.  */
@@ -106,7 +190,13 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
   case RECORD_TYPE:
   case UNION_TYPE:
   case ENUMERAL_TYPE:
-    dehydra_defineStringProperty (this, obj, KIND, class_key_or_enum_as_string (type));
+    dehydra_defineStringProperty (this, obj, KIND, 
+                                  class_key_or_enum_as_string (type));
+    if (TREE_CODE (type) == ENUMERAL_TYPE)
+      dehydra_attachEnumStuff (this, obj, type);
+    /* process complete types only */
+    else if (COMPLETE_TYPE_P (type))
+      dehydra_attachClassStuff (this, obj, type);
   case VOID_TYPE:
   case BOOLEAN_TYPE:
   case INTEGER_TYPE:
@@ -144,9 +234,8 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
       {
         tree dtype = TYPE_DOMAIN (type);
         tree max = TYPE_MAX_VALUE (dtype);
-        dehydra_defineProperty (this, obj, SIZE,
-                                /* use a C-like size */
-                                INT_TO_JSVAL (1 + TREE_INT_CST_LOW (max)));
+        dehydra_defineStringProperty (this, obj, SIZE,
+                                      expr_as_string (max, 0));
       }
     next_type = TREE_TYPE (type);
     break;
