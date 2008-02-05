@@ -1,8 +1,8 @@
 class Klass {
 public:
-  Klass (int i);
+  Klass (const char *);
 };
 
 void foo() {
-  Klass k(7);
+  new Klass("ARGUMENT");
 }

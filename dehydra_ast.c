@@ -154,6 +154,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     }
     *walk_subtrees = 0;
     break;
+  case TRY_CATCH_EXPR:
   case POINTER_PLUS_EXPR:
   case ADDR_EXPR:
   case INDIRECT_REF:
@@ -164,19 +165,20 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     break;
   case CALL_EXPR:
     {
-      int paramCount = host_integerp (GENERIC_TREE_OPERAND (*tp, 0), 0);
       tree fn = CALL_EXPR_FN (*tp);
+      if (TREE_CODE (fn) == ADDR_EXPR)
+        fn = TREE_OPERAND (fn, 0);
+
       /* index of first param */
       int i = 3;
-      
       JSObject *obj = dehydra_makeVar (this, fn, NULL, NULL);
       dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
-      if (TREE_TYPE (fn) != NULL_TREE && TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE) {
+      if (TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE) {
         tree o = GENERIC_TREE_OPERAND(*tp, i);
         ++i;
         xassert (dehydra_makeVar (this, o, FIELD_OF, obj));
       }
-      dehydra_fcallDoArgs (this, obj, *tp, i, paramCount);     
+      dehydra_fcallDoArgs (this, obj, *tp, i, TREE_OPERAND_LENGTH (*tp));
       *walk_subtrees = 0;
       break;
     }

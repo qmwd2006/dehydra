@@ -7,10 +7,11 @@ function cleanup (v) {
     v.arguments = Array.map (v.arguments, cleanup)
   return v
 }
+
 function processVar(v) {
   cleanup(v)
-  
-  print(v);
+  if (v.name == "RequestMapEntry::RequestMapEntry(nsIRequest*)")
+    print(v);
 }
 
 function iter_over_inits(vars)
