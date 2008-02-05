@@ -84,8 +84,18 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
       return OBJECT_TO_JSVAL (obj);
     }
   }
+  int qualifiers = TYPE_QUALS (type);
+  if (qualifiers & TYPE_QUAL_CONST)
+    dehydra_defineProperty (this, obj, "isConst", JSVAL_TRUE);
+  if (qualifiers & TYPE_QUAL_VOLATILE)
+    dehydra_defineProperty (this, obj, "isVolatile", JSVAL_TRUE);
+  if (qualifiers & TYPE_QUAL_RESTRICT)
+    dehydra_defineProperty (this, obj, 
+                            flag_isoc99 ? "restrict" : "__restrict__",
+                            JSVAL_TRUE);  
   switch (TREE_CODE (type)) {
   case POINTER_TYPE:
+  case OFFSET_TYPE:
     dehydra_defineProperty (this, obj, POINTER, JSVAL_TRUE);
     next_type = TREE_TYPE (type);
     break;
@@ -93,21 +103,35 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
     dehydra_defineProperty (this, obj, REFERENCE, JSVAL_TRUE);
     next_type = TREE_TYPE (type);
     break;
-  case INTEGER_TYPE:
-  case REAL_TYPE:
+  case RECORD_TYPE:
+  case UNION_TYPE:
+  case ENUMERAL_TYPE:
+    dehydra_defineStringProperty (this, obj, KIND, class_key_or_enum_as_string (type));
   case VOID_TYPE:
   case BOOLEAN_TYPE:
+  case INTEGER_TYPE:
+  case REAL_TYPE:
+  case FIXED_POINT_TYPE:
+    if (!type_decl)
+      {
+        int prec = TYPE_PRECISION (type);
+        dehydra_defineProperty (this, obj, BITFIELD, INT_TO_JSVAL (prec));
+        if (ALL_FIXED_POINT_MODE_P (TYPE_MODE (type)))
+          type = c_common_type_for_mode (TYPE_MODE (type), TYPE_SATURATING (type));
+        else
+          type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
+        type_decl = TYPE_NAME (type);
+      }
+    dehydra_defineStringProperty (this, obj, NAME,
+                                  type_decl 
+                                  ? IDENTIFIER_POINTER (DECL_NAME(type_decl))
+                                  : type_as_string (type, 0xff));
+    break;
   case COMPLEX_TYPE:
   case VECTOR_TYPE:
     /* maybe should add an isTemplateParam? */
   case TEMPLATE_TYPE_PARM:
   case TYPENAME_TYPE:
-    dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
-    break;
-  case RECORD_TYPE:
-  case UNION_TYPE:
-  case ENUMERAL_TYPE:
-    dehydra_defineStringProperty (this, obj, KIND, class_key_or_enum_as_string (type));
     dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
     break;
   case FUNCTION_TYPE:
@@ -120,20 +144,19 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
       {
         tree dtype = TYPE_DOMAIN (type);
         tree max = TYPE_MAX_VALUE (dtype);
-        dehydra_defineStringProperty (this, obj, SIZE, expr_as_string (max, 0));
+        dehydra_defineProperty (this, obj, SIZE,
+                                /* use a C-like size */
+                                INT_TO_JSVAL (1 + TREE_INT_CST_LOW (max)));
       }
+    next_type = TREE_TYPE (type);
     break;
   default:
-    warning (0, "Unhandled %s: %s", tree_code_name[TREE_CODE(type)],
+    warning (1, "Unhandled %s: %s", tree_code_name[TREE_CODE(type)],
            type_as_string (type, TFF_CHASE_TYPEDEF));
     dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
     break;
   }
 
-  /* this isn't working yet  
-  if (TYPE_QUALS (type) & TYPE_QUAL_CONST)
-    dehydra_defineProperty (this, obj, CONST, JSVAL_TRUE);
-  */
   if (next_type != NULL_TREE) {
     dehydra_defineProperty (this, obj, TYPE, dehydra_convert (this, next_type));
   }

@@ -38,6 +38,8 @@ const char *PARAMETERS = "parameters";
 const char *ATTRIBUTES = "attributes";
 const char *STATEMENTS = "statements";
 const char *BITFIELD = "bitfieldBits";
+static const char *STATIC = "isStatic";
+static const char *VIRTUAL = "isVirtual";
 
 static int dehydra_loadScript(Dehydra *this, const char *filename);
 
@@ -227,6 +229,10 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
       else
         dehydra_defineStringProperty (this, obj, TYPE, 
                                       type_as_string (TREE_TYPE (TREE_TYPE (v)), 0));
+      if (DECL_PURE_VIRTUAL_P (v))
+        dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
+      else if (DECL_VIRTUAL_P (v))
+        dehydra_defineProperty (this, obj, VIRTUAL, JSVAL_TRUE);
     }
     tree typ = TREE_TYPE (v);
     /*tree type_name = TYPE_NAME (typ);*/
@@ -238,6 +244,8 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
       dehydra_defineProperty (this, obj, ATTRIBUTES, OBJECT_TO_JSVAL (tmp));
       dehydra_addAttributes (this, obj, attributes);
     }
+    if (TREE_STATIC (v))
+      dehydra_defineProperty (this, obj, STATIC, JSVAL_TRUE);
   }
   dehydra_setLoc(this, obj, v);
   return obj;
@@ -288,19 +296,7 @@ int dehydra_visitClass (Dehydra *this, tree c) {
     if (TREE_CODE (field) == TYPE_DECL 
         && TREE_TYPE (field) == c) continue;
     if (TREE_CODE (field) != FIELD_DECL) continue;
-    JSObject *obj = dehydra_addVar (this, field, this->destArray);
-    if (DECL_BIT_FIELD_TYPE (field))
-      {
-        tree size_tree = DECL_SIZE (field);
-        if (size_tree && host_integerp (size_tree, 1))
-          {
-            unsigned HOST_WIDE_INT bits = tree_low_cst(size_tree, 1);
-            char buf[100];
-            sprintf (buf, "%lu", bits);
-            dehydra_defineStringProperty (this, obj, BITFIELD, buf);
-          }
-      }
-
+    dehydra_addVar (this, field, this->destArray);
   }
 
   this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
