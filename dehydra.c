@@ -278,7 +278,8 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
                                                 this->statementHierarchyArray);
   JSObject *fobj = dehydra_addVar (this, f, this->statementHierarchyArray);
   /* hopefully reducing size of an array does not trigger gc */
-  /* TODO setup a temp rooted jsval */
+  dehydra_defineProperty (this, this->globalObj, "_function",
+                          OBJECT_TO_JSVAL (fobj));
   JS_SetArrayLength (this->cx, this->statementHierarchyArray, length);
   jsval rval, argv[2];
   argv[0] = OBJECT_TO_JSVAL (fobj);
@@ -287,6 +288,7 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
   JS_RemoveRoot (this->cx, &this->statementHierarchyArray);
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_function,
                                  sizeof (argv)/sizeof (argv[0]), argv, &rval));
+  JS_DeleteProperty (this->cx, this->globalObj, "_function");
   return;
 }
 
