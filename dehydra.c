@@ -119,7 +119,9 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
 
   //typeArrayArray = JS_NewArrayObject(cx, 0, NULL);
   //xassert(typeArrayArray && JS_AddRoot(cx, &typeArrayArray));
-
+#ifdef DEBUG
+  JS_SetGCZeal (this->cx, 2);
+#endif
   JS_SetVersion (this->cx, (JSVersion) 170);
   //  loadScript(libScript);
   if (dehydra_loadScript (this, "system.js")) return 1;

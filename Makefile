@@ -1,16 +1,20 @@
 GCCDIR=../gcc
 GCCBUILDDIR=../gcc-build
 GCCSTAGE=gcc
+SM_INCLUDE=$(HOME)/work/spidermonkey
+SM_LIBDIR=$(SM_INCLUDE)/Linux_All_DBG.OBJ
+#SM_INCLUDE=/usr/local/include/js
+#SM_LIBDIR=/usr/local/lib
 INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc \
 	-I$(GCCDIR)/gcc/. -I$(GCCDIR)/gcc/../include -I$(GCCDIR)/gcc/../libcpp/include \
 	-I$(GCCDIR)/gcc/../libdecnumber -I$(GCCDIR)/gcc/../libdecnumber/bid \
 	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp \
-        -I/$(HOME)/local/include/js/ -I/usr/local/include/js
+	-I$(SM_INCLUDE) -I/$(HOME)/local/include/js/ 
 
-CFLAGS=-Wall -fPIC -DXP_UNIX -g3 $(INCLUDE)
+CFLAGS=-DDEBUG -Wall -fPIC -DXP_UNIX -g3 $(INCLUDE)
 
 gcc_dehydra.so: dehydra.o plugin.o builtins.o dehydra_ast.o dehydra_callbacks.o util.o dehydra_types.o dehydra_tree.o
-	$(CC) -L$(HOME)/local/lib -L/usr/local/lib -ljs -shared -o $@ $+
+	$(CC) -L$(HOME)/local/lib -L$(SM_LIBDIR) -ljs -shared -o $@ $+
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
