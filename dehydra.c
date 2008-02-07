@@ -108,22 +108,17 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
   JS_SetErrorReporter (this->cx, ReportError);
   JS_DefineFunctions (this->cx, this->globalObj, shell_functions);
   this->rootedArgDestArray = 
-    this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+    JS_NewArrayObject (this->cx, 0, NULL);
   JS_AddRoot (this->cx, &this->rootedArgDestArray);
   // this is to be added at function_decl time
-  this->statementHierarchyArray = NULL;
-  
-  //stateArray = JS_NewArrayObject(cx, 1, NULL);
-  //xassert(stateArray && JS_AddRoot(cx, &stateArray));
-  //state = JSVAL_VOID;
-
-  //typeArrayArray = JS_NewArrayObject(cx, 0, NULL);
-  //xassert(typeArrayArray && JS_AddRoot(cx, &typeArrayArray));
+  this->rootedFreeArray = JS_NewArrayObject (this->cx, 0, NULL);
+  JS_DefineElement (this->cx, this->rootedArgDestArray, 0,
+                    OBJECT_TO_JSVAL (this->rootedFreeArray),
+                    NULL, NULL, JSPROP_ENUMERATE);
 #ifdef DEBUG
   JS_SetGCZeal (this->cx, 2);
 #endif
   JS_SetVersion (this->cx, (JSVersion) 170);
-  //  loadScript(libScript);
   if (dehydra_loadScript (this, "system.js")) return 1;
   return dehydra_loadScript (this, script);
 }
@@ -266,44 +261,74 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
 
   void **v = pointer_map_contains(this->fndeclMap, f);
   if (!v) {
+    return;
     /*fprintf (stderr, "%s: ", loc_as_string (location_of (f)));
       fprintf (stderr, "No body for %s\n", decl_as_string (f, 0));*/
-    return;
   }
-  this->statementHierarchyArray = (JSObject*) *v;
+  int key = (int) *v;
+  this->statementHierarchyArray = dehydra_getRootedObject (this, key);
+  *v = NULL;
   
-  /* temporarily add a variable to this->statementHierarchyArray;
-   this way is it is rooted while various properties are defined */
-  unsigned int length = dehydra_getArrayLength (this,
-                                                this->statementHierarchyArray);
-  JSObject *fobj = dehydra_addVar (this, f, this->statementHierarchyArray);
-  /* hopefully reducing size of an array does not trigger gc */
-  dehydra_defineProperty (this, this->globalObj, "_function",
-                          OBJECT_TO_JSVAL (fobj));
-  JS_SetArrayLength (this->cx, this->statementHierarchyArray, length);
+  int fnkey = dehydra_getArrayLength (this,
+                                      this->rootedArgDestArray);
+  JSObject *fobj = dehydra_addVar (this, f, this->rootedArgDestArray);
   jsval rval, argv[2];
   argv[0] = OBJECT_TO_JSVAL (fobj);
   argv[1] = OBJECT_TO_JSVAL (this->statementHierarchyArray);
-  // the array is now rooted as a function argument
-  JS_RemoveRoot (this->cx, &this->statementHierarchyArray);
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_function,
                                  sizeof (argv)/sizeof (argv[0]), argv, &rval));
-  JS_DeleteProperty (this->cx, this->globalObj, "_function");
-  return;
+  dehydra_unrootObject (this, key);
+  dehydra_unrootObject (this, fnkey);
+  this->statementHierarchyArray = NULL;
 }
 
 static void dehydra_visitVarDecl (Dehydra *this, tree d) {
   jsval process_var = dehydra_getCallback (this, "process_var");
   if (process_var == JSVAL_VOID) return;
 
-  unsigned int length = dehydra_getArrayLength (this, this->rootedArgDestArray);
+  /* this is a hack,basically does dehydra_rootObject manually*/
+  int key = dehydra_getArrayLength (this, this->rootedArgDestArray);
   JSObject *obj = dehydra_addVar (this, d, this->rootedArgDestArray);
   jsval rval, argv[1];
   argv[0] = OBJECT_TO_JSVAL (obj);
-  JS_RemoveRoot (this->cx, &this->statementHierarchyArray);
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_var,
                                  sizeof (argv)/sizeof (argv[0]), argv, &rval));
-  JS_SetArrayLength (this->cx, this->rootedArgDestArray, length);
+  dehydra_unrootObject (this, key);
+}
+
+int dehydra_rootObject (Dehydra *this, JSObject *obj) {
+  /* positions start from 1 since rootedFreeArray is always the first element */
+  int pos;
+  int length = dehydra_getArrayLength (this, this->rootedFreeArray);
+  if (length) {
+    jsval val;
+    length--;
+    JS_GetElement(this->cx, this->rootedFreeArray, length, &val);
+    JS_SetArrayLength (this->cx, this->rootedFreeArray, length);
+    pos = JSVAL_TO_INT (val);
+  } else {
+    pos = dehydra_getArrayLength (this, this->rootedArgDestArray);
+  }
+  JS_DefineElement (this->cx, this->rootedArgDestArray, pos,
+                    OBJECT_TO_JSVAL (obj),
+                    NULL, NULL, JSPROP_ENUMERATE);
+  return pos;
+}
+
+void dehydra_unrootObject (Dehydra *this, int pos) {
+  JS_DefineElement (this->cx, this->rootedArgDestArray, pos,
+                    JSVAL_VOID,
+                    NULL, NULL, JSPROP_ENUMERATE);
+  int length = dehydra_getArrayLength (this, this->rootedFreeArray);
+  JS_DefineElement (this->cx, this->rootedFreeArray, length,
+                    INT_TO_JSVAL (pos),
+                    NULL, NULL, JSPROP_ENUMERATE);
+}
+
+JSObject* dehydra_getRootedObject (Dehydra *this, int pos) {
+  jsval v = JSVAL_VOID;
+  JS_GetElement(this->cx, this->rootedArgDestArray, pos, &v);
+  return JSVAL_TO_OBJECT (v);
 }
 
 void dehydra_visitDecl (Dehydra *this, tree d) {
@@ -312,48 +337,6 @@ void dehydra_visitDecl (Dehydra *this, tree d) {
       dehydra_visitFunctionDecl (this, d);
   } else {
     dehydra_visitVarDecl (this, d);
-  }
-}
-
-/* Creates next array to dump dehydra objects onto */
-void dehydra_nextStatement(Dehydra *this, location_t loc) {
-  unsigned int length = dehydra_getArrayLength (this,
-                                                this->statementHierarchyArray);
-  xassert (!this->inExpr);
-  this->loc = loc;
-  this->destArray = NULL;
-  JSObject *obj = NULL;
-  /* Check that the last statement array was used, otherwise reuse it */
-  if (length) {
-    jsval val;
-    JS_GetElement (this->cx, this->statementHierarchyArray, length - 1,
-                   &val);
-    obj = JSVAL_TO_OBJECT (val);
-    JS_GetProperty (this->cx, obj, STATEMENTS, &val);
-    this->destArray = JSVAL_TO_OBJECT (val);
-    int destLength = dehydra_getArrayLength (this, this->destArray);
-    /* last element is already setup & empty, we are done */
-    if (destLength != 0) {
-      this->destArray = NULL;
-    }
-  }
-  if (!this->destArray) {
-    obj = JS_NewObject (this->cx, &js_ObjectClass, 0, 0);
-    JS_DefineElement (this->cx, this->statementHierarchyArray, length,
-                      OBJECT_TO_JSVAL(obj),
-                      NULL, NULL, JSPROP_ENUMERATE);
-    this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
-    dehydra_defineProperty (this, obj, STATEMENTS, 
-                            OBJECT_TO_JSVAL (this->destArray));
-  }
-  /* always update location */
-  if (this->loc) {
-    const char *loc_str = loc_as_string (this->loc);
-    const char *s = strrchr (loc_str, '/');
-    if (s) loc_str = s + 1;
-    dehydra_defineStringProperty (this, obj, LOC, loc_str);
-  } else {
-    dehydra_defineProperty (this, obj, LOC, JSVAL_VOID);
   }
 }
 

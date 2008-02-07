@@ -8,6 +8,7 @@ struct Dehydra {
   JSObject *globalObj;
   JSObject *destArray;
   JSObject *rootedArgDestArray;
+  JSObject *rootedFreeArray;
   // Where the statements go;
   JSObject *statementHierarchyArray;
   //keeps track of function decls to map gimplified ones to verbose ones
@@ -47,11 +48,13 @@ void dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
 int dehydra_init(Dehydra *this, const char *file, const char *script);
 int dehydra_visitClass(Dehydra *this, tree c);
 void dehydra_visitDecl (Dehydra *this, tree f);
-void dehydra_nextStatement(Dehydra *this, location_t loc);
 JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray);
 void dehydra_input_end (Dehydra *this);
 void dehydra_print(Dehydra *this, JSObject *obj);
 jsval dehydra_getCallback(Dehydra *this, char const *name);
 void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
                             tree attributes);
+int dehydra_rootObject (Dehydra *this, JSObject *obj);
+void dehydra_unrootObject (Dehydra *this, int pos);
+JSObject* dehydra_getRootedObject (Dehydra *this, int pos);
 #endif

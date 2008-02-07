@@ -255,7 +255,7 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
 jsval dehydra_convertType (Dehydra *this, tree type) {
   if (!dtypes.rootedTypesArray) {
     dtypes.rootedTypesArray = JS_NewArrayObject(this->cx, 0, NULL);
-    xassert (JS_AddRoot (this->cx, &dtypes.rootedTypesArray));
+    dehydra_rootObject (this, dtypes.rootedTypesArray);
     dtypes.typeMap = pointer_map_create ();
   }
   return dehydra_convert (this, type);

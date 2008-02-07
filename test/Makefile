@@ -4,7 +4,8 @@ CC1PLUS = $(GCCDIR)/cc1plus
 PLUGIN = ../gcc_dehydra.so
 PLUGINARG = -fplugin=$(PLUGIN)
 SCRIPT=test.js
-CXXFLAGS = $(PLUGINARG) -fplugin-arg=$(SCRIPT)
+CXXFLAGS = -quiet $(PLUGINARG) -fplugin-arg=$(SCRIPT)
+
 all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o init.o virtual.o constructor.o types.o
 
 # these aren't run by default because the PATH has contain $GCCDIR

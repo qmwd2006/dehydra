@@ -248,6 +248,48 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   return NULL_TREE;
 }
 
+/* Creates next array to dump dehydra objects onto */
+static void dehydra_nextStatement(Dehydra *this, location_t loc) {
+  unsigned int length = dehydra_getArrayLength (this,
+                                                this->statementHierarchyArray);
+  xassert (!this->inExpr);
+  this->loc = loc;
+  this->destArray = NULL;
+  JSObject *obj = NULL;
+  /* Check that the last statement array was used, otherwise reuse it */
+  if (length) {
+    jsval val;
+    JS_GetElement (this->cx, this->statementHierarchyArray, length - 1,
+                   &val);
+    obj = JSVAL_TO_OBJECT (val);
+    JS_GetProperty (this->cx, obj, STATEMENTS, &val);
+    this->destArray = JSVAL_TO_OBJECT (val);
+    int destLength = dehydra_getArrayLength (this, this->destArray);
+    /* last element is already setup & empty, we are done */
+    if (destLength != 0) {
+      this->destArray = NULL;
+    }
+  }
+  if (!this->destArray) {
+    obj = JS_NewObject (this->cx, &js_ObjectClass, 0, 0);
+    JS_DefineElement (this->cx, this->statementHierarchyArray, length,
+                      OBJECT_TO_JSVAL(obj),
+                      NULL, NULL, JSPROP_ENUMERATE);
+    this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
+    dehydra_defineProperty (this, obj, STATEMENTS, 
+                            OBJECT_TO_JSVAL (this->destArray));
+  }
+  /* always update location */
+  if (this->loc) {
+    const char *loc_str = loc_as_string (this->loc);
+    const char *s = strrchr (loc_str, '/');
+    if (s) loc_str = s + 1;
+    dehydra_defineStringProperty (this, obj, LOC, loc_str);
+  } else {
+    dehydra_defineProperty (this, obj, LOC, JSVAL_VOID);
+  }
+}
+
 static void dehydra_iterate_statementlist (Dehydra *this, tree statement_list) {
   tree_stmt_iterator i = tsi_start (STATEMENT_LIST_CHECK( statement_list));
   for (; !tsi_end_p (i); tsi_next (&i)) {
@@ -262,9 +304,11 @@ static void dehydra_iterate_statementlist (Dehydra *this, tree statement_list) {
 
 void dehydra_cp_pre_genericize(Dehydra *this, tree fndecl, bool callJS) {
   this->statementHierarchyArray = JS_NewArrayObject (this->cx, 0, NULL);
-  JS_AddRoot (this->cx, &this->statementHierarchyArray);
+  int key = dehydra_rootObject (this, this->statementHierarchyArray);
+  
   *pointer_map_insert (this->fndeclMap, fndecl) = 
-    (void*) this->statementHierarchyArray; 
+    (void*) key;
+  
   dehydra_nextStatement (this, location_of (fndecl));
 
   tree body_chain = DECL_SAVED_TREE (fndecl);
@@ -275,6 +319,7 @@ void dehydra_cp_pre_genericize(Dehydra *this, tree fndecl, bool callJS) {
   JSObject *obj = dehydra_addVar (this, fndecl, NULL);
   dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);
   cp_walk_tree_without_duplicates (&body_chain, statement_walker, this);
+  this->statementHierarchyArray = NULL;
   if (callJS) {
     dehydra_visitDecl (this, fndecl);
   }
