@@ -1,7 +1,7 @@
-union Enum {
+union Union {
   int ONE;
   char TWO;
-} e;
+} u;
 static int array[10];
 struct Boo {
   unsigned int i:31;

@@ -54,7 +54,7 @@ void dehydra_print(Dehydra *this, JSObject *obj);
 jsval dehydra_getCallback(Dehydra *this, char const *name);
 void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
                             tree attributes);
-int dehydra_rootObject (Dehydra *this, JSObject *obj);
+int dehydra_rootObject (Dehydra *this, jsval val);
 void dehydra_unrootObject (Dehydra *this, int pos);
-JSObject* dehydra_getRootedObject (Dehydra *this, int pos);
+jsval dehydra_getRootedObject (Dehydra *this, int pos);
 #endif

@@ -304,7 +304,9 @@ static void dehydra_iterate_statementlist (Dehydra *this, tree statement_list) {
 
 void dehydra_cp_pre_genericize(Dehydra *this, tree fndecl, bool callJS) {
   this->statementHierarchyArray = JS_NewArrayObject (this->cx, 0, NULL);
-  int key = dehydra_rootObject (this, this->statementHierarchyArray);
+  int key = 
+    dehydra_rootObject (this, 
+                        OBJECT_TO_JSVAL (this->statementHierarchyArray));
   
   *pointer_map_insert (this->fndeclMap, fndecl) = 
     (void*) key;

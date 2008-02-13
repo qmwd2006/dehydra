@@ -148,11 +148,38 @@ static jsval tree_convert (Dehydra *this, tree t) {
     val = OBJECT_TO_JSVAL (compound_convert (this, t));
   }
   
+#undef DEFTREESTRUCT
+#define DEFTREESTRUCT(VAL, NAME) NAME,
+
+static const char *ts_enum_names[] = {
+#include "treestruct.def"
+};
+#undef DEFTREESTRUCT
+
+
+
   if (val != JSVAL_VOID) {
-    if (JSVAL_IS_OBJECT (val))
+    int rootedIndex = dehydra_rootObject (this, val);
+
+    if (JSVAL_IS_OBJECT (val)) {
       dehydra_defineProperty (this, JSVAL_TO_OBJECT (val), "tree_code", 
                               INT_TO_JSVAL (code));
+      JSObject *unionArray = JS_NewArrayObject(this->cx, 0, NULL);
+      dehydra_defineProperty (this, JSVAL_TO_OBJECT (val), "unions",
+                              OBJECT_TO_JSVAL (unionArray));
+      enum tree_node_structure_enum i;
+      int counter = 0;
+      for (i = 0; i < LAST_TS_ENUM;i++) {
+        if (tree_contains_struct[code][i]) {
+          JSString *str = JS_NewStringCopyZ (this->cx, 
+                                             ts_enum_names[i]);
+          JS_DefineElement(this->cx, unionArray, counter++,
+                           STRING_TO_JSVAL (str), NULL, NULL, JSPROP_ENUMERATE);
+        }
+      }
+    }
     *pointer_map_insert (dtrees.treeMap, t) = (void*) val;
+    dehydra_unrootObject (this, rootedIndex);
   }
   return val;
 }
@@ -163,7 +190,7 @@ void dehydra_plugin_pass (Dehydra *this) {
 
   if (!dtrees.rootedTreesArray) {
     dtrees.rootedTreesArray = JS_NewArrayObject(this->cx, 0, NULL);
-    dehydra_rootObject (this, dtrees.rootedTreesArray);
+    dehydra_rootObject (this, OBJECT_TO_JSVAL (dtrees.rootedTreesArray));
     dtrees.treeMap = pointer_map_create ();
   }
   JSObject *fObj = dehydra_addVar (this, current_function_decl, 

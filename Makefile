@@ -10,7 +10,7 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 	-I$(GCCDIR)/gcc/../libdecnumber -I$(GCCDIR)/gcc/../libdecnumber/bid \
 	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp \
 	-I$(SM_INCLUDE) -I/$(HOME)/local/include/js/ 
-
+#-DDEBUG
 CFLAGS= -Wall -fPIC -DXP_UNIX -g3 $(INCLUDE)
 
 gcc_dehydra.so: dehydra.o plugin.o builtins.o dehydra_ast.o dehydra_callbacks.o util.o dehydra_types.o dehydra_tree.o

@@ -67,6 +67,19 @@ static char *readFile(const char *filename, const char *dir, long *size) {
   return buf;
 }
 
+#ifdef JS_GC_ZEAL
+static JSBool
+GCZeal(JSContext *cx, uintN argc, jsval *vp)
+{
+    uintN zeal;
+
+    if (!JS_ValueToECMAUint32(cx, vp[2], &zeal))
+        return JS_FALSE;
+    JS_SetGCZeal(cx, zeal);
+    *vp = JSVAL_VOID;
+    return JS_TRUE;
+}
+#endif /* JS_GC_ZEAL */
 
 int dehydra_init(Dehydra *this, const char *file, const char *script) {
   static JSClass global_class = {
@@ -84,6 +97,9 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
     {"error",           Error,          0},
     {"warning",         Warning,          0},
     {"version",         Version,        0},
+#ifdef JS_GC_ZEAL
+    JS_FN("gczeal",         GCZeal,         1,1,0),
+#endif
     {0}
   };
 
@@ -266,7 +282,8 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
       fprintf (stderr, "No body for %s\n", decl_as_string (f, 0));*/
   }
   int key = (int) *v;
-  this->statementHierarchyArray = dehydra_getRootedObject (this, key);
+  this->statementHierarchyArray = 
+    JSVAL_TO_OBJECT (dehydra_getRootedObject (this, key));
   *v = NULL;
   
   int fnkey = dehydra_getArrayLength (this,
@@ -296,7 +313,7 @@ static void dehydra_visitVarDecl (Dehydra *this, tree d) {
   dehydra_unrootObject (this, key);
 }
 
-int dehydra_rootObject (Dehydra *this, JSObject *obj) {
+int dehydra_rootObject (Dehydra *this, jsval val) {
   /* positions start from 1 since rootedFreeArray is always the first element */
   int pos;
   int length = dehydra_getArrayLength (this, this->rootedFreeArray);
@@ -310,8 +327,7 @@ int dehydra_rootObject (Dehydra *this, JSObject *obj) {
     pos = dehydra_getArrayLength (this, this->rootedArgDestArray);
   }
   JS_DefineElement (this->cx, this->rootedArgDestArray, pos,
-                    OBJECT_TO_JSVAL (obj),
-                    NULL, NULL, JSPROP_ENUMERATE);
+                    val, NULL, NULL, JSPROP_ENUMERATE);
   return pos;
 }
 
@@ -325,10 +341,10 @@ void dehydra_unrootObject (Dehydra *this, int pos) {
                     NULL, NULL, JSPROP_ENUMERATE);
 }
 
-JSObject* dehydra_getRootedObject (Dehydra *this, int pos) {
+jsval dehydra_getRootedObject (Dehydra *this, int pos) {
   jsval v = JSVAL_VOID;
   JS_GetElement(this->cx, this->rootedArgDestArray, pos, &v);
-  return JSVAL_TO_OBJECT (v);
+  return v;
 }
 
 void dehydra_visitDecl (Dehydra *this, tree d) {

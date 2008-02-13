@@ -31,7 +31,6 @@ static const char *POINTER = "isPointer";
 static const char *REFERENCE = "isReference";
 static const char *KIND = "kind";
 static const char *TYPEDEF = "typedef";
-/*static const char *CONST = "const";*/
 static const char *ARRAY = "isArray";
 static const char *SIZE = "size";
 
@@ -59,6 +58,7 @@ void dehydra_attachTypeAttributes (Dehydra *this, JSObject *obj, tree type) {
 
 static void dehydra_attachEnumStuff (Dehydra *this, JSObject *objEnum, tree enumeral_type) {
   JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);
+  dehydra_defineStringProperty (this, objEnum, KIND, "enum");
   dehydra_defineProperty (this, objEnum, MEMBERS, 
                           OBJECT_TO_JSVAL(destArray));
   tree tv;
@@ -255,7 +255,7 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
 jsval dehydra_convertType (Dehydra *this, tree type) {
   if (!dtypes.rootedTypesArray) {
     dtypes.rootedTypesArray = JS_NewArrayObject(this->cx, 0, NULL);
-    dehydra_rootObject (this, dtypes.rootedTypesArray);
+    dehydra_rootObject (this, OBJECT_TO_JSVAL (dtypes.rootedTypesArray));
     dtypes.typeMap = pointer_map_create ();
   }
   return dehydra_convert (this, type);
