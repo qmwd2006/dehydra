@@ -179,7 +179,7 @@ jsval dehydra_getCallback(Dehydra *this, char const *name) {
           && JS_TypeOfValue(this->cx, val) == JSTYPE_FUNCTION) ? val : JSVAL_VOID;
 }
 
-static void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
+void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
   location_t loc = location_of (t);
   if (!loc || loc == UNKNOWN_LOCATION) return;
 

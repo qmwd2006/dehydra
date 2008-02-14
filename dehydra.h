@@ -57,4 +57,5 @@ void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
 int dehydra_rootObject (Dehydra *this, jsval val);
 void dehydra_unrootObject (Dehydra *this, int pos);
 jsval dehydra_getRootedObject (Dehydra *this, int pos);
+void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t);
 #endif

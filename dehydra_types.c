@@ -19,20 +19,15 @@
 #include "util.h"
 #include "dehydra.h"
 
-struct Types {
-  JSObject *rootedTypesArray;
-  struct pointer_map_t *typeMap;
-};
-
-typedef struct Types Types;
-
-static Types dtypes = {0};
 static const char *POINTER = "isPointer";
 static const char *REFERENCE = "isReference";
 static const char *KIND = "kind";
 static const char *TYPEDEF = "typedef";
 static const char *ARRAY = "isArray";
 static const char *SIZE = "size";
+static const char *INCOMPLETE = "isIncomplete";
+
+static struct pointer_map_t *typeMap = NULL;
 
 static jsval dehydra_convert (Dehydra *this, tree type);
 
@@ -79,6 +74,7 @@ static void dehydra_attachEnumStuff (Dehydra *this, JSObject *objEnum, tree enum
 static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree record_type) {
   JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);
   tree binfo = TYPE_BINFO (record_type);
+  
   int n_baselinks = binfo ? BINFO_N_BASE_BINFOS (binfo) : 0;
   int i;
   for (i = 0; i < n_baselinks; i++)
@@ -143,26 +139,38 @@ static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tre
 }
 
 static jsval dehydra_convert (Dehydra *this, tree type) {
-  void **v = pointer_map_contains(dtypes.typeMap, type);
+  void **v = pointer_map_contains(typeMap, type);
+  JSObject *obj = NULL;
   if (v) {
-    return OBJECT_TO_JSVAL ((JSObject*) *v);
+    jsval incomplete = JSVAL_VOID;
+    obj = (JSObject*) *v;
+    JS_GetProperty(this->cx, obj, INCOMPLETE, &incomplete);
+    /* add missing stuff to the type if is now COMPLETE_TYPE_P */
+    if (incomplete == JSVAL_TRUE && COMPLETE_TYPE_P (type)) {
+      JS_DeleteProperty (this->cx, obj, INCOMPLETE);
+    } else {
+      return OBJECT_TO_JSVAL (obj);
+    }
+  } else {
+    obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
+                              this->globalObj);
+    /* need to do specal treatment for incomplete types
+       Those need to be looked up later and finished
+       for now just hax0r the way
+    */
+    if (!COMPLETE_TYPE_P (type)) {
+      dehydra_defineProperty (this, obj, INCOMPLETE, JSVAL_TRUE);
+    }
+    dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
+    v = *pointer_map_insert (typeMap, type) = obj;
   }
-  JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
-                                     this->globalObj);
-  unsigned int length = dehydra_getArrayLength (this, dtypes.rootedTypesArray);
-  JS_DefineElement (this->cx, dtypes.rootedTypesArray, 
-                    length, OBJECT_TO_JSVAL(obj),
-                    NULL, NULL, JSPROP_ENUMERATE);
-  *pointer_map_insert (dtypes.typeMap, type) = obj;
-  
   tree next_type = NULL_TREE;
   tree type_decl = TYPE_NAME (type);
-  if (type_decl != NULL_TREE ) {
+  if (type_decl != NULL_TREE) {
     tree original_type = DECL_ORIGINAL_TYPE (type_decl);
     if (original_type) {
       dehydra_defineStringProperty (this, obj, NAME, 
                                     decl_as_string (type_decl, 0));
-
       dehydra_defineProperty (this, obj, TYPEDEF, 
                               dehydra_convert (this, original_type));
       return OBJECT_TO_JSVAL (obj);
@@ -194,7 +202,6 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
                                   class_key_or_enum_as_string (type));
     if (TREE_CODE (type) == ENUMERAL_TYPE)
       dehydra_attachEnumStuff (this, obj, type);
-    /* process complete types only */
     else if (COMPLETE_TYPE_P (type))
       dehydra_attachClassStuff (this, obj, type);
   case VOID_TYPE:
@@ -253,10 +260,8 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
 }
 
 jsval dehydra_convertType (Dehydra *this, tree type) {
-  if (!dtypes.rootedTypesArray) {
-    dtypes.rootedTypesArray = JS_NewArrayObject(this->cx, 0, NULL);
-    dehydra_rootObject (this, OBJECT_TO_JSVAL (dtypes.rootedTypesArray));
-    dtypes.typeMap = pointer_map_create ();
+  if (!typeMap) {
+    typeMap = pointer_map_create ();
   }
   return dehydra_convert (this, type);
 }

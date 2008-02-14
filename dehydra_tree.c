@@ -156,8 +156,6 @@ static const char *ts_enum_names[] = {
 };
 #undef DEFTREESTRUCT
 
-
-
   if (val != JSVAL_VOID) {
     int rootedIndex = dehydra_rootObject (this, val);
 
@@ -199,7 +197,6 @@ void dehydra_plugin_pass (Dehydra *this) {
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
-
   jsval bodyVal = tree_convert (this, body_chain);
   jsval rval, argv[2];
   argv[0] = OBJECT_TO_JSVAL (fObj);
