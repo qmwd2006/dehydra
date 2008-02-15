@@ -15,7 +15,7 @@
 #include <toplev.h>
 
 #include "xassert.h"
-#include "builtins.h"
+#include "dehydra_builtins.h"
 #include "util.h"
 #include "dehydra.h"
 #include "dehydra_types.h"
@@ -43,30 +43,6 @@ static const char *VIRTUAL = "isVirtual";
 
 static int dehydra_loadScript(Dehydra *this, const char *filename);
 
-static char *readFile(const char *filename, const char *dir, long *size) {
-  char *buf;
-  FILE *f = fopen(filename, "r");
-  if (!f) {
-    if (dir && *filename && filename[0] != '/') {
-      buf = xmalloc(strlen(dir) + strlen(filename) + 2);
-      sprintf(buf, "%s/%s", dir, filename);
-      f = fopen(buf, "r");
-      free(buf);
-    }
-    if (!f) {
-      return NULL;
-    }
-  }
-  xassert(!fseek(f, 0, SEEK_END));
-  *size = ftell(f);
-  xassert(!fseek(f, 0, SEEK_SET));
-  buf = xmalloc(*size + 1);
-  xassert(*size == fread(buf, 1, *size, f));
-  buf[*size] = 0;
-  fclose(f);
-  return buf;
-}
-
 #ifdef JS_GC_ZEAL
 static JSBool
 GCZeal(JSContext *cx, uintN argc, jsval *vp)
@@ -91,11 +67,11 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
   };
 
   static JSFunctionSpec shell_functions[] = {
-    /* {"write_file",      WriteFile,      1},
-       {"read_file",       ReadFile,       1},*/
-    {"_print",           Print,          0},
+    {"_print",           Print,         0},
+    {"write_file",      WriteFile,      1},
+    {"read_file",       ReadFile,       1},
     {"error",           Error,          0},
-    {"warning",         Warning,          0},
+    {"warning",         Warning,        0},
     {"version",         Version,        0},
 #ifdef JS_GC_ZEAL
     JS_FN("gczeal",         GCZeal,         1,1,0),
@@ -122,7 +98,7 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
   JS_InitStandardClasses (this->cx, this->globalObj);
   /* register error handler */
   JS_SetErrorReporter (this->cx, ReportError);
-  JS_DefineFunctions (this->cx, this->globalObj, shell_functions);
+  xassert (JS_DefineFunctions (this->cx, this->globalObj, shell_functions));
   this->rootedArgDestArray = 
     JS_NewArrayObject (this->cx, 0, NULL);
   JS_AddRoot (this->cx, &this->rootedArgDestArray);
@@ -135,6 +111,9 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
   JS_SetGCZeal (this->cx, 2);
 #endif
   JS_SetVersion (this->cx, (JSVersion) 170);
+  dehydra_defineProperty (this, this->globalObj, "base_name", 
+                          STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, 
+                                                         dump_base_name)));
   if (dehydra_loadScript (this, "system.js")) return 1;
   return dehydra_loadScript (this, script);
 }
@@ -332,13 +311,14 @@ int dehydra_rootObject (Dehydra *this, jsval val) {
 }
 
 void dehydra_unrootObject (Dehydra *this, int pos) {
-  JS_DefineElement (this->cx, this->rootedArgDestArray, pos,
-                    JSVAL_VOID,
-                    NULL, NULL, JSPROP_ENUMERATE);
   int length = dehydra_getArrayLength (this, this->rootedFreeArray);
   JS_DefineElement (this->cx, this->rootedFreeArray, length,
                     INT_TO_JSVAL (pos),
                     NULL, NULL, JSPROP_ENUMERATE);
+  JS_DefineElement (this->cx, this->rootedArgDestArray, pos,
+                    JSVAL_VOID,
+                    NULL, NULL, JSPROP_ENUMERATE);
+
 }
 
 jsval dehydra_getRootedObject (Dehydra *this, int pos) {

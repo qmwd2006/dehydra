@@ -7,7 +7,8 @@
 #include <toplev.h>
 #include <jsapi.h>
 
-#include "builtins.h"
+#include "dehydra_builtins.h"
+#include "xassert.h"
 
 JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
              jsval *rval)
@@ -85,4 +86,53 @@ ReportError(JSContext *cx, const char *message, JSErrorReport *report)
   }
   fflush(stderr);
   exit(1);
+}
+
+JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
+                jsval *argv, jsval *rval) {
+  if (!(argc == 1 && JSVAL_IS_STRING(argv[0]))) return JS_TRUE;
+  long size = 0;
+  char *buf = readFile (JS_GetStringBytes(JSVAL_TO_STRING(argv[0])), NULL, &size);
+  if(!buf)
+  {
+    return JS_TRUE;
+  }
+  *rval = STRING_TO_JSVAL(JS_NewString(cx, buf, size));
+  return JS_TRUE;
+}
+
+JSBool WriteFile(JSContext *cx, JSObject *obj, uintN argc,
+                jsval *argv, jsval *rval) {
+  if (!(argc == 2 && JSVAL_IS_STRING(argv[0]) && JSVAL_IS_STRING(argv[1]))) {
+    return JS_TRUE;
+  }
+  FILE *f = fopen (JS_GetStringBytes (JSVAL_TO_STRING (argv[0])), "w");
+  JSString *str = JSVAL_TO_STRING(argv[1]);
+  fwrite (JS_GetStringBytes(str), 1, JS_GetStringLength(str), f);
+  fclose (f);
+  return JS_TRUE;
+}
+
+char *readFile(const char *filename, const char *dir, long *size) {
+  char *buf;
+  FILE *f = fopen(filename, "r");
+  if (!f) {
+    if (dir && *filename && filename[0] != '/') {
+      buf = xmalloc(strlen(dir) + strlen(filename) + 2);
+      sprintf(buf, "%s/%s", dir, filename);
+      f = fopen(buf, "r");
+      free(buf);
+    }
+    if (!f) {
+      return NULL;
+    }
+  }
+  xassert(!fseek(f, 0, SEEK_END));
+  *size = ftell(f);
+  xassert(!fseek(f, 0, SEEK_SET));
+  buf = xmalloc(*size + 1);
+  xassert(*size == fread(buf, 1, *size, f));
+  buf[*size] = 0;
+  fclose(f);
+  return buf;
 }

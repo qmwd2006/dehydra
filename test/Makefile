@@ -6,7 +6,7 @@ PLUGINARG = -fplugin=$(PLUGIN)
 SCRIPT=test.js
 CXXFLAGS = $(PLUGINARG) -fplugin-arg=$(SCRIPT)
 
-all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o init.o virtual.o constructor.o types.o
+all: test.o assign.o longevity.o attributes2.o typedef.o operator_new.o destr_order.o init.o virtual.o constructor.o types.o
 
 # these aren't run by default because the PATH has contain $GCCDIR
 g++: pipe warning

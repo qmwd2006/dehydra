@@ -15,7 +15,7 @@
 #include <toplev.h>
 
 #include "xassert.h"
-#include "builtins.h"
+#include "dehydra_builtins.h"
 #include "util.h"
 #include "dehydra.h"
 
