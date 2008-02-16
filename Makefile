@@ -23,5 +23,14 @@ dehydra_ast.o: dehydra_ast.c dehydra_ast.h
 
 dehydra_callbacks.o: dehydra_callbacks.c dehydra_callbacks.h dehydra_ast.h dehydra.h
 
+#for the following CXX has to be a plugin-enabled compiler
+plugin.ii: plugin.c
+	mv plugin.o _plugin.o
+	$(MAKE) CC="$(CXX) -E -o $@" plugin.o
+	mv _plugin.o plugin.o
+
+plugin.ii.auto.h: plugin.ii test/tree.js
+	$(CXX) -fpreprocessed -fplugin=./gcc_dehydra.so -fplugin-arg=test/tree.js -fsyntax-only $< -o /dev/null
+
 clean:
-	rm -f *.o gcc_dehydra.so *~
+	rm -f *.o gcc_dehydra.so *~ *.i
