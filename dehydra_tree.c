@@ -164,7 +164,7 @@ static jsval tree_convert (Dehydra *this, tree t) {
   return val;
 }
 
-#include "plugin.ii.auto.h"
+//#include "plugin.ii.auto.h"
 static jsval convert_tree (Dehydra *this, tree t) {
   JSObject *unionArray = JS_NewArrayObject(this->cx, 0, NULL);
   int rootedIndex = dehydra_rootObject (this, OBJECT_TO_JSVAL (unionArray));
