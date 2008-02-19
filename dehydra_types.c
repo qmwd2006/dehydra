@@ -204,6 +204,8 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
       dehydra_attachEnumStuff (this, obj, type);
     else if (COMPLETE_TYPE_P (type))
       dehydra_attachClassStuff (this, obj, type);
+    dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
+    break;
   case VOID_TYPE:
   case BOOLEAN_TYPE:
   case INTEGER_TYPE:
