@@ -79,16 +79,18 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
   int i;
   for (i = 0; i < n_baselinks; i++)
     {
+      tree base_binfo;
+      jsval baseval;
+
       if (!i)
         dehydra_defineProperty (this, objClass, BASES, 
                                 OBJECT_TO_JSVAL(destArray));
 
-      tree base_binfo = BINFO_BASE_BINFO (binfo, i);
-      JSString *str = 
-        JS_NewStringCopyZ(this->cx, 
-                          type_as_string (BINFO_TYPE (base_binfo), 0));
+      base_binfo = BINFO_BASE_BINFO (binfo, i);
+      baseval = dehydra_convert(this, BINFO_TYPE(base_binfo));
+
       JS_DefineElement (this->cx, destArray, i, 
-                        STRING_TO_JSVAL (str),
+                        baseval,
                         NULL, NULL, JSPROP_ENUMERATE);
     }
   
