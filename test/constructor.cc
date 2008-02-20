@@ -1,8 +1,17 @@
-class Klass {
-public:
-  Klass (const char *);
+struct A
+{
+  A();
+  void foo();
 };
 
-void foo() {
-  new Klass("ARGUMENT");
+struct B : A
+{
+  void bar();
+};
+
+void Foo()
+{
+  B b;
+  b.foo();
+  //b.bar();
 }
