@@ -56,6 +56,9 @@ static void process_decl (tree f) {
 static void process_record_type (tree c) {
   tree field, func;
   if (!COMPLETE_TYPE_P (c)) return;
+
+  // bug 418170: don't process template specializations
+  if (CLASSTYPE_USE_TEMPLATE(c) == 2) return;
   //fprintf(stderr, "class %s\n", type_as_string(c, 0));
 
   /* iterate over base classes to ensure they are visited first */
