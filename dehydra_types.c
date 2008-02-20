@@ -156,13 +156,6 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
   } else {
     obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
                               this->globalObj);
-    /* need to do specal treatment for incomplete types
-       Those need to be looked up later and finished
-       for now just hax0r the way
-    */
-    if (!COMPLETE_TYPE_P (type)) {
-      dehydra_defineProperty (this, obj, INCOMPLETE, JSVAL_TRUE);
-    }
     dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
     v = *pointer_map_insert (typeMap, type) = obj;
   }
@@ -202,9 +195,14 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
   case ENUMERAL_TYPE:
     dehydra_defineStringProperty (this, obj, KIND, 
                                   class_key_or_enum_as_string (type));
-    if (TREE_CODE (type) == ENUMERAL_TYPE)
+    if (!COMPLETE_TYPE_P (type)) {
+      /* need to do specal treatment for incomplete types
+         Those need to be looked up later and finished
+      */
+      dehydra_defineProperty (this, obj, INCOMPLETE, JSVAL_TRUE);
+    } else if (TREE_CODE (type) == ENUMERAL_TYPE)
       dehydra_attachEnumStuff (this, obj, type);
-    else if (COMPLETE_TYPE_P (type))
+    else
       dehydra_attachClassStuff (this, obj, type);
     dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
     break;
