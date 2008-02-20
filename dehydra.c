@@ -38,6 +38,7 @@ const char *PARAMETERS = "parameters";
 const char *ATTRIBUTES = "attributes";
 const char *STATEMENTS = "statements";
 const char *BITFIELD = "bitfieldBits";
+const char *METHOD_OF = "methodOf";
 static const char *STATIC = "isStatic";
 static const char *VIRTUAL = "isVirtual";
 
@@ -211,19 +212,22 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   char const *name = decl_as_string (v, 0);
   dehydra_defineStringProperty (this, obj, NAME, 
                                 name);
+  tree typ = TREE_TYPE (v);
   if (TREE_CODE (v) == FUNCTION_DECL) {
     dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
     if (DECL_CONSTRUCTOR_P (v))
       dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
-    else
-      dehydra_defineStringProperty (this, obj, TYPE, 
-                                    type_as_string (TREE_TYPE (TREE_TYPE (v)), 0));
+
+    if (TREE_CODE (typ) == METHOD_TYPE || DECL_CONSTRUCTOR_P (v)) {
+      dehydra_defineProperty (this, obj, METHOD_OF, 
+                              dehydra_convertType (this, DECL_CONTEXT (v)));
+    }
+
     if (DECL_PURE_VIRTUAL_P (v))
       dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
     else if (DECL_VIRTUAL_P (v))
       dehydra_defineProperty (this, obj, VIRTUAL, JSVAL_TRUE);
   }
-  tree typ = TREE_TYPE (v);
   dehydra_defineProperty (this, obj, TYPE, 
                           dehydra_convertType (this, typ));
   tree attributes = DECL_ATTRIBUTES (v);
