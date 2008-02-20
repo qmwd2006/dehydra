@@ -317,9 +317,6 @@ void dehydra_cp_pre_genericize(Dehydra *this, tree fndecl, bool callJS) {
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
-  //  fprintf (stderr, "dehydra_cp_pre_genericize: %s\n", decl_as_string (fndecl, 0));
-  JSObject *obj = dehydra_addVar (this, fndecl, NULL);
-  dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);
   cp_walk_tree_without_duplicates (&body_chain, statement_walker, this);
   this->statementHierarchyArray = NULL;
   if (callJS) {
