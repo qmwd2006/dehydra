@@ -56,7 +56,7 @@ Unit.prototype.toString = function () {
     return "// " + x.comment + "\n"
       + prefix + x.name + " {" + x.body + "\n}\n";
   })
-  return str + bodies.join ("\n")
+  return "#define GENERATED_C2JS 1\n" + str + bodies.join ("\n")
 }
 
 Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
@@ -65,7 +65,7 @@ Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
   for each (var f in fields) {
     ls.push ("case " + f.tag + ":");
     ls.push ("  dehydra_defineProperty(this, obj, \"" + f.name
-             + "\" , convert_" + f.type + " (this, &var." + f.name + "));")
+             + "\" , convert_" + f.type + " (this, &var->" + f.name + "));")
     ls.push ("  break;")
   }
   ls.push ("default:")
@@ -75,7 +75,7 @@ Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
   this.functions.push (
     new Function ("convert_" + type_name
                   + "_union (Dehydra *this, enum " + type_code_name
-                  + " code, union " + type_name + " var, JSObject *obj)",
+                  + " code, union " + type_name + " *var, JSObject *obj)",
                   ls.join ("\n  ")));
 }
 

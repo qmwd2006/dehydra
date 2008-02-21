@@ -164,7 +164,8 @@ static jsval tree_convert (Dehydra *this, tree t) {
   return val;
 }
 
-//#include "plugin.ii.auto.h"
+#include "plugin.ii.auto.h"
+
 static jsval convert_tree (Dehydra *this, tree t) {
   JSObject *unionArray = JS_NewArrayObject(this->cx, 0, NULL);
   int rootedIndex = dehydra_rootObject (this, OBJECT_TO_JSVAL (unionArray));
@@ -180,16 +181,20 @@ static jsval convert_tree (Dehydra *this, tree t) {
   int counter = 0;
   JSString *str = JS_NewStringCopyZ (this->cx, 
                                      ts_enum_names[tree_node_structure(t)]);
-
+  
   JS_DefineElement(this->cx, unionArray, counter++,
-                   STRING_TO_JSVAL (str), NULL, NULL, JSPROP_ENUMERATE);
+  STRING_TO_JSVAL (str), NULL, NULL, JSPROP_ENUMERATE);
 
   for (i = 0; i < LAST_TS_ENUM;i++) {
     if (tree_contains_struct[code][i]) {
+#ifdef GENERATED_C2JS
       JSString *str = JS_NewStringCopyZ (this->cx, 
                                          ts_enum_names[i]);
       JS_DefineElement(this->cx, unionArray, counter++,
                        STRING_TO_JSVAL (str), NULL, NULL, JSPROP_ENUMERATE);
+#else
+      convert_tree_node_union (this, i, t, unionArray);
+#endif
     }
   }
   dehydra_unrootObject (this, rootedIndex);

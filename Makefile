@@ -29,8 +29,8 @@ plugin.ii: plugin.c
 	$(MAKE) CC="$(CXX) -E -o $@" plugin.o
 	mv _plugin.o plugin.o
 
-plugin.ii.auto.h: plugin.ii test/tree.js
-	$(CXX) -fpreprocessed -fplugin=./gcc_dehydra.so -fplugin-arg=test/tree.js -fsyntax-only $< -o /dev/null
+plugin.ii.auto.h: plugin.ii convert_tree.js
+	$(CXX) -fpreprocessed -fplugin=./gcc_dehydra.so -fplugin-arg=convert_tree.js -fsyntax-only $< -o /dev/null
 
 clean:
 	rm -f *.o gcc_dehydra.so *~ *.i
