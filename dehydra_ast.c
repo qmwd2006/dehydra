@@ -55,14 +55,15 @@ dehydra_fcallDoArgs (Dehydra *this, JSObject *obj, tree expr,
   this->destArray = tmp;
 }
 
-/* messes with dest-array */
-static void dehydra_attachNestedFields(Dehydra *this, JSObject *obj, char const *name, tree t) {
+/* messes with dest-array, returns the  */
+static jsval dehydra_attachNestedFields(Dehydra *this, JSObject *obj, char const *name, tree t) {
   JSObject *tmp = this->destArray;
   this->destArray = JS_NewArrayObject(this->cx, 0, NULL);
-  dehydra_defineProperty(this, obj, name,
-                         OBJECT_TO_JSVAL(this->destArray));
+  jsval ret = OBJECT_TO_JSVAL (this->destArray);
+  dehydra_defineProperty(this, obj, name, ret);
   cp_walk_tree_without_duplicates(&t, statement_walker, this);
   this->destArray = tmp;
+  return ret;
 }
 
 /* borrowed from cp/error.c */
@@ -93,8 +94,8 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     for (d = 0; d < statement_walker_depth;d++) {
       fprintf(stderr, " ");
     }
+    fprintf(stderr, "ast: %s\n",tree_code_name[TREE_CODE(*tp)]);
   }
-  fprintf(stderr, "ast: %s\n",tree_code_name[TREE_CODE(*tp)]);
   switch (code) {
   case STATEMENT_LIST:
     *walk_subtrees = 0;
@@ -123,13 +124,37 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
          this will avoid gcc annoynace with
          declar foo = boo; beaing broken up into declare foo; foo = boo;
        */
+      unsigned int objPos = dehydra_getArrayLength (this, this->destArray);
       JSObject *obj = dehydra_makeVar (this, lval, NULL, NULL);
       xassert (obj);
       /* now add constructor */
       /* note here we are assuming that last addVar as the last declaration */
       /* op 0 is an anonymous temporary..i think..so use last var instead */
-      dehydra_attachNestedFields (this, obj, ASSIGN, 
-                                  GENERIC_TREE_OPERAND(*tp, 1));
+      jsval val = dehydra_attachNestedFields (this, obj, ASSIGN, 
+                                                GENERIC_TREE_OPERAND(*tp, 1));
+      /* Now do special case for stack variables being initialized by a constructor*/
+      JSObject *assignArray = JSVAL_TO_OBJECT (val);
+      unsigned int assignArrayLength = 
+        dehydra_getArrayLength (this, assignArray);
+      if (assignArrayLength) {
+        JS_GetElement (this->cx, assignArray, 0, &val);
+        JSObject *objConstructor = JSVAL_TO_OBJECT (val);
+        /* verify that we got a constructor */
+        JS_GetProperty(this->cx, objConstructor, DH_CONSTRUCTOR, &val);
+        if (val == JSVAL_TRUE) {
+          /* Ensure the world makes sense and nothing but the constructor is in assignArray */
+          xassert (assignArrayLength == 1);
+          /* swap obj<->objConstructor if constructor */
+          dehydra_defineProperty (this, objConstructor, FIELD_OF, 
+                                  OBJECT_TO_JSVAL (obj));
+          /* replace obj with objConstructor */
+          JS_DefineElement (this->cx, this->destArray, objPos,
+                            OBJECT_TO_JSVAL(objConstructor),
+                            NULL, NULL, JSPROP_ENUMERATE);
+          /* finish up by deleting assign */
+          JS_DeleteProperty (this->cx, obj, ASSIGN);
+        }
+      }
     }
     *walk_subtrees = 0;
     break;
