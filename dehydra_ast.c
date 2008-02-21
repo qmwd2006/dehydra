@@ -81,15 +81,25 @@ resolve_virtual_fun_from_obj_type_ref (tree ref)
   return BV_FN (fun);
 }
 
+static const int enable_ast_debug = 0;
+static int statement_walker_depth = 0;
 static tree
 statement_walker (tree *tp, int *walk_subtrees, void *data) {
   Dehydra *this = data;
   enum tree_code code = TREE_CODE(*tp); 
+  if (enable_ast_debug) {
+    statement_walker_depth++;
+    int d;
+    for (d = 0; d < statement_walker_depth;d++) {
+      fprintf(stderr, " ");
+    }
+  }
+  fprintf(stderr, "ast: %s\n",tree_code_name[TREE_CODE(*tp)]);
   switch (code) {
   case STATEMENT_LIST:
     *walk_subtrees = 0;
     dehydra_iterate_statementlist(this, *tp);
-    return NULL_TREE;
+    break;
   case DECL_EXPR:
     {
       tree e = *tp;
@@ -240,6 +250,9 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     break;
   default:
     break;
+  }
+  if (enable_ast_debug) {
+    statement_walker_depth--;
   }
   /*    fprintf(stderr, "%s:", loc_as_string(this->loc));
     fprintf(stderr, "walking tree element: %s. %s\n", tree_code_name[TREE_CODE(*tp)],
