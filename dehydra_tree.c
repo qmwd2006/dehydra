@@ -164,9 +164,10 @@ static jsval tree_convert (Dehydra *this, tree t) {
   return val;
 }
 
-//#include "plugin.ii.auto.h"
+static jsval convert_tree_node (Dehydra *this, tree t);
+#include "plugin.ii.auto.h"
 
-static jsval convert_tree (Dehydra *this, tree t) {
+static jsval convert_tree_node (Dehydra *this, tree t) {
   JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
                                       this->globalObj);
   int rootedIndex = dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
@@ -198,7 +199,7 @@ void dehydra_plugin_pass (Dehydra *this) {
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
-  jsval bodyVal = convert_tree (this, body_chain);
+  jsval bodyVal = convert_tree_node (this, body_chain);
   jsval rval, argv[2];
   argv[0] = OBJECT_TO_JSVAL (fObj);
   argv[1] = bodyVal;

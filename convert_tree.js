@@ -138,7 +138,8 @@ function convert (unit, aggr) {
   var isUnion = aggr.kind == "union"
   for each (var m in aggr.members) {
     var type = skipTypedef(m.type)
-    if (type.kind != "struct") 
+    if (type.kind != "struct"
+        && !(type.name == "tree_node")) 
       continue
     var subf  = convert (unit, type)
     if (subf)
