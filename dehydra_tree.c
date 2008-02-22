@@ -164,41 +164,23 @@ static jsval tree_convert (Dehydra *this, tree t) {
   return val;
 }
 
-#include "plugin.ii.auto.h"
+//#include "plugin.ii.auto.h"
 
 static jsval convert_tree (Dehydra *this, tree t) {
-  JSObject *unionArray = JS_NewArrayObject(this->cx, 0, NULL);
-  int rootedIndex = dehydra_rootObject (this, OBJECT_TO_JSVAL (unionArray));
-#undef DEFTREESTRUCT
-#define DEFTREESTRUCT(VAL, NAME) NAME,
-  
-  static const char *ts_enum_names[] = {
-#include "treestruct.def"
-  };
-#undef DEFTREESTRUCT
+  JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
+                                      this->globalObj);
+  int rootedIndex = dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
   enum tree_node_structure_enum i;
   enum tree_code code = TREE_CODE (t);
-  int counter = 0;
-  JSString *str = JS_NewStringCopyZ (this->cx, 
-                                     ts_enum_names[tree_node_structure(t)]);
-  
-  JS_DefineElement(this->cx, unionArray, counter++,
-  STRING_TO_JSVAL (str), NULL, NULL, JSPROP_ENUMERATE);
-
+  i = tree_node_structure(t);
+  convert_tree_node_union (this, i, t, obj);
   for (i = 0; i < LAST_TS_ENUM;i++) {
     if (tree_contains_struct[code][i]) {
-#ifdef GENERATED_C2JS
-      JSString *str = JS_NewStringCopyZ (this->cx, 
-                                         ts_enum_names[i]);
-      JS_DefineElement(this->cx, unionArray, counter++,
-                       STRING_TO_JSVAL (str), NULL, NULL, JSPROP_ENUMERATE);
-#else
-      convert_tree_node_union (this, i, t, unionArray);
-#endif
+      convert_tree_node_union (this, i, t, obj);
     }
   }
   dehydra_unrootObject (this, rootedIndex);
-  return OBJECT_TO_JSVAL (unionArray);
+  return OBJECT_TO_JSVAL (obj);
 }
 
 void dehydra_plugin_pass (Dehydra *this) {

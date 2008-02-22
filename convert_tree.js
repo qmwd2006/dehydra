@@ -81,6 +81,7 @@ Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
 
 Unit.prototype.addStruct = function (fields, type_name, prefix) {
   var ls = [""]
+  ls.push ("if (!var) return JSVAL_VOID")
   ls.push ("JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, this->globalObj)")
   ls.push ("int key = dehydra_rootObject (this, OBJECT_TO_JSVAL (obj))")
   for each (var f in fields) {

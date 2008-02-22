@@ -1,3 +1,3 @@
 function process_tree(f, b) {
-  print(b)
+  print("process_tree:"+b)
 }
