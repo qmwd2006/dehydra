@@ -12,11 +12,12 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 	-I$(SM_INCLUDE) -I/$(HOME)/local/include/js/ 
 #-DDEBUG
 CFLAGS= -Wall -fPIC -DXP_UNIX -g3 $(INCLUDE)
+COMMON=dehydra.o dehydra_builtins.o util.o dehydra_types.o
 
-gcc_dehydra.so: dehydra.o plugin.o dehydra_builtins.o dehydra_ast.o dehydra_callbacks.o util.o dehydra_types.o dehydra_tree.o
+gcc_dehydra.so: dehydra_plugin.o dehydra_ast.o $(COMMON)
 	$(CC) -L$(HOME)/local/lib -L$(SM_LIBDIR) -ljs -shared -o $@ $+
 
-tree_hydra.so:
+gcc_treehydra.so: dehydra_tree.o treehydra_plugin.o $(COMMON)
 	$(CC) -L$(HOME)/local/lib -L$(SM_LIBDIR) -ljs -shared -o $@ $+
 
 %.o: %.c
@@ -24,16 +25,10 @@ tree_hydra.so:
 
 dehydra_ast.o: dehydra_ast.c dehydra_ast.h
 
-dehydra_callbacks.o: dehydra_callbacks.c dehydra_callbacks.h dehydra_ast.h dehydra.h
+treehydra_generated.h: gcc_cp_headers.h convert_tree.js
+	$(CXX) $(CFLAGS) -fplugin=./gcc_dehydra.so -fplugin-arg=convert_tree.js -fsyntax-only $< -o /dev/null
 
-#for the following CXX has to be a plugin-enabled compiler
-plugin.ii: plugin.c
-	mv plugin.o _plugin.o
-	$(MAKE) CC="$(CXX) -E -o $@" plugin.o
-	mv _plugin.o plugin.o
-
-plugin.ii.auto.h: plugin.ii convert_tree.js
-	$(CXX) -fpreprocessed -fplugin=./gcc_dehydra.so -fplugin-arg=convert_tree.js -fsyntax-only $< -o /dev/null
+dehydra_tree.o: dehydra_tree.c dehydra_tree.h treehydra_generated.h
 
 clean:
-	rm -f *.o gcc_dehydra.so *~ *.i
+	rm -f *.o *.so *~ *.ii *_generated.h

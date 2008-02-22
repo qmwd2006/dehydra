@@ -8,12 +8,8 @@ CXXFLAGS = $(PLUGINARG) -fplugin-arg=$(SCRIPT)
 
 all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o init.o virtual.o constructor.o types.o templ-spec.o constructor.o stack_fieldOf.o
 
-# these aren't run by default because the PATH has contain $GCCDIR
-g++: pipe warning
-
-%.o: %.cc  $(PLUGIN)
+%.o: %.cc $(PLUGIN)
 	$(CC1PLUS) $(CXXFLAGS) $< -o /dev/null
-	rm -f $@
 
 #tests workaround for outputing to stdout when shouldn't
 pipe: destr_order.cc

@@ -165,7 +165,8 @@ static jsval tree_convert (Dehydra *this, tree t) {
 }
 
 static jsval convert_tree_node (Dehydra *this, tree t);
-#include "plugin.ii.auto.h"
+
+#include "treehydra_generated.h"
 
 static jsval convert_tree_node (Dehydra *this, tree t) {
   JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 

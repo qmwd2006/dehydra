@@ -1,25 +1,13 @@
-#include <config.h>
-#include <system.h>
-#include <coretypes.h>
-#include <tm.h>
-#include <tree.h>
-#include <cp-tree.h>
-#include <cxx-pretty-print.h>
-#include <tree-iterator.h>
-#include <pointer-set.h>
-#include <toplev.h>
+#include "gcc_cp_headers.h"
 
-#include <pointer-set.h>
-#include <errors.h>
-#include <diagnostic.h>
-/*C++ headers*/
-#include <cp-tree.h>
-#include <cxx-pretty-print.h>
-
+/*js*/
+#include <jsapi.h>
 #include "xassert.h"
-#include "dehydra_callbacks.h"
+#include "dehydra.h"
+#include "dehydra_ast.h"
 
 static int processed = 0;
+static Dehydra dehydra = {0};
 
 static void process(tree);
 static void process_type(tree t);
@@ -50,7 +38,7 @@ static void process_namespace_decl (tree ns) {
 }
 
 static void process_decl (tree f) {
-  visitDecl(f);
+  dehydra_visitDecl (&dehydra, f);
 }
 
 static void process_record_type (tree c) {
@@ -89,7 +77,7 @@ static void process_record_type (tree c) {
     process(field);
     //fprintf(stderr, "%s: member %s\n", loc(c), tree_code_name[TREE_CODE(field)]);
   }
-  visitClass(c);
+  dehydra_visitClass (&dehydra, c);
   //fprintf(stderr, "/class //%s\n", type_as_string(c, 0));
 }
 
@@ -157,7 +145,7 @@ int gcc_plugin_init(const char *file, const char* arg) {
     error ("Use -fplugin-arg=<scriptname> to specify the dehydra script to run");
     return 1;
   }
-  return initDehydra(file, arg);
+  return dehydra_init (&dehydra, file,  arg);
 }
 
 /* template instations happen late
@@ -177,7 +165,7 @@ int gcc_plugin_post_parse() {
 
   pointer_set_destroy (pset);
   pointer_set_destroy (type_pset);
-  input_endDehydra();
+  dehydra_input_end (&dehydra);
   postGlobalNamespace = 1;
   return 0;
 }
@@ -186,9 +174,10 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
   if (DECL_CLONED_FUNCTION_P (fndecl)) return;
   if (DECL_ARTIFICIAL(fndecl)) return;
   
-  cp_pre_genericizeDehydra(fndecl, postGlobalNamespace);
+  dehydra_cp_pre_genericize(&dehydra, fndecl, postGlobalNamespace);
 }
 
+// TODO:delete me
 void gcc_plugin_pass (void) {
-  plugin_passDehydra ();  
+
 }

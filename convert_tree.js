@@ -175,7 +175,7 @@ function process_var(v) {
   var unit = new Unit();
   convert(unit, skipTypedef(v.type))
   var str = unit.toString()
-  var fname = this.base_name + ".auto.h"
+  var fname = "treehydra_generated.h"
   write_file (fname, str)
   print ("Generated " + fname)
 }
