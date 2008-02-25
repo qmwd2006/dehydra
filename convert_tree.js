@@ -21,11 +21,12 @@ function skipTypedef (type) {
   return type
 }
 
-function Field (type, name, tag, isPointer) {
+function Field (type, name, tag, isPointer, arrayLengthExpr) {
   this.type = type
   this.name = name
   this.tag = tag
   this.isPointer = isPointer
+  this.arrayLengthExpr = arrayLengthExpr
 }
 
 Field.prototype.toString = function () {
@@ -85,9 +86,23 @@ Unit.prototype.addStruct = function (fields, type_name, prefix) {
   ls.push ("JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, this->globalObj)")
   ls.push ("int key = dehydra_rootObject (this, OBJECT_TO_JSVAL (obj))")
   for each (var f in fields) {
-    var deref = f.isPointer ? "" : "&"
-    ls.push ("dehydra_defineProperty (this, obj, \"" + f.name + "\", " 
-             + "convert_" + f.type + " (this, " + deref + "var->" + f.name + "))")
+    var deref = f.isPointer ? "" : "&";
+    if (!f.arrayLengthExpr) {
+        ls.push ("dehydra_defineProperty (this, obj, \"" + f.name + "\", " 
+        + "convert_" + f.type + " (this, " + deref + "var->" + f.name + "))")
+    } else {
+      var lls = ["  {", "size_t i;"]
+      lls.push ("JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);")
+      lls.push ("dehydra_defineProperty (this, obj, \"" 
+                + f.name + "\", OBJECT_TO_JSVAL (destArray));")
+      lls.push ("for (i = 0; i < " + f.arrayLengthExpr + "; i++) {");
+      lls.push ("  jsval val = convert_" + f.type + " (this, "
+                + deref + "var->" + f.name + "[i]);");
+      lls.push ("  JS_DefineElement (this->cx, destArray, i, val, NULL, NULL, JSPROP_ENUMERATE);");
+      lls.push ("}")
+      lls.push ("}")
+      ls.push (lls.join("\n    "))
+    }
   }
   ls.push ("dehydra_unrootObject (this, key)")
   ls.push ("return OBJECT_TO_JSVAL (obj);")
@@ -127,7 +142,28 @@ function getPrefix (aggr) {
 function isPointer (type) {
   if (type.typedef)
     return isPointer (type.typedef)
-  return type.isPointer || type.isArray
+  else if (type.isArray)
+    return isPointer (type.type)
+  return type.isPointer;
+}
+
+// should probly combine attribute extraction into an eval-happy general solution
+function getUnionTag (attributes) {
+  for each (var a in attributes) {
+    if (a.name != "user")
+      continue;
+    var m = /tag.*\("([A-Z0-9_]+)"\)/(a.value)
+    if (m) return m[1]
+  }
+}
+
+function getLengthExpr (attributes) {
+  for each (var a in attributes) {
+    if (a.name != "user")
+      continue;
+    var m = /length\s*\(\s*"(.+)"\s*\)/(a.value);
+    if (m) return m[1].replace(/%h/, "(*var)") 
+  }  
 }
 
 function convert (unit, aggr) {
@@ -139,26 +175,27 @@ function convert (unit, aggr) {
   for each (var m in aggr.members) {
     var type = skipTypedef(m.type)
     if (type.kind != "struct"
-        && !(type.name == "tree_node")) 
+        /*&& type.name != "tree_node"*/) 
       continue
     var subf  = convert (unit, type)
     if (subf)
       subf.addComment("Used in " + m.loc + ";")
     
     var tag;
+    var lengthExpr;
     if (isUnion) {
       // GTY tags help figure out which field of a union to use
-      var match = /"(.+)"/(getLine(m.loc))
-      if (match)
-        tag = match[1]
-      else
-        print (m.loc)
+      tag = getUnionTag(m.attributes);
+    } else {
+      lengthExpr = getLengthExpr (m.attributes)
     }
+    
     var name = /([^:]+)$/(m.name)[1]
     ls.push (new Field (type.name,
                         name,
                         tag,
-                        isPointer(m.type)))
+                        isPointer(m.type),
+                        lengthExpr))
   }
   var ret
   if (isUnion) {
