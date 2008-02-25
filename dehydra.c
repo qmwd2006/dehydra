@@ -234,7 +234,7 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   if (attributes) {
     JSObject *tmp = JS_NewArrayObject (this->cx, 0, NULL);
     dehydra_defineProperty (this, obj, ATTRIBUTES, OBJECT_TO_JSVAL (tmp));
-    dehydra_addAttributes (this, obj, attributes);
+    dehydra_addAttributes (this, tmp, attributes);
   }
   if (TREE_STATIC (v))
     dehydra_defineProperty (this, obj, STATIC, JSVAL_TRUE);
