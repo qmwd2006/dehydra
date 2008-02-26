@@ -119,6 +119,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case INIT_EXPR: 
     {
       tree lval = GENERIC_TREE_OPERAND (*tp, 0);
+      tree init = GENERIC_TREE_OPERAND(*tp, 1);
       /* TODO dehydra_makeVar should check the entry prior to the one it adds
          to see if it's the same thing and then nuke the new one and return old one
          this will avoid gcc annoynace with
@@ -130,20 +131,19 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       /* now add constructor */
       /* note here we are assuming that last addVar as the last declaration */
       /* op 0 is an anonymous temporary..i think..so use last var instead */
-      jsval val = dehydra_attachNestedFields (this, obj, ASSIGN, 
-                                                GENERIC_TREE_OPERAND(*tp, 1));
+      jsval val = dehydra_attachNestedFields (this, obj, ASSIGN, init); 
       /* Now do special case for stack variables being initialized by a constructor*/
       JSObject *assignArray = JSVAL_TO_OBJECT (val);
       unsigned int assignArrayLength = 
         dehydra_getArrayLength (this, assignArray);
-      if (assignArrayLength) {
+      /* Ensure the world makes sense and nothing but except for a possible
+         constructor is in assignArray */
+      if (assignArrayLength == 1) {
         JS_GetElement (this->cx, assignArray, 0, &val);
         JSObject *objConstructor = JSVAL_TO_OBJECT (val);
         /* verify that we got a constructor */
         JS_GetProperty(this->cx, objConstructor, DH_CONSTRUCTOR, &val);
         if (val == JSVAL_TRUE) {
-          /* Ensure the world makes sense and nothing but the constructor is in assignArray */
-          xassert (assignArrayLength == 1);
           /* swap obj<->objConstructor if constructor */
           dehydra_defineProperty (this, objConstructor, FIELD_OF, 
                                   OBJECT_TO_JSVAL (obj));
