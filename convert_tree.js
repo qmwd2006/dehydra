@@ -21,12 +21,13 @@ function skipTypeWrappers (type) {
   return type
 }
 
-function Field (type, name, tag, isPointer, arrayLengthExpr) {
+function Field (type, name, tag, isPointer, arrayLengthExpr, cast) {
   this.type = type
   this.name = name
   this.tag = tag
   this.isPointer = isPointer
   this.arrayLengthExpr = arrayLengthExpr
+  this.cast = cast
 }
 
 Field.prototype.toString = function () {
@@ -80,6 +81,12 @@ Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
                   ls.join ("\n  ")));
 }
 
+function callConvert (type, name, deref, cast) {
+  if (!cast) cast = ""
+  else cast = "(" + cast + ") "
+  return "convert_" + type + " (this, " + cast + deref + "var->" + name + ")"
+}
+
 Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
   var ls = []
   if (isGTY)
@@ -97,15 +104,15 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
     var deref = f.isPointer ? "" : "&";
     if (!f.arrayLengthExpr) {
         ls.push ("dehydra_defineProperty (this, obj, \"" + f.name + "\", " 
-        + "convert_" + f.type + " (this, " + deref + "var->" + f.name + "))")
+                 + callConvert (f.type, f.name, deref, f.cast) + ");")
     } else {
       var lls = ["  {", "size_t i;"]
       lls.push ("JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);")
       lls.push ("dehydra_defineProperty (this, obj, \"" 
                 + f.name + "\", OBJECT_TO_JSVAL (destArray));")
       lls.push ("for (i = 0; i < " + f.arrayLengthExpr + "; i++) {");
-      lls.push ("  jsval val = convert_" + f.type + " (this, "
-                + deref + "var->" + f.name + "[i]);");
+      lls.push ("  jsval val = "
+                + callConvert (f.type, f.name + "[i]", deref, f.cast) + ";")
       lls.push ("  JS_DefineElement (this->cx, destArray, i, val, NULL, NULL, JSPROP_ENUMERATE);");
       lls.push ("}")
       lls.push ("}")
@@ -183,6 +190,26 @@ function isSpecial (attributes) {
   }  
 }
 
+var type_guard = {}
+
+function isCharStar (type) {
+  while (type.typedef)
+    type = type.typedef
+
+  if (!type.isPointer) return false
+  type = type.type
+  while (type.typedef)
+    type = type.typedef
+  return type.name && /char/(type.name) != undefined
+}
+
+function isUnsigned (type) {
+  while (type.typedef)
+    type = type.typedef
+  return type.name && /unsigned/ (type.name) != undefined
+}
+
+// meaty part of the script
 function convert (unit, aggr) {
   if (!aggr || aggr.kind == "enum" || unit.guard(aggr)) {
     return
@@ -191,36 +218,52 @@ function convert (unit, aggr) {
   var isUnion = aggr.kind == "union"
   for each (var m in aggr.members) {
     var type = skipTypeWrappers (m.type)
-    if (type.kind != "struct"
-        && type.name != "tree_node")  {
-      //print(type.name +" " +  m.name + " " + m.loc)
+    var type_name = type.name
+    var tag = undefined
+    var lengthExpr = undefined
+    var cast = undefined
+    var pointer = isPointer(m.type)
+
+    if (isCharStar (m.type)) {
+      type_name = "char_star"
+      cast = "char *"
+    } else if (isUnsigned(m.type)) {
+      type_name = "int"
+      cast = "int"
+      pointer = true
+    } else if (type.kind == "struct"
+             || type.name == "tree_node") {
+      var subf  = convert (unit, type)
+      if (subf)
+        subf.addComment("Used in " + m.loc + ";")
+
+      if (isUnion) {
+        // GTY tags help figure out which field of a union to use
+        tag = getUnionTag(m.attributes);
+      } else {
+        lengthExpr = getLengthExpr (m.attributes)
+      }
+    } else {
+      if (!type_guard[type_name]) {
+        type_guard[type_name] = type_name
+        print("Unhandled " + type_name +" " +  m.name + " " + m.loc)
+      }
       continue
     }
     if (isSpecial (m.attributes)) {
       print (aggr.name + "::" + m.name + " is special.Skipping...")
       continue
     }
-    var subf  = convert (unit, type)
-    if (subf)
-      subf.addComment("Used in " + m.loc + ";")
-    
-    var tag;
-    var lengthExpr;
-    if (isUnion) {
-      // GTY tags help figure out which field of a union to use
-      tag = getUnionTag(m.attributes);
-    } else {
-      lengthExpr = getLengthExpr (m.attributes)
-    }
     
     var name = /([^:]+)$/(m.name)[1]
-    ls.push (new Field (type.name,
+    ls.push (new Field (type_name,
                         name,
                         tag,
-                        isPointer(m.type),
-                        lengthExpr))
+                        pointer,
+                        lengthExpr,
+                       cast))
   }
-  var ret
+  var ret = undefined
   var isGTY = aggr.attributes && aggr.attributes.length
   if (isUnion) {
     ret = unit.addUnion (ls, aggr.name, "tree_node_structure_enum", isGTY)

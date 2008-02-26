@@ -168,6 +168,14 @@ static jsval convert_tree_node (Dehydra *this, tree t);
 
 static struct pointer_map_t *jsobjMap = NULL;
 
+static jsval convert_int (Dehydra *this, int i) {
+  return INT_TO_JSVAL (i);
+}
+ 
+static jsval convert_char_star (Dehydra *this, const char *str) {
+  return STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, str));
+}
+
 #include "treehydra_generated.h"
 
 static jsval convert_tree_node (Dehydra *this, tree t) {
