@@ -7,7 +7,7 @@
 #include <config.h>
 #include <system.h>
 #include <coretypes.h>
-#define GTY(x) __attribute__((user (#x)))
+#define GTY(x) __attribute__((user (("gty:"#x))))
 #include <tm.h>
 #include <tree.h>
 #include <cp-tree.h>

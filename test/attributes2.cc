@@ -9,6 +9,5 @@ public:
 class Klass {
 };
 
-void i() {
-  A<Klass> foo;
-}
+A<Klass> foo;
+

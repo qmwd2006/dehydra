@@ -157,7 +157,7 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
     obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
                               this->globalObj);
     dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
-    v = *pointer_map_insert (typeMap, type) = obj;
+    *pointer_map_insert (typeMap, type) = obj;
   }
   tree next_type = NULL_TREE;
   tree type_decl = TYPE_NAME (type);

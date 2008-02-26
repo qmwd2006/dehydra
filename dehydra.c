@@ -258,7 +258,7 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
   jsval process_function = dehydra_getCallback (this, "process_function");
   if (process_function == JSVAL_VOID) return;
 
-  void **v = pointer_map_contains(this->fndeclMap, f);
+  void **v = pointer_map_contains (this->fndeclMap, f);
   if (!v) {
     return;
     /*fprintf (stderr, "%s: ", loc_as_string (location_of (f)));

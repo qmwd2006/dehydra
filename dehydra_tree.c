@@ -166,9 +166,12 @@ static jsval tree_convert (Dehydra *this, tree t) {
 
 static jsval convert_tree_node (Dehydra *this, tree t);
 
+static struct pointer_map_t *jsobjMap = NULL;
+
 #include "treehydra_generated.h"
 
 static jsval convert_tree_node (Dehydra *this, tree t) {
+  if (!t) return JSVAL_VOID;
   JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
                                       this->globalObj);
   int rootedIndex = dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
@@ -193,6 +196,9 @@ void dehydra_plugin_pass (Dehydra *this) {
     dtrees.rootedTreesArray = JS_NewArrayObject(this->cx, 0, NULL);
     dehydra_rootObject (this, OBJECT_TO_JSVAL (dtrees.rootedTreesArray));
     dtrees.treeMap = pointer_map_create ();
+  }
+  if (!jsobjMap) {
+    jsobjMap = pointer_map_create ();
   }
   JSObject *fObj = dehydra_addVar (this, current_function_decl, 
                                    dtrees.rootedTreesArray);

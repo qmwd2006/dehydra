@@ -9,7 +9,7 @@ function getLine(loc) {
   return fbody[loc[1] - 1]
 }
 
-function skipTypedef (type) {
+function skipTypeWrappers (type) {
   while (type) {
     if (type.typedef)
       type = type.typedef
@@ -80,11 +80,19 @@ Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
                   ls.join ("\n  ")));
 }
 
-Unit.prototype.addStruct = function (fields, type_name, prefix) {
-  var ls = [""]
+Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
+  var ls = []
+  if (isGTY)
+    ls.push ("void **v")
   ls.push ("if (!var) return JSVAL_VOID")
+  if (isGTY) {
+    ls.push ("v = pointer_map_contains (jsobjMap, var)")
+    ls.push ("if (v) return (jsval) *v")
+  }
   ls.push ("JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, this->globalObj)")
-  ls.push ("int key = dehydra_rootObject (this, OBJECT_TO_JSVAL (obj))")
+  if (isGTY)
+    ls.push ("*pointer_map_insert (jsobjMap, var) = obj")
+  ls.push ( (isGTY ? "int key = ":"") + "dehydra_rootObject (this, OBJECT_TO_JSVAL (obj))")
   for each (var f in fields) {
     var deref = f.isPointer ? "" : "&";
     if (!f.arrayLengthExpr) {
@@ -104,7 +112,8 @@ Unit.prototype.addStruct = function (fields, type_name, prefix) {
       ls.push (lls.join("\n    "))
     }
   }
-  ls.push ("dehydra_unrootObject (this, key)")
+  if (isGTY)
+    ls.push ("dehydra_unrootObject (this, key)")
   ls.push ("return OBJECT_TO_JSVAL (obj);")
   var f = new Function (
     "convert_" + type_name + " (Dehydra *this, " + prefix + " " + type_name + "* var)",
@@ -152,7 +161,7 @@ function getUnionTag (attributes) {
   for each (var a in attributes) {
     if (a.name != "user")
       continue;
-    var m = /tag.*\("([A-Z0-9_]+)"\)/(a.value)
+    var m = /tag\s*\("([A-Z0-9_]+)"\)/(a.value)
     if (m) return m[1]
   }
 }
@@ -166,6 +175,14 @@ function getLengthExpr (attributes) {
   }  
 }
 
+function isSpecial (attributes) {
+  for each (var a in attributes) {
+    if (a.name != "user")
+      continue;
+    if (/special/(a.value)) return true
+  }  
+}
+
 function convert (unit, aggr) {
   if (!aggr || aggr.kind == "enum" || unit.guard(aggr)) {
     return
@@ -173,10 +190,16 @@ function convert (unit, aggr) {
   var ls = []
   var isUnion = aggr.kind == "union"
   for each (var m in aggr.members) {
-    var type = skipTypedef(m.type)
+    var type = skipTypeWrappers (m.type)
     if (type.kind != "struct"
-        /*&& type.name != "tree_node"*/) 
+        && type.name != "tree_node")  {
+      //print(type.name +" " +  m.name + " " + m.loc)
       continue
+    }
+    if (isSpecial (m.attributes)) {
+      print (aggr.name + "::" + m.name + " is special.Skipping...")
+      continue
+    }
     var subf  = convert (unit, type)
     if (subf)
       subf.addComment("Used in " + m.loc + ";")
@@ -198,10 +221,11 @@ function convert (unit, aggr) {
                         lengthExpr))
   }
   var ret
+  var isGTY = aggr.attributes && aggr.attributes.length
   if (isUnion) {
-    ret = unit.addUnion (ls, aggr.name, "tree_node_structure_enum")
+    ret = unit.addUnion (ls, aggr.name, "tree_node_structure_enum", isGTY)
   } else if (aggr.kind == "struct") {
-    ret = unit.addStruct (ls, aggr.name, getPrefix(aggr))
+    ret = unit.addStruct (ls, aggr.name, getPrefix(aggr), isGTY)
   }
   return ret
 }
@@ -210,7 +234,7 @@ function process_var(v) {
   if (v.name != "global_namespace")
     return
   var unit = new Unit();
-  convert(unit, skipTypedef(v.type))
+  convert(unit, skipTypeWrappers(v.type))
   var str = unit.toString()
   var fname = "treehydra_generated.h"
   write_file (fname, str)
