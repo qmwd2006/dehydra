@@ -261,8 +261,6 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
   void **v = pointer_map_contains (this->fndeclMap, f);
   if (!v) {
     return;
-    /*fprintf (stderr, "%s: ", loc_as_string (location_of (f)));
-      fprintf (stderr, "No body for %s\n", decl_as_string (f, 0));*/
   }
   int key = (int) *v;
   this->statementHierarchyArray = 

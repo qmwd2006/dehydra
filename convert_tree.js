@@ -242,13 +242,17 @@ function convert (unit, aggr, unionTopLevel) {
     var type = skipTypeWrappers (m.type)
     var type_name = type.name
     var pointer = isPointer(m.type)
-
+    var type_kind = type.kind
     var tag = undefined
     var lengthExpr = undefined
     var cast = undefined
+    if (m.name == "tree_base::code") {
+      type_kind = "enum"
+      type = this.tree_code_type
+      type_name = type.name
+    }
 
-
-    if (type.kind == "struct"
+    if (type_kind == "struct"
         || type.name == "tree_node") {
       var subf  = convert (unit, type, isUnion)
       if (subf)
@@ -260,6 +264,9 @@ function convert (unit, aggr, unionTopLevel) {
       } else {
         lengthExpr = getLengthExpr (m.attributes)
       }
+    } else if (type_kind == "enum") {
+      pointer = true
+      convert (unit, type)
     } else if (isCharStar (m.type)) {
       type_name = "char_star"
       cast = "char *"
@@ -267,9 +274,6 @@ function convert (unit, aggr, unionTopLevel) {
       type_name = "int"
       cast = "int"
       pointer = true
-    } else if (type.kind == "enum") {
-      pointer = true
-      convert (unit, type)
     } else {
       if (!type_guard[type_name]) {
         type_guard[type_name] = type_name
@@ -305,6 +309,12 @@ function convert (unit, aggr, unionTopLevel) {
 }
 
 function process_var(v) {
+  //hack to capture the enum tree_code
+  if (v.name == "tree_code_var") {
+    this.tree_code_type = v.type
+    print ("woot") 
+  }
+
   if (v.name != "global_namespace")
     return
   var unit = new Unit();
@@ -314,8 +324,3 @@ function process_var(v) {
   write_file (fname, str)
   print ("Generated " + fname)
 }
-
-function process_tree (fn, tree) {
-//  print (uneval(tree))
-}
-
