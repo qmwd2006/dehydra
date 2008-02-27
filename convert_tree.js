@@ -56,7 +56,7 @@ Unit.prototype.toString = function () {
   var str = forwards.join (";\n");
   var bodies = this.functions.map (function (x) { 
     return "// " + x.comment + "\n"
-      + prefix + x.name + " {" + x.body + "\n}\n";
+      + prefix + x.name + " {\n  " + x.body + "\n}\n";
   })
   return "#define GENERATED_C2JS 1\n" + str + bodies.join ("\n")
 }
@@ -81,6 +81,24 @@ Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
                   ls.join ("\n  ")));
 }
 
+Unit.prototype.addEnum = function (fields, type_name) {
+  var ls = ["const char *str = NULL;"]
+  ls.push ("switch (var) {");
+  for each (var f in fields) {
+    ls.push ("case " + f.name + ":");
+    ls.push ("  str = \"" + f.name + "\";")
+    ls.push ("  break;")
+  }
+  ls.push ("default:")
+  ls.push ("  break;")
+  ls.push ("}")
+  ls.push ("return STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, str));")
+  this.functions.push (
+    new Function ("convert_" + type_name
+                  + " (Dehydra *this, enum " + type_name + " var)",
+                  ls.join ("\n  ")));
+}
+
 function callConvert (type, name, deref, cast) {
   if (!cast) cast = ""
   else cast = "(" + cast + ") "
@@ -99,7 +117,7 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
   ls.push ("JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, this->globalObj)")
   if (isGTY)
     ls.push ("*pointer_map_insert (jsobjMap, var) = obj")
-  ls.push ( (isGTY ? "int key = ":"") + "dehydra_rootObject (this, OBJECT_TO_JSVAL (obj))")
+  ls.push ( (!isGTY ? "int key = ":"") + "dehydra_rootObject (this, OBJECT_TO_JSVAL (obj))")
   for each (var f in fields) {
     var deref = f.isPointer ? "" : "&";
     if (!f.arrayLengthExpr) {
@@ -119,7 +137,7 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
       ls.push (lls.join("\n    "))
     }
   }
-  if (isGTY)
+  if (!isGTY)
     ls.push ("dehydra_unrootObject (this, key)")
   ls.push ("return OBJECT_TO_JSVAL (obj);")
   var f = new Function (
@@ -210,30 +228,29 @@ function isUnsigned (type) {
 }
 
 // meaty part of the script
-function convert (unit, aggr) {
-  if (!aggr || aggr.kind == "enum" || unit.guard(aggr)) {
+function convert (unit, aggr, unionTopLevel) {
+  if (!aggr || unit.guard(aggr)) {
     return
   }
   var ls = []
   var isUnion = aggr.kind == "union"
-  for each (var m in aggr.members) {
+  var isEnum = aggr.kind == "enum"
+  var aggr_ls = undefined
+  if (!isEnum)
+    aggr_ls = aggr.members
+  for each (var m in aggr_ls) {
     var type = skipTypeWrappers (m.type)
     var type_name = type.name
+    var pointer = isPointer(m.type)
+
     var tag = undefined
     var lengthExpr = undefined
     var cast = undefined
-    var pointer = isPointer(m.type)
 
-    if (isCharStar (m.type)) {
-      type_name = "char_star"
-      cast = "char *"
-    } else if (isUnsigned(m.type)) {
-      type_name = "int"
-      cast = "int"
-      pointer = true
-    } else if (type.kind == "struct"
-             || type.name == "tree_node") {
-      var subf  = convert (unit, type)
+
+    if (type.kind == "struct"
+        || type.name == "tree_node") {
+      var subf  = convert (unit, type, isUnion)
       if (subf)
         subf.addComment("Used in " + m.loc + ";")
 
@@ -243,10 +260,20 @@ function convert (unit, aggr) {
       } else {
         lengthExpr = getLengthExpr (m.attributes)
       }
+    } else if (isCharStar (m.type)) {
+      type_name = "char_star"
+      cast = "char *"
+    } else if (isUnsigned(m.type)) {
+      type_name = "int"
+      cast = "int"
+      pointer = true
+    } else if (type.kind == "enum") {
+      pointer = true
+      convert (unit, type)
     } else {
       if (!type_guard[type_name]) {
         type_guard[type_name] = type_name
-        print("Unhandled " + type_name +" " +  m.name + " " + m.loc)
+        print("Unhandled " + type_name + " " +  m.name + " " + m.loc)
       }
       continue
     }
@@ -261,15 +288,19 @@ function convert (unit, aggr) {
                         tag,
                         pointer,
                         lengthExpr,
-                       cast))
+                        cast))
   }
   var ret = undefined
-  var isGTY = aggr.attributes && aggr.attributes.length
+  var isGTY = !unionTopLevel && aggr.attributes && aggr.attributes.length
   if (isUnion) {
     ret = unit.addUnion (ls, aggr.name, "tree_node_structure_enum", isGTY)
   } else if (aggr.kind == "struct") {
     ret = unit.addStruct (ls, aggr.name, getPrefix(aggr), isGTY)
-  }
+  } else if (isEnum) {
+    ret = unit.addEnum (aggr.members.map(function (x) {
+      return new Field (undefined, x.name)
+    }), aggr.name)
+  } 
   return ret
 }
 

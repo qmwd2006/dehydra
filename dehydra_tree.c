@@ -179,20 +179,25 @@ static jsval convert_char_star (Dehydra *this, const char *str) {
 #include "treehydra_generated.h"
 
 static jsval convert_tree_node (Dehydra *this, tree t) {
+  void **v;
   if (!t) return JSVAL_VOID;
+  v = pointer_map_contains (jsobjMap, t);
+  if (v) return (jsval) *v;
+
   JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
                                       this->globalObj);
-  int rootedIndex = dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
+  *pointer_map_insert (jsobjMap, t) = obj;
+  dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
   enum tree_node_structure_enum i;
   enum tree_code code = TREE_CODE (t);
   i = tree_node_structure(t);
+  convert_tree_node_union (this, TS_BASE, t, obj);
   convert_tree_node_union (this, i, t, obj);
   for (i = 0; i < LAST_TS_ENUM;i++) {
     if (tree_contains_struct[code][i]) {
       convert_tree_node_union (this, i, t, obj);
     }
   }
-  dehydra_unrootObject (this, rootedIndex);
   return OBJECT_TO_JSVAL (obj);
 }
 
