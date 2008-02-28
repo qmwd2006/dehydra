@@ -72,8 +72,9 @@ JSBool Version(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
 void
 ReportError(JSContext *cx, const char *message, JSErrorReport *report)
 {
-  fflush(stdout);
   int error = JSREPORT_IS_EXCEPTION(report->flags);
+  jsval exn;
+  fflush(stdout);
   fprintf(stderr, "%s:%d: ", (report->filename ? report->filename : "NULL"),
           report->lineno);
   if (JSREPORT_IS_WARNING(report->flags)) fprintf(stderr, "JS Warning");
@@ -83,6 +84,29 @@ ReportError(JSContext *cx, const char *message, JSErrorReport *report)
   fprintf(stderr, ": %s\n", message);
   if (report->linebuf) {
     fprintf(stderr, "%s\n", report->linebuf);
+  }
+  if (error && JS_GetPendingException(cx, &exn)) {
+    jsval stack;
+    JS_GetProperty(cx, JSVAL_TO_OBJECT (exn), "stack", &stack);
+    char *str = JS_GetStringBytes (JSVAL_TO_STRING (stack));
+    int counter = 0;
+    do {
+      char *eol = strchr (str, '\n');
+      if (eol)
+        *eol = 0;
+      char *at = strrchr (str, '@');
+      if (!at) break;
+      *at = 0;
+      if (!*str) break;
+      fprintf (stderr, "%s:\t#%d: %s\n", at+1, counter++, str);
+      *at = '@';
+      if (eol) {
+        *eol = '\n';
+        str = eol + 1;
+      } else {
+        break;
+      }
+    } while (*str);
   }
   fflush(stderr);
   exit(1);
