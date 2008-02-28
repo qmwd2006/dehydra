@@ -6,16 +6,15 @@ function EnumValue (name, value) {
 EnumValue.prototype.toString = function () {
   return this.name
 }
-
-eval (read_file ("../tree_code.js"))
-eval (read_file ("../tree_code_class.js"))
+print ("got my stuff")
+eval (read_file ("../enums.js"))
 eval (read_file ("../useful_arrays.js"))
 
 function TREE_CODE_CLASS (node) {
 }
 
 function CHECK (tree_node, expected_code) {
-  if (tree_node.base.code.value != expected_code.value)
+  if (tree_node.base.code != expected_code)
     throw ("Expected " + expected_code + ", got " + tree_node.base.code)
   return tree_node
 }
@@ -61,14 +60,13 @@ function walk_tree (t, func, guard) {
   
   var walk_subtrees = func (t)
   code = TREE_CODE (t)
-  switch (code.name) {
-  case "STATEMENT_LIST":
+  switch (code) {
+  case STATEMENT_LIST:
     for (var i = tsi_start (t); !i.end (i); i.next()) {
       walk_tree (i.stmt (), func, guard);
     }
     break;
   default:
-    
   }
 }
 

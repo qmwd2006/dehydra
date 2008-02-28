@@ -32,17 +32,13 @@ static jsval convert_char_star (Dehydra *this, const char *str) {
   return STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, str));
 }
 
-static jsval convert_enum (Dehydra *this, const char *name, int value) {
-  jsval v = dehydra_getToplevelObject (this, name);
-  if (v != JSVAL_VOID)
-    return v;
-  
-  char buf[1024];
-  int len = sprintf (buf, "this.%s = new EnumValue (\"%s\", %d)",
-                     name, name, value);
-  xassert (JS_EvaluateScript (this->cx, this->globalObj, buf, len,
-                              "", 1, &v));
-  return v;
+static jsval get_enum_value (Dehydra *this, const char *name) {
+  jsval val = JSVAL_VOID;
+  JS_GetProperty(this->cx, this->globalObj, name, &val);
+  if (val == JSVAL_VOID) {
+    error ("EnumValue '%s' not found. enums.js isn't loaded", name);
+  }
+  return val;
 }
 
 #include "treehydra_generated.h"
