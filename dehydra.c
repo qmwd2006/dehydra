@@ -152,7 +152,7 @@ static int dehydra_loadScript (Dehydra *this, const char *filename) {
   return 0;
 }
 
-jsval dehydra_getCallback(Dehydra *this, char const *name) {
+jsval dehydra_getToplevelObject(Dehydra *this, char const *name) {
   jsval val = JSVAL_VOID;
   return (JS_GetProperty(this->cx, this->globalObj, name, &val)
           && val != JSVAL_VOID
@@ -244,7 +244,7 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
 }
 
 int dehydra_visitClass (Dehydra *this, tree c) {
-  jsval process_class = dehydra_getCallback(this, "process_class");
+  jsval process_class = dehydra_getToplevelObject(this, "process_class");
   if (process_class == JSVAL_VOID) return true;
   
   jsval rval, argv[1];
@@ -255,7 +255,7 @@ int dehydra_visitClass (Dehydra *this, tree c) {
 }
 
 static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
-  jsval process_function = dehydra_getCallback (this, "process_function");
+  jsval process_function = dehydra_getToplevelObject (this, "process_function");
   if (process_function == JSVAL_VOID) return;
 
   void **v = pointer_map_contains (this->fndeclMap, f);
@@ -281,7 +281,7 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
 }
 
 static void dehydra_visitVarDecl (Dehydra *this, tree d) {
-  jsval process_var = dehydra_getCallback (this, "process_var");
+  jsval process_var = dehydra_getToplevelObject (this, "process_var");
   if (process_var == JSVAL_VOID) return;
 
   /* this is a hack,basically does dehydra_rootObject manually*/
@@ -339,7 +339,7 @@ void dehydra_visitDecl (Dehydra *this, tree d) {
 }
 
 void dehydra_print(Dehydra *this, JSObject *obj) {
-  jsval print = dehydra_getCallback(this, "print");
+  jsval print = dehydra_getToplevelObject(this, "print");
   jsval rval, argv[1];
   argv[0] = OBJECT_TO_JSVAL(obj);
   xassert (JS_CallFunctionValue(this->cx, this->globalObj, print,
@@ -347,7 +347,7 @@ void dehydra_print(Dehydra *this, JSObject *obj) {
 }
 
 void dehydra_input_end (Dehydra *this) {
-  jsval input_end = dehydra_getCallback(this, "input_end");
+  jsval input_end = dehydra_getToplevelObject(this, "input_end");
   if (input_end == JSVAL_VOID) return;
   
   jsval rval;

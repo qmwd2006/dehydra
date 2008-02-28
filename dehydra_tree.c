@@ -32,6 +32,19 @@ static jsval convert_char_star (Dehydra *this, const char *str) {
   return STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, str));
 }
 
+static jsval convert_enum (Dehydra *this, const char *name, int value) {
+  jsval v = dehydra_getToplevelObject (this, name);
+  if (v != JSVAL_VOID)
+    return v;
+  
+  char buf[1024];
+  int len = sprintf (buf, "this.%s = new EnumValue (\"%s\", %d)",
+                     name, name, value);
+  xassert (JS_EvaluateScript (this->cx, this->globalObj, buf, len,
+                              "", 1, &v));
+  return v;
+}
+
 #include "treehydra_generated.h"
 
 static jsval convert_tree_node (Dehydra *this, tree t) {
@@ -67,7 +80,7 @@ walk_n_test (tree *tp, int *walk_subtrees, void *data)
 }
 
 void dehydra_plugin_pass (Dehydra *this) {
-  jsval process_tree = dehydra_getCallback(this, "process_tree");
+  jsval process_tree = dehydra_getToplevelObject(this, "process_tree");
   if (process_tree == JSVAL_VOID) return;
 
   if (!jsobjMap) {

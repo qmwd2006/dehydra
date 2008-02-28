@@ -10,7 +10,10 @@
 #define GTY(x) __attribute__((user (("gty:"#x))))
 #include <tm.h>
 #include <tree.h>
+
+/* special variables for convert_tree.js */
 enum tree_code tree_code_var;
+
 #include <cp-tree.h>
 #include <cxx-pretty-print.h>
 #include <tree-iterator.h>

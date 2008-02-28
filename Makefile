@@ -25,9 +25,15 @@ gcc_treehydra.so: dehydra_tree.o treehydra_plugin.o $(COMMON)
 
 dehydra_ast.o: dehydra_ast.c dehydra_ast.h
 
-treehydra_generated.h: gcc_cp_headers.h convert_tree.js
+treehydra_generated.h: gcc_cp_headers.h convert_tree.js useful_arrays.js
 #	$(CXX) $(CFLAGS) -fplugin=./gcc_dehydra.so -fplugin-arg=convert_tree.js -fsyntax-only $< -C -E -o foo.ii
 	$(CXX) -fshow-column $(CFLAGS) -fplugin=./gcc_dehydra.so -fplugin-arg=convert_tree.js -fsyntax-only $<
+
+useful_arrays.ii: useful_arrays.c
+	$(CC) $(INCLUDE) -E $< -o $@
+
+useful_arrays.js: useful_arrays.ii
+	sed -e 's/.*tree_code_class/var/' -e 's/^#.*//' -e 's/\[\]//' -e 's/{/[/' -e 's/}/]/' $< > $@
 
 dehydra_tree.o: dehydra_tree.c dehydra_tree.h treehydra_generated.h
 
