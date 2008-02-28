@@ -85,28 +85,32 @@ ReportError(JSContext *cx, const char *message, JSErrorReport *report)
   if (report->linebuf) {
     fprintf(stderr, "%s\n", report->linebuf);
   }
-  if (error && JS_GetPendingException(cx, &exn)) {
+  if (error && JS_GetPendingException(cx, &exn)
+      && JS_TypeOfValue (cx, exn) == JSTYPE_OBJECT) {
     jsval stack;
+    /* reformat the spidermonkey stack */
     JS_GetProperty(cx, JSVAL_TO_OBJECT (exn), "stack", &stack);
-    char *str = JS_GetStringBytes (JSVAL_TO_STRING (stack));
-    int counter = 0;
-    do {
-      char *eol = strchr (str, '\n');
-      if (eol)
-        *eol = 0;
-      char *at = strrchr (str, '@');
-      if (!at) break;
-      *at = 0;
-      if (!*str) break;
-      fprintf (stderr, "%s:\t#%d: %s\n", at+1, counter++, str);
-      *at = '@';
-      if (eol) {
-        *eol = '\n';
-        str = eol + 1;
-      } else {
-        break;
-      }
-    } while (*str);
+    if (JS_TypeOfValue (cx, stack) == JSTYPE_STRING) {
+      char *str = JS_GetStringBytes (JSVAL_TO_STRING (stack));
+      int counter = 0;
+      do {
+        char *eol = strchr (str, '\n');
+        if (eol)
+          *eol = 0;
+        char *at = strrchr (str, '@');
+        if (!at) break;
+        *at = 0;
+        if (!*str) break;
+        fprintf (stderr, "%s:\t#%d: %s\n", at+1, counter++, str);
+        *at = '@';
+        if (eol) {
+          *eol = '\n';
+          str = eol + 1;
+        } else {
+          break;
+        }
+      } while (*str);
+    }
   }
   fflush(stderr);
   exit(1);
