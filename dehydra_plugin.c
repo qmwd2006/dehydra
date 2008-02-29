@@ -104,6 +104,17 @@ static void process_type(tree t) {
     return;
   }
 
+  // dmandelin@mozilla.com -- bug 420299
+  // We need to process the original type first, because it will be the target
+  // of the typedef field. This is the natural extension of the DFS strategy.
+  tree type_decl = TYPE_NAME (t);
+  if (type_decl) {
+    tree original_type = DECL_ORIGINAL_TYPE (type_decl);
+    if (original_type) {
+      process_type(original_type);
+    }
+  }
+
   switch (TREE_CODE(t)) {
   case RECORD_TYPE:
     return process_record_type(t);
