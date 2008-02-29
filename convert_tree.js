@@ -152,9 +152,9 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
       ls.push (lls.join("\n    "))
     }
   }
-/*  if (!isGTY)
+  if (!isGTY)
     ls.push ("dehydra_unrootObject (this, key)")
- */ ls.push ("return OBJECT_TO_JSVAL (obj);")
+  ls.push ("return OBJECT_TO_JSVAL (obj);")
   var f = new Function (
     "convert_" + type_name + " (Dehydra *this, " + prefix + " " + type_name + "* var)",
     ls.join (";\n  "))
@@ -293,11 +293,11 @@ function convert (unit, aggr, unionTopLevel) {
     } else if (isCharStar (m.type)) {
       type_name = "char_star"
       cast = "char *"
-    } /*else if (isUnsigned(m.type)) {
+    } else if (isUnsigned(m.type)) {
       type_name = "int"
       cast = "int"
       pointer = true
-    } */else {
+    } else {
       if (!type_guard[type_name]) {
         type_guard[type_name] = type_name
         print("Unhandled " + type_name + " " +  m.name + " " + m.loc)
