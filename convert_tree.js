@@ -131,7 +131,7 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
   }
   ls.push ("JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, this->globalObj)")
   if (isGTY)
-    ls.push ("*pointer_map_insert (jsobjMap, var) = obj")
+    ls.push ("*pointer_map_insert (jsobjMap, var) = (void*) OBJECT_TO_JSVAL (obj)")
   ls.push ( (!isGTY ? "int key = ":"") + "dehydra_rootObject (this, OBJECT_TO_JSVAL (obj))")
   for each (var f in fields) {
     var deref = f.isPointer ? "" : "&";
@@ -152,9 +152,9 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
       ls.push (lls.join("\n    "))
     }
   }
-  if (!isGTY)
+/*  if (!isGTY)
     ls.push ("dehydra_unrootObject (this, key)")
-  ls.push ("return OBJECT_TO_JSVAL (obj);")
+ */ ls.push ("return OBJECT_TO_JSVAL (obj);")
   var f = new Function (
     "convert_" + type_name + " (Dehydra *this, " + prefix + " " + type_name + "* var)",
     ls.join (";\n  "))
@@ -223,6 +223,14 @@ function isSpecial (attributes) {
   }  
 }
 
+function isSkip (attributes) {
+  for each (var a in attributes) {
+    if (a.name != "user")
+      continue;
+    if (/skip/(a.value)) return true
+  }  
+}
+
 var type_guard = {}
 
 function isCharStar (type) {
@@ -285,11 +293,11 @@ function convert (unit, aggr, unionTopLevel) {
     } else if (isCharStar (m.type)) {
       type_name = "char_star"
       cast = "char *"
-    } else if (isUnsigned(m.type)) {
+    } /*else if (isUnsigned(m.type)) {
       type_name = "int"
       cast = "int"
       pointer = true
-    } else {
+    } */else {
       if (!type_guard[type_name]) {
         type_guard[type_name] = type_name
         print("Unhandled " + type_name + " " +  m.name + " " + m.loc)
@@ -297,8 +305,15 @@ function convert (unit, aggr, unionTopLevel) {
       continue
     }
     if (isSpecial (m.attributes)) {
-      print (aggr.name + "::" + m.name + " is special.Skipping...")
-      continue
+      if (m.name == "tree_exp::operands")
+        lengthExpr = "TREE_OPERAND_LENGTH ((tree) &(*var))";
+      else {
+        print (m.name + " is special. Skipping...")
+        continue
+      }
+    } else if (m.name == "ssa_use_operand_d::use") {
+      print ("Skipping " + m.name + ". For some reason can't see GTY(skip) for it")
+      continue;
     }
     
     var name = /([^:]+)$/(m.name)[1]
