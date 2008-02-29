@@ -51,8 +51,9 @@ static jsval convert_tree_node (Dehydra *this, tree t) {
 
   JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
                                       this->globalObj);
-  *pointer_map_insert (jsobjMap, t) = obj;
-  dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
+  const jsval jsvalObj = OBJECT_TO_JSVAL (obj);
+  *pointer_map_insert (jsobjMap, t) = (void*) jsvalObj;
+  dehydra_rootObject (this, jsvalObj);
   enum tree_node_structure_enum i;
   enum tree_code code = TREE_CODE (t);
   i = tree_node_structure(t);
@@ -63,14 +64,14 @@ static jsval convert_tree_node (Dehydra *this, tree t) {
       convert_tree_node_union (this, i, t, obj);
     }
   }
-  return OBJECT_TO_JSVAL (obj);
+  return jsvalObj;
 }
 
 static tree
 walk_n_test (tree *tp, int *walk_subtrees, void *data)
 {
   enum tree_code code = TREE_CODE (*tp);
-  fprintf(stderr, "walking tree element: %s \n", tree_code_name[code]);
+  fprintf(stderr, "walking tree element: %s %p\n", tree_code_name[code], *tp);
     //  *walk_subtrees = 0;
   return NULL_TREE;
 }
@@ -90,12 +91,12 @@ void dehydra_plugin_pass (Dehydra *this) {
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
+  walk_tree (&body_chain, walk_n_test, NULL, NULL);
   jsval bodyVal = convert_tree_node (this, body_chain);
   jsval rval, argv[2];
   argv[0] = OBJECT_TO_JSVAL (fObj);
   argv[1] = bodyVal;
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
                                  sizeof (argv)/sizeof (argv[0]), argv, &rval));
-  walk_tree (&body_chain, walk_n_test, NULL, NULL);
   dehydra_unrootObject (this, fnkey);
 }
