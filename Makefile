@@ -15,10 +15,10 @@ CFLAGS= -Wall -fPIC -DXP_UNIX -g3 $(INCLUDE)
 COMMON=dehydra.o dehydra_builtins.o util.o dehydra_types.o
 
 gcc_dehydra.so: dehydra_plugin.o dehydra_ast.o $(COMMON)
-	$(CC) -L$(HOME)/local/lib -L$(SM_LIBDIR) -ljs -shared -o $@ $+
+	$(CC) -L$(HOME)/local/lib -L$(SM_LIBDIR) -ljs -lm -shared -o $@ $+
 
 gcc_treehydra.so: dehydra_tree.o treehydra_plugin.o $(COMMON)
-	$(CC) -L$(HOME)/local/lib -L$(SM_LIBDIR) -ljs -shared -o $@ $+
+	$(CC) -L$(HOME)/local/lib -L$(SM_LIBDIR) -ljs -lm -shared -o $@ $+
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
