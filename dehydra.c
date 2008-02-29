@@ -108,9 +108,6 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
   JS_DefineElement (this->cx, this->rootedArgDestArray, 0,
                     OBJECT_TO_JSVAL (this->rootedFreeArray),
                     NULL, NULL, JSPROP_ENUMERATE);
-#ifdef DEBUG
-  JS_SetGCZeal (this->cx, 2);
-#endif
   JS_SetVersion (this->cx, (JSVersion) 170);
   dehydra_defineProperty (this, this->globalObj, "base_name", 
                           STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, 
@@ -338,12 +335,11 @@ void dehydra_visitDecl (Dehydra *this, tree d) {
   }
 }
 
-void dehydra_print(Dehydra *this, JSObject *obj) {
+void dehydra_print(Dehydra *this, jsval arg) {
   jsval print = dehydra_getToplevelObject(this, "print");
-  jsval rval, argv[1];
-  argv[0] = OBJECT_TO_JSVAL(obj);
+  jsval rval;
   xassert (JS_CallFunctionValue(this->cx, this->globalObj, print,
-                               1, argv, &rval));
+                               1, &arg, &rval));
 }
 
 void dehydra_input_end (Dehydra *this) {

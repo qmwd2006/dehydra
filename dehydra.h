@@ -50,7 +50,7 @@ int dehydra_visitClass(Dehydra *this, tree c);
 void dehydra_visitDecl (Dehydra *this, tree f);
 JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray);
 void dehydra_input_end (Dehydra *this);
-void dehydra_print(Dehydra *this, JSObject *obj);
+void dehydra_print(Dehydra *this, jsval val);
 jsval dehydra_getToplevelObject(Dehydra *this, char const *name);
 void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
                             tree attributes);
