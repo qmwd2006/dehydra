@@ -147,9 +147,10 @@ var depth = 0;
 // func should "return" via throw
 // *walk_subtrees=0 is the same as returning 0
 function walk_tree (t, func, guard) {
-  if (guard && guard.has (t))
+  if ((guard && guard.has (t))
+      || !t) {
     return
-
+  }
   guard.put (t)
   
   var walk_subtrees = func (t)
@@ -178,11 +179,19 @@ function walk_tree (t, func, guard) {
 
 //gczeal(2)
 function process_tree(f, b) {
-  function code_printer (x) {
+  function code_printer (t) {
     var str = "";
-    for (var i = 0;i < depth;i++)
+    for (var i = 0; i < depth; i++)
       str += " "
-    print (str + TREE_CODE (x))
+    var code = TREE_CODE (t)
+    str += code
+    switch (code) {
+    case CALL_EXPR:
+      str += " operands:" + uneval(t.exp.operands.map (function (x) {return typeof x}))
+    case ADDR_EXPR:
+      str += " length:" + TREE_OPERAND_LENGTH (t)
+    }
+    print (str)
   }
   walk_tree (b, code_printer, new Map())
 //  print("process_tree:"+b)
