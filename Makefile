@@ -13,14 +13,14 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 #-I/$(HOME)/local/include/js/ 
 CFLAGS= -Wall -fPIC -DXP_UNIX -g3 $(INCLUDE) -DDEBUG
 COMMON=dehydra.o dehydra_builtins.o util.o dehydra_types.o
-LDFLAGS=-lm -ljs -shared
+LDFLAGS=-L$(HOME)/local/lib -L$(SM_LIBDIR) -lm -ljs -shared
 TREEHYDRA_OBJS=dehydra_tree.o treehydra_plugin.o $(COMMON)
 
 gcc_dehydra.so: dehydra_plugin.o dehydra_ast.o $(COMMON)
-	$(CC) -L$(HOME)/local/lib -L$(SM_LIBDIR) $(LDFLAGS) -o $@ $+
+	$(CC) $(LDFLAGS) -o $@ $+
 
 gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
-	$(CC) -L$(HOME)/local/lib -L$(SM_LIBDIR) $(LDFLAGS) -o $@ $(TREEHYDRA_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(TREEHYDRA_OBJS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
