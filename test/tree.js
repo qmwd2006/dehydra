@@ -32,7 +32,7 @@ function IS_GIMPLE_STMT_CODE_CLASS (code_class) {
 }
 
 // comparable to CHECK_foo..except here foo is the second parameter
-function CHECK (tree_node, expected_code) {
+function TREE_CHECK (tree_node, expected_code) {
   if (TREE_CODE (tree_node) != expected_code)
     throw Error("Expected " + expected_code + ", got " + TREE_CODE (tree_node))
   return tree_node
@@ -46,24 +46,50 @@ function TREE_CLASS_CHECK (node, expected_code) {
 }
 
 function STATEMENT_LIST_HEAD(NODE) {
-  return CHECK (NODE, STATEMENT_LIST).stmt_list.head
+  return TREE_CHECK (NODE, STATEMENT_LIST).stmt_list.head
 }
 
 function VL_EXP_CLASS_P (node) {
   return TREE_CODE_CLASS (TREE_CODE (node)) == tcc_vl_exp
 }
 
-function VL_EXP_OPERAND_LENGTH (node) {
-  (TREE_CLASS_CHECK (node, tcc_vl_exp).exp.operands)
-  throw Error ("not implemented")
+function TREE_INT_CST (node) {
+  return TREE_CHECK (node, INTEGER_CST).int_cst.int_cst
 }
-// 
+
+function TREE_INT_CST_LOW (node) {
+  return TREE_INT_CST (node).low
+}
+
+function VL_EXP_OPERAND_LENGTH (node) {
+  return (TREE_INT_CST_LOW ((TREE_CLASS_CHECK (node, tcc_vl_exp).exp.operands[0])))
+}
+
 function TREE_OPERAND_LENGTH (node)
 {
   if (VL_EXP_CLASS_P (node))
     return VL_EXP_OPERAND_LENGTH (node);
   else
     return TREE_CODE_LENGTH (TREE_CODE (node));
+}
+
+function GIMPLE_STMT_P(NODE) {
+  return TREE_CODE_CLASS (TREE_CODE ((NODE))) == tcc_gimple_stmt
+}
+
+function TREE_OPERAND (node, i) {
+  return node.exp.operands[i]
+}
+
+function GIMPLE_STMT_OPERAND (node, i) {
+  return node.gstmt.operands[i]
+}
+
+function GENERIC_TREE_OPERAND (node, i)
+{
+  if (GIMPLE_STMT_P (node))
+    return GIMPLE_STMT_OPERAND (node, i);
+  return TREE_OPERAND (node, i);
 }
 
 function tree_stmt_iterator (ptr, container) {
@@ -117,6 +143,7 @@ Map.prototype.has = function (key) {
   this.keys.indexOf (key) != -1
 }
 
+var depth = 0;
 // func should "return" via throw
 // *walk_subtrees=0 is the same as returning 0
 function walk_tree (t, func, guard) {
@@ -126,6 +153,7 @@ function walk_tree (t, func, guard) {
   guard.put (t)
   
   var walk_subtrees = func (t)
+  depth++;
   code = TREE_CODE (t)
   switch (code) {
   case STATEMENT_LIST:
@@ -138,18 +166,24 @@ function walk_tree (t, func, guard) {
 	|| IS_GIMPLE_STMT_CODE_CLASS (TREE_CODE_CLASS (code)))
     {
       //    print(t.exp.operands)
-    //  var length = TREE_OPERAND_LENGTH (t)
-      //print ("length:" + length)
+      var length = TREE_OPERAND_LENGTH (t)
+      for (var i = 0; i < length;i++) {
+        walk_tree (GENERIC_TREE_OPERAND (t, i), func, guard)
+      }
     }
     break;
   }
+  depth--;
 }
 
 //gczeal(2)
 function process_tree(f, b) {
-  walk_tree (b, function (x) {
-    print (TREE_CODE (x))
-//    print (x.stmt_list.head.stmt)
-  }, new Map())
+  function code_printer (x) {
+    var str = "";
+    for (var i = 0;i < depth;i++)
+      str += " "
+    print (str + TREE_CODE (x))
+  }
+  walk_tree (b, code_printer, new Map())
 //  print("process_tree:"+b)
 }
