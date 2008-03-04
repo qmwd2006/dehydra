@@ -5,6 +5,7 @@
 #include "xassert.h"
 #include "dehydra.h"
 #include "dehydra_ast.h"
+#include "dehydra_types.h"
 
 static int processed = 0;
 static Dehydra dehydra = {0};
@@ -188,7 +189,7 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
   dehydra_cp_pre_genericize(&dehydra, fndecl, postGlobalNamespace);
 }
 
-// TODO:delete me
-void gcc_plugin_pass (void) {
-
+void gcc_plugin_finish_struct (tree t) {
+  dehydra_finishStruct (&dehydra, t);
 }
+

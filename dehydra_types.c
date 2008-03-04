@@ -30,6 +30,7 @@ static const char *INCOMPLETE = "isIncomplete";
 static struct pointer_map_t *typeMap = NULL;
 
 static jsval dehydra_convert (Dehydra *this, tree type);
+static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj);
 
 void dehydra_attachTypeAttributes (Dehydra *this, JSObject *obj, tree type) {
   JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);
@@ -140,6 +141,19 @@ static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tre
     }
 }
 
+void dehydra_finishStruct (Dehydra *this, tree type) {
+  if (!typeMap) return;
+  void **v = pointer_map_contains(typeMap, type);
+  if (!v) return;
+  JSObject *obj = (JSObject*) *v;
+  jsval incomplete = JSVAL_VOID;
+  JS_GetProperty(this->cx, obj, INCOMPLETE, &incomplete);
+  if (incomplete != JSVAL_TRUE) return;
+  JS_DeleteProperty (this->cx, obj, INCOMPLETE);
+  /* complete the type */
+  dehydra_convert2 (this, type, obj);
+}
+
 static jsval dehydra_convert (Dehydra *this, tree type) {
   void **v = pointer_map_contains(typeMap, type);
   JSObject *obj = NULL;
@@ -159,6 +173,10 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
     dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
     *pointer_map_insert (typeMap, type) = obj;
   }
+  return dehydra_convert2 (this, type, obj);
+}
+
+static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   tree next_type = NULL_TREE;
   tree type_decl = TYPE_NAME (type);
   if (type_decl != NULL_TREE) {
