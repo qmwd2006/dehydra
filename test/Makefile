@@ -6,7 +6,7 @@ PLUGINARG = -fplugin=$(PLUGIN)
 SCRIPT=test.js
 CXXFLAGS = $(PLUGINARG) -fplugin-arg=$(SCRIPT)
 
-all: test.o assign.o longevity.o attributes.o typedef.o operator_new.o destr_order.o init.o virtual.o constructor.o types.o templ-spec.o constructor.o stack_fieldOf.o
+all: test.o assign.o longevity.o typedef.o operator_new.o destr_order.o init.o virtual.o constructor.o types.o templ-spec.o constructor.o stack_fieldOf.o
 
 %.o: %.cc $(PLUGIN)
 	$(CC1PLUS) $(CXXFLAGS) $< -o /dev/null
