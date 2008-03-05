@@ -109,9 +109,11 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
                     OBJECT_TO_JSVAL (this->rootedFreeArray),
                     NULL, NULL, JSPROP_ENUMERATE);
   JS_SetVersion (this->cx, (JSVersion) 170);
-  dehydra_defineProperty (this, this->globalObj, "base_name", 
-                          STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, 
-                                                         dump_base_name)));
+  if (aux_base_name) {
+    jsval strval = STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, 
+                                                       dump_base_name));
+    dehydra_defineProperty (this, this->globalObj, "aux_base_name", strval);
+  }
   if (dehydra_loadScript (this, "system.js")) return 1;
   return dehydra_loadScript (this, script);
 }
