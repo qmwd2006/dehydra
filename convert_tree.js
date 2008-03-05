@@ -261,6 +261,8 @@ function convert (unit, aggr, unionTopLevel) {
   var aggr_ls = undefined
   if (!isEnum)
     aggr_ls = aggr.members
+
+  var oldloc = this._loc
   for each (var m in aggr_ls) {
     var type = skipTypeWrappers (m.type)
     var type_name = type.name
@@ -273,6 +275,11 @@ function convert (unit, aggr, unionTopLevel) {
       type_kind = "enum"
       type = this.tree_code_type
       type_name = type.name
+    }
+    this._loc = m.loc
+    if (m.name == "emit_status::x_regno_reg_rtx") {
+      print ("Skipping m.name because it causes issues I don't feel like dealing with")
+      continue;
     }
 
     if (type_kind == "struct"
@@ -324,6 +331,7 @@ function convert (unit, aggr, unionTopLevel) {
                         lengthExpr,
                         cast))
   }
+  this._loc = oldloc
   var ret = undefined
   var isGTY = !unionTopLevel && aggr.attributes && aggr.attributes.length
   if (isUnion) {
