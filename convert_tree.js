@@ -348,9 +348,16 @@ function process_var(v) {
       unit.registerEnumValue (m.name, m.value)
     }
   }
+  // TODO: stop depending on global_namespace and use process_class
   if (v.name != "global_namespace")
     return
-  convert(unit, skipTypeWrappers(v.type))
+  // little sanity check
+  var tree_type = skipTypeWrappers(v.type)
+  if (!tree_type.attributes) {
+    throw new Error (tree_type.name + " doesn't have attributes defined. GTY as attribute stuff must be busted.")
+  }
+
+  convert(unit, tree_type)
   var str = unit.toString()
   var fname = "treehydra_generated.h"
   write_file (fname, str)
