@@ -140,27 +140,27 @@ Map.prototype.get = function (key) {
 }
 
 Map.prototype.has = function (key) {
-  this.keys.indexOf (key) != -1
+  return this.keys.indexOf (key) != -1
 }
 
 // func should "return" via throw
 // *walk_subtrees=0 is the same as returning 0
-function walk_tree (t, func, guard, depth) {
+function walk_tree (t, func, guard, stack) {
   if ((guard && guard.has (t))
       || !t) {
     return
   }
   guard.put (t)
-  if (!depth)
-    depth = 0;
-  var walk_subtrees = func (t, depth)
+  if (!stack)
+    stack = [];
+  var walk_subtrees = func (t, stack)
 
-  depth++;
   code = TREE_CODE (t)
+  stack.push (code)
   switch (code) {
   case STATEMENT_LIST:
     for (var i = tsi_start (t); !i.end (i); i.next()) {
-      walk_tree (i.stmt (), func, guard, depth);
+      walk_tree (i.stmt (), func, guard, stack);
     }
     break;
   default:
@@ -170,25 +170,61 @@ function walk_tree (t, func, guard, depth) {
       //    print(t.exp.operands)
       var length = TREE_OPERAND_LENGTH (t)
       for (var i = 0; i < length;i++) {
-        walk_tree (GENERIC_TREE_OPERAND (t, i), func, guard, depth)
+        walk_tree (GENERIC_TREE_OPERAND (t, i), func, guard, stack)
       }
     }
     break;
   }
-  depth--;
+  stack.pop ()
 }
 
+function pretty_walk (b, limit) {
+  var counter = 0;
+  function code_printer (t, depth) {
+    if (++counter == limit) throw "done"
+
+    var str = "";
+    for (var i = 0; i< depth.length;i++)
+      str += " "
+    var code = TREE_CODE (t)
+    str += code
+    switch (code) {
+    case CALL_EXPR:
+      str += " operands:" + uneval(t.exp.operands.map (function (x) {return typeof x}))
+    case ADDR_EXPR:
+      str += " length:" + TREE_OPERAND_LENGTH (t)
+    }
+    print (str)
+  }
+  try {
+    walk_tree (b, code_printer, new Map())
+  } catch (e if e == "done") {
+  }
+
+}
 /* Gets the C printout of the current function body
  and ensures that the js traversal matches */
 function sanity_check (b) {
   var c_walkls = C_walk_tree().split("\n")
   var current_tree_node = 0;
   
-  function checker (t) {
+  function checker (t, stack) {
+    function bail_info () {
+      print ("C Walk:\n" + c_walkls.slice (0, current_tree_node+1).join("\n"))
+      print ("JS Walk:")
+      pretty_walk (b, current_tree_node + 1)
+      if (stack.length)
+        print ("Within " + stack.pop())
+    }
     var code = TREE_CODE (t)
     var strname = tree_code_name[code.value]
+    if (current_tree_node == c_walkls.length) {
+      bail_info()
+      throw new Error ("walk_tree made me walk more nodes than the C version. on " + code)
+    }
     if (c_walkls[current_tree_node] != strname) {
-      throw Error ("walk_tree in C differs from JS version, expected " 
+      bail_info();
+      throw new Error ("walk_tree in C differs from JS, at " + current_tree_node + " expected " 
                    + c_walkls[current_tree_node] + " instead of "
                    + strname)
     }

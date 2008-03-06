@@ -24,8 +24,9 @@ virtual.o: virtual.cc
 	$(CC1PLUS) $(PLUGINARG) -fplugin-arg=print-functions.js -fpreprocessed $< -o $@ 	
 	rm -f $@
 
-tree: noassign.cc tree.js
-	$(CC1PLUS) $(PLUGINARG) -fplugin-arg=tree.js -fpreprocessed $< -o /dev/null 
+tree: tree.js ../gcc_treehydra.so
+	$(MAKE) PLUGIN=../gcc_treehydra.so SCRIPT=tree.js
+#	$(CC1PLUS) $(PLUGINARG) -fplugin-arg=tree.js -fpreprocessed $< -o /dev/null 
 
 clean:
 	rm -f *.o *~ a.out
