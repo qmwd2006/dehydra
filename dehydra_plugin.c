@@ -42,7 +42,7 @@ static void process_decl (tree f) {
   dehydra_visitDecl (&dehydra, f);
 }
 
-static void process_record_type (tree c) {
+static void process_record_or_union_type (tree c) {
   tree field, func;
   if (!COMPLETE_TYPE_P (c)) return;
 
@@ -52,7 +52,7 @@ static void process_record_type (tree c) {
 
   /* iterate over base classes to ensure they are visited first */
   tree binfo = TYPE_BINFO (c);
-  int n_baselinks = BINFO_N_BASE_BINFOS (binfo);
+  int n_baselinks = binfo ? BINFO_N_BASE_BINFOS (binfo) : 0;
   int i;
   for (i = 0; i < n_baselinks; i++)
     {
@@ -78,8 +78,13 @@ static void process_record_type (tree c) {
     process(field);
     //fprintf(stderr, "%s: member %s\n", loc(c), tree_code_name[TREE_CODE(field)]);
   }
-  dehydra_visitClass (&dehydra, c);
+  xassert (COMPLETE_TYPE_P (c));
+  dehydra_visitType (&dehydra, c);
   //fprintf(stderr, "/class //%s\n", type_as_string(c, 0));
+}
+
+static void process_enumeral_type (tree enumeral) {
+  dehydra_visitType (&dehydra, enumeral);
 }
 
 static void process_type_decl (tree t) {
@@ -118,7 +123,10 @@ static void process_type(tree t) {
 
   switch (TREE_CODE(t)) {
   case RECORD_TYPE:
-    return process_record_type(t);
+  case UNION_TYPE:
+    return process_record_or_union_type (t);
+  case ENUMERAL_TYPE:
+    return process_enumeral_type (t);
   default:
     /*    fprintf(stderr, "Unhandled type:%s\n", tree_code_name[TREE_CODE(t)]);*/
     break;
@@ -157,6 +165,8 @@ int gcc_plugin_init(const char *file, const char* arg) {
     error ("Use -fplugin-arg=<scriptname> to specify the dehydra script to run");
     return 1;
   }
+  pset = pointer_set_create ();
+  type_pset = pointer_set_create ();
   return dehydra_init (&dehydra, file,  arg);
 }
 
@@ -170,13 +180,12 @@ int gcc_plugin_post_parse() {
   if (processed || errorcount) return 0;
   processed = 1;
 
-  pset = pointer_set_create ();
-  type_pset = pointer_set_create ();
-  
   process(global_namespace);
 
   pointer_set_destroy (pset);
+  pset = NULL;
   pointer_set_destroy (type_pset);
+  type_pset = NULL;
   dehydra_input_end (&dehydra);
   postGlobalNamespace = 1;
   return 0;
@@ -191,5 +200,7 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
 
 void gcc_plugin_finish_struct (tree t) {
   dehydra_finishStruct (&dehydra, t);
+  /*  if (type_pset)
+      process_type (t);*/
 }
 

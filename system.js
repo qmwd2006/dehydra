@@ -405,3 +405,11 @@ function sameVar (v1, v2) {
   
   return sameVar(v1.fieldOf, v2.fieldOf);
 }
+
+function process_type (t) {
+  if (this.process_class &&
+      (t.kind == "struct" || t.kind == "class")) {
+    print ("Warning: process_class is deprecated. Use process_type")
+    process_class (t)
+  }
+}

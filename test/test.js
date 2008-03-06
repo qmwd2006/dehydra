@@ -1,5 +1,5 @@
-function process_class(c) {
- // print("process_class "+ (c))
+function process_type(c) {
+  // print("process_type "+ c)
 }
 
 function process_function(f,arr) {
@@ -9,3 +9,4 @@ function process_function(f,arr) {
 function process_var(v) {
 //  print(v)
 }
+

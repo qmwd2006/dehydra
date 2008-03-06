@@ -242,13 +242,13 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   return obj;
 }
 
-int dehydra_visitClass (Dehydra *this, tree c) {
-  jsval process_class = dehydra_getToplevelObject(this, "process_class");
-  if (process_class == JSVAL_VOID) return true;
+int dehydra_visitType (Dehydra *this, tree t) {
+  jsval process_type = dehydra_getToplevelObject(this, "process_type");
+  if (process_type == JSVAL_VOID) return true;
   
   jsval rval, argv[1];
-  argv[0] = dehydra_convertType (this, c);
-  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_class,
+  argv[0] = dehydra_convertType (this, t);
+  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_type,
                                  1, argv, &rval));
   return true;
 }

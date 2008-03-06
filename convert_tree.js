@@ -347,28 +347,35 @@ function convert (unit, aggr, unionTopLevel) {
 }
 
 var unit = new Unit();
-function process_var(v) {
-  //hack to capture the enum tree_code
-  if (v.name == "tree_code_var") {
-    this.tree_code_type = v.type
-  } else if (v.name == "tree_code_type") {
-    for each (var m in v.type.type.members) {
+
+function process_type(type) {
+  if (type.name == "tree_code") {
+    // needed because doing enumType foo:1
+    // makes gcc loose enum info in the bitfield
+    this.tree_code_type = type
+  } else if (type.name == "tree_node") {
+    if (!type.attributes) {
+      throw new Error (type.name + " doesn't have attributes defined. GTY as attribute stuff must be busted.")
+    }
+    this.tree_node = type
+  } else if (type.name == "tree_code_class") {
+    this.tree_code_class = type
+    // this enum occurs last, so do the generation here
+  }
+  // got all the ingradients, time to cook
+  if (this.tree_code_class && this.tree_code_type && this.tree_node) {
+    for each (var m in this.tree_code_class.members) {
       unit.registerEnumValue (m.name, m.value)
     }
+    convert(unit, this.tree_node)
+    var str = unit.toString()
+    var fname = "treehydra_generated.h";
+    write_file (fname, str)
+    print ("Generated " + fname)
+    unit.saveEnums ("enums.js")
+    delete this.tree_code_class
+    delete this.tree_node
+    delete this.tree_code_type
   }
-  // TODO: stop depending on global_namespace and use process_class
-  if (v.name != "global_namespace")
-    return
-  // little sanity check
-  var tree_type = skipTypeWrappers(v.type)
-  if (!tree_type.attributes) {
-    throw new Error (tree_type.name + " doesn't have attributes defined. GTY as attribute stuff must be busted.")
-  }
-
-  convert(unit, tree_type)
-  var str = unit.toString()
-  var fname = "treehydra_generated.h"
-  write_file (fname, str)
-  print ("Generated " + fname)
-  unit.saveEnums ("enums.js")
 }
+

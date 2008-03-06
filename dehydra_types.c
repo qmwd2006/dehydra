@@ -176,6 +176,13 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
   return dehydra_convert2 (this, type, obj);
 }
 
+static bool isAnonymousStruct(tree t) {
+  tree name = TYPE_NAME (t);
+  if (name)
+    name = DECL_NAME (name);
+  return !name || ANON_AGGRNAME_P (name);
+}
+
 static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   tree next_type = NULL_TREE;
   tree type_decl = TYPE_NAME (type);
@@ -184,12 +191,12 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
     if (original_type) {
       dehydra_defineStringProperty (this, obj, NAME, 
                                     decl_as_string (type_decl, 0));
-      dehydra_defineProperty (this, obj, TYPEDEF, 
-                              dehydra_convert (this, original_type));
+      jsval subval = dehydra_convert (this, original_type);
+      dehydra_defineProperty (this, obj, TYPEDEF, subval);
       location_t loc = location_of (type_decl);
       if (loc)
         dehydra_defineStringProperty (this, obj, LOC, loc_as_string (loc));
-
+      
       return OBJECT_TO_JSVAL (obj);
     }
   }
@@ -226,7 +233,12 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
       dehydra_attachEnumStuff (this, obj, type);
     else
       dehydra_attachClassStuff (this, obj, type);
-    dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
+
+    if (!isAnonymousStruct (type))
+      dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
+    else 
+      dehydra_defineProperty (this, obj, NAME, JSVAL_VOID);
+
     location_t loc = location_of (type);
     if (loc)
       dehydra_defineStringProperty (this, obj, LOC, loc_as_string (loc));

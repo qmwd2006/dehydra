@@ -179,6 +179,7 @@ function walk_tree (t, func, guard) {
 
 //gczeal(2)
 function process_tree(f, b) {
+//  print (C_walk_tree());
   function code_printer (t) {
     var str = "";
     for (var i = 0; i < depth; i++)

@@ -3,7 +3,7 @@
 #include <jsapi.h>
 #include "xassert.h"
 #include "dehydra.h"
-#include "dehydra_tree.h"
+#include "treehydra.h"
 
 static Dehydra dehydra = {0};
 
@@ -16,5 +16,5 @@ int gcc_plugin_init(const char *file, const char* arg) {
 }
 
 void gcc_plugin_pass (void) {
-  dehydra_plugin_pass (&dehydra);
+  treehydra_plugin_pass (&dehydra);
 }

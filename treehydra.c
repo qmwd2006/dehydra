@@ -41,6 +41,15 @@ static jsval get_enum_value (Dehydra *this, const char *name) {
   return val;
 }
 
+// cleanup some gcc polution in GCC trunk as of Mar 5, 2008
+#ifdef in_function_try_handler
+#undef in_function_try_handler
+#endif
+
+#ifdef in_base_initializer
+#undef in_base_initializer
+#endif
+
 #include "treehydra_generated.h"
 
 static jsval convert_tree_node (Dehydra *this, tree t) {
@@ -71,17 +80,50 @@ static tree
 walk_n_test (tree *tp, int *walk_subtrees, void *data)
 {
   enum tree_code code = TREE_CODE (*tp);
+  char **buf = (char**)data;
+  size_t *capacity = (size_t*) *buf;
+  size_t *len = ((size_t*) *buf) + 1;
+  if (*len + 100 > *capacity) {
+    *capacity *= 2;
+    *buf = xrealloc (*buf, *capacity);
+  }
+  /* point at the end of the string*/
+  char *str = *buf + sizeof(size_t) * 2 + *len;
+  *len += sprintf(str, "%s\n", tree_code_name[code]);
   fprintf(stderr, "walking tree element: %s %p\n", tree_code_name[code], *tp);
     //  *walk_subtrees = 0;
   return NULL_TREE;
 }
 
-void dehydra_plugin_pass (Dehydra *this) {
+JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
+                   jsval *argv, jsval *rval) {
+  size_t capacity = 1024;
+  size_t len = 0;
+  char *buf = xrealloc (NULL, capacity);
+  ((size_t*)buf)[0] = capacity;
+  ((size_t*)buf)[1] = len;
+  char *str = buf + sizeof(size_t)*2;
+  tree body_chain = DECL_SAVED_TREE (current_function_decl);
+  if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
+    body_chain = BIND_EXPR_BODY (body_chain);
+  }
+  struct pointer_set_t *pset = pointer_set_create ();
+  walk_tree (&body_chain, walk_n_test, &buf, pset);
+  pointer_set_destroy (pset);
+  Dehydra *this = JS_GetContextPrivate (this->cx);
+  *rval = convert_char_star (this, str);
+  free(buf);
+  return JS_TRUE;
+}
+
+void treehydra_plugin_pass (Dehydra *this) {
   jsval process_tree = dehydra_getToplevelObject(this, "process_tree");
   if (process_tree == JSVAL_VOID) return;
 
   if (!jsobjMap) {
     jsobjMap = pointer_map_create ();
+    xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree", 
+                                JS_C_walk_tree, 0, 0));
   }
   int fnkey = dehydra_getArrayLength (this,
                                       this->rootedArgDestArray);
@@ -91,7 +133,6 @@ void dehydra_plugin_pass (Dehydra *this) {
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
-  walk_tree (&body_chain, walk_n_test, NULL, NULL);
   jsval bodyVal = convert_tree_node (this, body_chain);
   jsval rval, argv[2];
   argv[0] = OBJECT_TO_JSVAL (fObj);
