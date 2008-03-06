@@ -14,4 +14,14 @@ const unsigned char tree_code_length[] = {
   0,
 #include "c-common.def"
 };
+
+#undef DEFTREECODE
+#define DEFTREECODE(SYM, NAME, TYPE, LENGTH) NAME,
+
+const unsigned char tree_code_name[] = {
+#include "tree.def"
+  0,
+#include "c-common.def"
+};
+
 #undef DEFTREECODE

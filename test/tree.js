@@ -177,9 +177,31 @@ function walk_tree (t, func, guard) {
   depth--;
 }
 
-//gczeal(2)
+/* Gets the C printout of the current function body
+ and ensures that the js traversal matches */
+function sanity_check (b) {
+  var c_walkls = C_walk_tree().split("\n")
+  var current_tree_node = 0;
+  
+  function checker (t) {
+    var code = TREE_CODE (t)
+    var strname = tree_code_name[code.value]
+    if (c_walkls[current_tree_node] != strname) {
+      throw Error ("walk_tree in C differs from JS version, expected " 
+                   + c_walkls[current_tree_node] + " instead of "
+                   + strname)
+    }
+    ++current_tree_node;
+  }
+  walk_tree (b, checker, new Map())
+  if (current_tree_node != c_walkls.length) {
+    throw Error("walk_tree didn't visit enough nodes, " + current_tree_node 
+               + " out of " + c_walkls.length + "visited")
+  }
+}
+
 function process_tree(f, b) {
-//  print (C_walk_tree());
+  sanity_check (b)
   function code_printer (t) {
     var str = "";
     for (var i = 0; i < depth; i++)
@@ -195,5 +217,4 @@ function process_tree(f, b) {
     print (str)
   }
   walk_tree (b, code_printer, new Map())
-//  print("process_tree:"+b)
 }

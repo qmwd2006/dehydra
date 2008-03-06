@@ -76,43 +76,49 @@ static jsval convert_tree_node (Dehydra *this, tree t) {
   return jsvalObj;
 }
 
+typedef struct {
+  size_t capacity;
+  size_t length;
+  char str[1];
+} GrowingString;
+
 static tree
 walk_n_test (tree *tp, int *walk_subtrees, void *data)
 {
   enum tree_code code = TREE_CODE (*tp);
-  char **buf = (char**)data;
-  size_t *capacity = (size_t*) *buf;
-  size_t *len = ((size_t*) *buf) + 1;
-  if (*len + 100 > *capacity) {
-    *capacity *= 2;
-    *buf = xrealloc (*buf, *capacity);
+  const char *strcode = tree_code_name[code];
+
+  GrowingString **gstr = (GrowingString**) data;
+  while (gstr[0]->length + strlen(strcode) > gstr[0]->capacity) {
+    gstr[0]->capacity *= 2;
+    gstr[0] = xrealloc (gstr[0], gstr[0]->capacity + sizeof(GrowingString));
   }
   /* point at the end of the string*/
-  char *str = *buf + sizeof(size_t) * 2 + *len;
-  *len += sprintf(str, "%s\n", tree_code_name[code]);
-  fprintf(stderr, "walking tree element: %s %p\n", tree_code_name[code], *tp);
-    //  *walk_subtrees = 0;
+  gstr[0]->length += sprintf(gstr[0]->str + gstr[0]->length, "%s\n", strcode);
   return NULL_TREE;
 }
 
+/* Returns a list of walked nodes in the current function body */
 JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
                    jsval *argv, jsval *rval) {
-  size_t capacity = 1024;
-  size_t len = 0;
-  char *buf = xrealloc (NULL, capacity);
-  ((size_t*)buf)[0] = capacity;
-  ((size_t*)buf)[1] = len;
-  char *str = buf + sizeof(size_t)*2;
+  const size_t capacity = 512;
+  GrowingString *gstr = xrealloc (NULL, capacity);
+  gstr->capacity = capacity - sizeof(GrowingString);
+  gstr->length = 0;
+  gstr->str[0] = 0;
   tree body_chain = DECL_SAVED_TREE (current_function_decl);
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
   struct pointer_set_t *pset = pointer_set_create ();
-  walk_tree (&body_chain, walk_n_test, &buf, pset);
+  walk_tree (&body_chain, walk_n_test, &gstr, pset);
   pointer_set_destroy (pset);
-  Dehydra *this = JS_GetContextPrivate (this->cx);
-  *rval = convert_char_star (this, str);
-  free(buf);
+  Dehydra *this = JS_GetContextPrivate (cx);
+  /* remove last \n */
+  if (gstr->length)
+    gstr->str[gstr->length - 1] = 0;
+  *rval = convert_char_star (this, gstr->str);
+  free(gstr);
   return JS_TRUE;
 }
 
