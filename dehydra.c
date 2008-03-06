@@ -42,8 +42,6 @@ const char *METHOD_OF = "methodOf";
 static const char *STATIC = "isStatic";
 static const char *VIRTUAL = "isVirtual";
 
-static int dehydra_loadScript(Dehydra *this, const char *filename);
-
 #ifdef JS_GC_ZEAL
 static JSBool
 GCZeal(JSContext *cx, uintN argc, jsval *vp)
@@ -68,14 +66,15 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
   };
 
   static JSFunctionSpec shell_functions[] = {
-    {"_print",           Print,         0},
+    {"_print",          Print,          0},
+    {"include",         Include,        1},
     {"write_file",      WriteFile,      1},
     {"read_file",       ReadFile,       1},
     {"error",           Error,          0},
     {"warning",         Warning,        0},
     {"version",         Version,        0},
 #ifdef JS_GC_ZEAL
-    JS_FN("gczeal",         GCZeal,         1,1,0),
+    JS_FN("gczeal",     GCZeal,     1,1,0),
 #endif
     {0}
   };
@@ -138,7 +137,7 @@ void dehydra_defineStringProperty (Dehydra *this, JSObject *obj,
   dehydra_defineProperty (this, obj, name, STRING_TO_JSVAL(str));
 }
 
-static int dehydra_loadScript (Dehydra *this, const char *filename) {
+int dehydra_loadScript (Dehydra *this, const char *filename) {
   long size = 0;
   char *buf = readFile (filename, this->dir, &size);
   if (!buf) {

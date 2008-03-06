@@ -7,6 +7,7 @@
 #include <toplev.h>
 #include <jsapi.h>
 
+#include "dehydra.h"
 #include "dehydra_builtins.h"
 #include "xassert.h"
 
@@ -163,4 +164,14 @@ char *readFile(const char *filename, const char *dir, long *size) {
   buf[*size] = 0;
   fclose(f);
   return buf;
+}
+
+JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
+               jsval *argv, jsval *rval) {
+  if (!(argc == 1 && JSVAL_IS_STRING(argv[0]))) return JS_TRUE;
+  const char *filename = JS_GetStringBytes(JSVAL_TO_STRING(argv[0]));
+  Dehydra *this = JS_GetContextPrivate (cx);
+  if (!dehydra_loadScript (this, filename))
+    *rval = JS_TRUE;
+  return JS_TRUE;
 }

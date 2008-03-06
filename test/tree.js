@@ -7,8 +7,8 @@ EnumValue.prototype.toString = function () {
   return this.name
 }
 
-eval (read_file ("../enums.js"))
-eval (read_file ("../useful_arrays.js"))
+include ("enums.js")
+include ("useful_arrays.js")
 
 function TREE_CODE (tree) {
   return tree.base.code

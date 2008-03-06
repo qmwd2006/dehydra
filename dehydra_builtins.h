@@ -24,4 +24,7 @@ JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
 
 char *readFile(const char *filename, const char *dir, long *size);
 
+JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
+               jsval *argv, jsval *rval);
+
 #endif
