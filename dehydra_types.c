@@ -193,10 +193,7 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
                                     decl_as_string (type_decl, 0));
       jsval subval = dehydra_convert (this, original_type);
       dehydra_defineProperty (this, obj, TYPEDEF, subval);
-      location_t loc = location_of (type_decl);
-      if (loc)
-        dehydra_defineStringProperty (this, obj, LOC, loc_as_string (loc));
-      
+      dehydra_setLoc (this, obj, type_decl);
       return OBJECT_TO_JSVAL (obj);
     }
   }
@@ -239,10 +236,7 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
     else 
       dehydra_defineProperty (this, obj, NAME, JSVAL_VOID);
 
-    location_t loc = location_of (type);
-    if (loc)
-      dehydra_defineStringProperty (this, obj, LOC, loc_as_string (loc));
-    
+    dehydra_setLoc (this, obj, type);
     break;
   case VOID_TYPE:
   case BOOLEAN_TYPE:
