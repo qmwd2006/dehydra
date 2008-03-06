@@ -176,10 +176,26 @@ int gcc_plugin_init(const char *file, const char* arg) {
    dehydra_cp_pre_genericize call dehydra_visitDecl directly */
 static bool postGlobalNamespace = 0;
 
+/* The queue stuff is used to get a deterministic order to types */
+typedef struct tree_queue {
+  tree t;
+  struct tree_queue *next;
+} tree_queue;
+
+static tree_queue *tree_queue_head = NULL;
+static tree_queue *tree_queue_tail = NULL;
+
 int gcc_plugin_post_parse() {
   if (processed || errorcount) return 0;
   processed = 1;
-
+  
+  /* first visit recorded structs */
+  while(tree_queue_head) {
+    tree_queue *q = tree_queue_head;
+    process_type (q->t);
+    tree_queue_head = q->next;
+    free(q);
+  }
   process(global_namespace);
 
   pointer_set_destroy (pset);
@@ -200,7 +216,17 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
 
 void gcc_plugin_finish_struct (tree t) {
   dehydra_finishStruct (&dehydra, t);
-  /*  if (type_pset)
-      process_type (t);*/
+  /* Appending stuff to the queue instead of 
+     processing immediately is because gcc is overly
+     lazy and does some things (like setting anonymous
+     struct names) sometime after completing the type */
+  tree_queue *q = xmalloc (sizeof (tree_queue));
+  q->t = t;
+  q->next = NULL;
+  if (tree_queue_tail)
+    tree_queue_tail->next = q;
+  else if (!tree_queue_head)
+    tree_queue_head = q;
+  tree_queue_tail = q;
 }
 

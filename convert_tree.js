@@ -281,7 +281,8 @@ function convert (unit, aggr, unionTopLevel) {
       print ("Skipping m.name because it causes issues I don't feel like dealing with")
       continue;
     }
-
+    if (m.name == "tree_int_cst::int_cst")
+      print(m)
     if (type_kind == "struct"
         || type.name == "tree_node") {
       var subf  = convert (unit, type, isUnion)
