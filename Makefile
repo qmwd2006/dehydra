@@ -11,7 +11,7 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp \
 	-I$(SM_INCLUDE) -I/$(HOME)/local/include/js/ 
 #-I/$(HOME)/local/include/js/ 
-CFLAGS= -Wall -fPIC -DXP_UNIX -g3 $(INCLUDE) -DDEBUG
+CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) -DDEBUG
 COMMON=dehydra.o dehydra_builtins.o util.o dehydra_types.o
 LDFLAGS=-L$(HOME)/local/lib -L$(SM_LIBDIR) -lm -ljs -shared
 TREEHYDRA_OBJS=treehydra.o treehydra_plugin.o $(COMMON)
@@ -23,7 +23,7 @@ gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
 	$(CC) $(LDFLAGS) -o $@ $(TREEHYDRA_OBJS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $<
+	$(CC) -g3 $(CFLAGS) -c $<
 
 dehydra_ast.o: dehydra_ast.c dehydra_ast.h
 
