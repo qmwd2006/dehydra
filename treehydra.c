@@ -58,6 +58,11 @@ static jsval convert_tree_node (Dehydra *this, tree t) {
   v = pointer_map_contains (jsobjMap, t);
   if (v) return (jsval) *v;
 
+  if (cp_tree_node_structure ((union lang_tree_node*) t) != TS_CP_GENERIC) {
+    *pointer_map_insert (jsobjMap, t) = JSVAL_VOID;
+    return JSVAL_VOID;
+  } 
+
   JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
                                       this->globalObj);
   const jsval jsvalObj = OBJECT_TO_JSVAL (obj);
