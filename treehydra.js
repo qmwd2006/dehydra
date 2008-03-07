@@ -117,10 +117,9 @@ tree_stmt_iterator.prototype.next = function () {
 }
 
 function Map() {
+  this.keys = []
+  this.values = []
 }
-
-Map.prototype.keys = []
-Map.prototype.values = []
 
 Map.prototype.put = function (key, value) {
   var k = this.keys.indexOf (key)
