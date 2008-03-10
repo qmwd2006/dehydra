@@ -1,5 +1,4 @@
 #include <jsapi.h>
-#include <jsobj.h>
 #include <unistd.h>
 #include <stdio.h>
 
@@ -174,7 +173,7 @@ void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
   for (a = attributes; a; a = TREE_CHAIN (a)) {
     tree name = TREE_PURPOSE (a);
     tree args = TREE_VALUE (a);
-    JSObject *obj = JS_NewObject(this->cx, &js_ObjectClass, 0, 0);
+    JSObject *obj = JS_NewObject(this->cx, NULL, 0, 0);
     JS_DefineElement (this->cx, destArray, i++,
                       OBJECT_TO_JSVAL (obj),
                       NULL, NULL, JSPROP_ENUMERATE);
@@ -199,7 +198,7 @@ void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
 JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   if (!parentArray) parentArray = this->destArray;
   unsigned int length = dehydra_getArrayLength (this, parentArray);
-  JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
+  JSObject *obj = JS_ConstructObject (this->cx, NULL, NULL, 
                                       this->globalObj);
   //append object to array(rooting it)
   JS_DefineElement (this->cx, parentArray, length,

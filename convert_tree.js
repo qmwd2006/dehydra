@@ -129,7 +129,7 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
     ls.push ("v = pointer_map_contains (jsobjMap, var)")
     ls.push ("if (v) return (jsval) *v")
   }
-  ls.push ("JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, this->globalObj)")
+  ls.push ("JSObject *obj = JS_ConstructObject (this->cx, NULL, NULL, this->globalObj)")
   if (isGTY)
     ls.push ("*pointer_map_insert (jsobjMap, var) = (void*) OBJECT_TO_JSVAL (obj)")
   ls.push ( (!isGTY ? "int key = ":"") + "dehydra_rootObject (this, OBJECT_TO_JSVAL (obj))")

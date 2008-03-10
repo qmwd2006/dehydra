@@ -1,5 +1,4 @@
 #include <jsapi.h>
-#include <jsobj.h>
 #include <unistd.h>
 #include <stdio.h>
 
@@ -67,7 +66,7 @@ static jsval convert_tree_node (Dehydra *this, tree t) {
     return JSVAL_VOID;
   } 
 
-  JSObject *obj = JS_ConstructObject (this->cx, &js_ObjectClass, NULL, 
+  JSObject *obj = JS_ConstructObject (this->cx, NULL, NULL, 
                                       this->globalObj);
   const jsval jsvalObj = OBJECT_TO_JSVAL (obj);
   *pointer_map_insert (jsobjMap, t) = (void*) jsvalObj;

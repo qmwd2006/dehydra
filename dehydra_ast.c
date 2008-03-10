@@ -1,5 +1,4 @@
 #include <jsapi.h>
-#include <jsobj.h>
 #include <unistd.h>
 #include <stdio.h>
 
@@ -309,7 +308,7 @@ static void dehydra_nextStatement(Dehydra *this, location_t loc) {
     }
   }
   if (!this->destArray) {
-    obj = JS_NewObject (this->cx, &js_ObjectClass, 0, 0);
+    obj = JS_NewObject (this->cx, NULL, 0, 0);
     JS_DefineElement (this->cx, this->statementHierarchyArray, length,
                       OBJECT_TO_JSVAL(obj),
                       NULL, NULL, JSPROP_ENUMERATE);
