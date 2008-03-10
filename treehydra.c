@@ -23,6 +23,8 @@
 static jsval convert_tree_node (Dehydra *this, tree t);
 
 static struct pointer_map_t *jsobjMap = NULL;
+/* this helps correlate js nodes to their C counterparts */
+static int global_seq = 0;
 
 static jsval convert_int (Dehydra *this, int i) {
   return INT_TO_JSVAL (i);
@@ -52,6 +54,8 @@ static jsval get_enum_value (Dehydra *this, const char *name) {
 
 #include "treehydra_generated.h"
 
+static const char *SEQUENCE_N = "SEQUENCE_N";
+
 static jsval convert_tree_node (Dehydra *this, tree t) {
   void **v;
   if (!t) return JSVAL_VOID;
@@ -59,7 +63,7 @@ static jsval convert_tree_node (Dehydra *this, tree t) {
   if (v) return (jsval) *v;
 
   if (cp_tree_node_structure ((union lang_tree_node*) t) != TS_CP_GENERIC) {
-    *pointer_map_insert (jsobjMap, t) = JSVAL_VOID;
+    *pointer_map_insert (jsobjMap, t) = (void*) JSVAL_VOID;
     return JSVAL_VOID;
   } 
 
@@ -68,6 +72,8 @@ static jsval convert_tree_node (Dehydra *this, tree t) {
   const jsval jsvalObj = OBJECT_TO_JSVAL (obj);
   *pointer_map_insert (jsobjMap, t) = (void*) jsvalObj;
   dehydra_rootObject (this, jsvalObj);
+  const int myseq = ++global_seq;
+  dehydra_defineProperty (this, obj, SEQUENCE_N, INT_TO_JSVAL (myseq));
   enum tree_node_structure_enum i;
   enum tree_code code = TREE_CODE (t);
   i = tree_node_structure(t);
@@ -84,6 +90,7 @@ static jsval convert_tree_node (Dehydra *this, tree t) {
 typedef struct {
   size_t capacity;
   size_t length;
+  Dehydra *this;
   char str[1];
 } GrowingString;
 
@@ -92,23 +99,35 @@ walk_n_test (tree *tp, int *walk_subtrees, void *data)
 {
   enum tree_code code = TREE_CODE (*tp);
   const char *strcode = tree_code_name[code];
-
   GrowingString **gstr = (GrowingString**) data;
-  while (gstr[0]->length + strlen(strcode) > gstr[0]->capacity) {
+  /* figure out corresponding seq# by peeking at js */
+  void **v = pointer_map_contains (jsobjMap, *tp);
+  int seq = 0;
+  if (v) {
+    JSObject *obj = JSVAL_TO_OBJECT ((jsval) *v);
+    jsval val = JSVAL_VOID;
+    JS_GetProperty(gstr[0]->this->cx, obj, SEQUENCE_N, &val);
+    if (val != JSVAL_VOID)
+      seq = JSVAL_TO_INT (val);
+  }
+  /* 30 is a "this should be big enough" size to fit in [space]+pointers */
+  while (gstr[0]->length + 30 + strlen(strcode) > gstr[0]->capacity) {
     gstr[0]->capacity *= 2;
     gstr[0] = xrealloc (gstr[0], gstr[0]->capacity + sizeof(GrowingString));
   }
   /* point at the end of the string*/
-  gstr[0]->length += sprintf(gstr[0]->str + gstr[0]->length, "%s\n", strcode);
+  gstr[0]->length += sprintf(gstr[0]->str + gstr[0]->length, "%s %d\n", strcode, seq);
   return NULL_TREE;
 }
 
 /* Returns a list of walked nodes in the current function body */
 JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
                    jsval *argv, jsval *rval) {
+  Dehydra *this = JS_GetContextPrivate (cx);
   const size_t capacity = 512;
   GrowingString *gstr = xrealloc (NULL, capacity);
   gstr->capacity = capacity - sizeof(GrowingString);
+  gstr->this = this;
   gstr->length = 0;
   gstr->str[0] = 0;
   tree body_chain = DECL_SAVED_TREE (current_function_decl);
@@ -118,7 +137,6 @@ JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
   struct pointer_set_t *pset = pointer_set_create ();
   walk_tree (&body_chain, walk_n_test, &gstr, pset);
   pointer_set_destroy (pset);
-  Dehydra *this = JS_GetContextPrivate (cx);
   /* remove last \n */
   if (gstr->length)
     gstr->str[gstr->length - 1] = 0;
