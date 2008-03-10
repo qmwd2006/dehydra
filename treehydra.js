@@ -155,7 +155,7 @@ function walk_tree (t, func, guard, stack) {
   var walk_subtrees = func (t, stack)
 
   code = TREE_CODE (t)
-  stack.push (code)
+  stack.push (t)
   switch (code) {
   case STATEMENT_LIST:
     for (var i = tsi_start (t); !i.end (i); i.next()) {
@@ -188,6 +188,14 @@ function pretty_walk (b, limit) {
     var code = TREE_CODE (t)
     str += code
     switch (code) {
+    case STATEMENT_LIST:
+      var st_ls = []
+      for (var i = tsi_start (t); !i.end (i); i.next()) {
+        var tree_stmt = i.stmt ()
+        st_ls.push (TREE_CODE (tree_stmt) + " seq:" + tree_stmt.SEQUENCE_N)
+      } 
+      str += " " + st_ls.toString()
+      break;
     case CALL_EXPR:
       str += " operands:" + uneval(t.exp.operands.map (function (x) {return typeof x}))
     case ADDR_EXPR:
@@ -212,8 +220,11 @@ function sanity_check (b) {
       print ("C Walk:\n" + c_walkls.slice (0, current_tree_node+1).join("\n"))
       print ("JS Walk:")
       pretty_walk (b, current_tree_node + 1)
-      if (stack.length)
-        print ("Within " + stack.pop())
+      if (stack.length) {
+        var top = stack.pop()
+        print ("Within " + TREE_CODE(top) + " seq:" + top.SEQUENCE_N)
+        print ("Conflicted node seq:" + t.SEQUENCE_N)
+      }
     }
     var code = TREE_CODE (t)
     var strname = tree_code_name[code.value]
@@ -221,7 +232,7 @@ function sanity_check (b) {
       bail_info()
       throw new Error ("walk_tree made me walk more nodes than the C version. on " + code)
     }
-    if (c_walkls[current_tree_node] != strname) {
+    if (c_walkls[current_tree_node].indexOf(strname) != 0) {
       bail_info();
       throw new Error ("walk_tree in C differs from JS, at " + current_tree_node + " expected " 
                    + c_walkls[current_tree_node] + " instead of "
