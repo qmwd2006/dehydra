@@ -25,7 +25,7 @@ virtual.o: virtual.cc
 	rm -f $@
 
 tree: tree.js ../gcc_treehydra.so
-	$(MAKE) PLUGIN=../gcc_treehydra.so SCRIPT=tree.js
+	$(MAKE) PLUGIN=../gcc_treehydra.so SCRIPT=tree.js $(TEST)
 #	$(CC1PLUS) $(PLUGINARG) -fplugin-arg=tree.js -fpreprocessed $< -o /dev/null 
 
 clean:
