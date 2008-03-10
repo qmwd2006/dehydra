@@ -337,7 +337,11 @@ void dehydra_visitDecl (Dehydra *this, tree d) {
 }
 
 void dehydra_print(Dehydra *this, jsval arg) {
-  jsval print = dehydra_getToplevelObject(this, "print");
+  jsval print = dehydra_getToplevelObject(this, "user_print");
+  if (print == JSVAL_VOID) {
+    fprintf(stderr, "function user_print() not defined in JS\n");
+    return;
+  }
   jsval rval;
   xassert (JS_CallFunctionValue(this->cx, this->globalObj, print,
                                1, &arg, &rval));
