@@ -21,24 +21,25 @@ function skipTypeWrappers (type) {
   return type
 }
 
-function Field (type, name, tag, isPointer, arrayLengthExpr, cast, value) {
+function Field (type, name, tag, isAddrOf, arrayLengthExpr, cast, isPrimitive) {
   this.type = type
   this.name = name
   this.tag = tag
-  this.isPointer = isPointer
+  this.isAddrOf = isAddrOf
   this.arrayLengthExpr = arrayLengthExpr
   this.cast = cast
-  this.value = value
+  this.isPrimitive = isPrimitive
 }
 
 Field.prototype.toString = function () {
   return this.type + " " + this.name + " = " + this.tag
 }
 
-function Function (name, body) {
+function Function (name, body, type) {
   this.name = name
   this.body = body
   this.comment = ""
+  this.type = type ? type : "void"
 }
 
 Function.prototype.addComment = function (comment) {
@@ -52,15 +53,27 @@ function Unit () {
 }
 
 Unit.prototype.toString = function () {
-  var prefix = "static jsval "
-  var forwards = this.functions.map (function (x) { return prefix + x.name })
+  var prefix = "static "
+  var forwards = this.functions.map (function (x) { return prefix + x.type + " " + x.name })
   forwards.push("")
   var str = forwards.join (";\n");
   var bodies = this.functions.map (function (x) { 
     return "// " + x.comment + "\n"
-      + prefix + x.name + " {\n  " + x.body + "\n}\n";
+      + prefix + x.type + " " + x.name + " {\n  " + x.body + "\n}\n";
   })
   return "#define GENERATED_C2JS 1\n" + str + bodies.join ("\n")
+}
+
+function callConvert (type, name, deref, cast, isPrimitive, lazyOnly) {
+  if (!cast) cast = ""
+  else cast = "(" + cast + ") "
+  var expr = cast + deref + "var->" + name 
+  if (isPrimitive) {
+    return "convert_" + type + "(this, " + expr + ")"
+  }
+  var func = lazyOnly ? "get_lazy" : "get_existing_or_lazy"
+  return func + " (this, lazy_" + type + ", " 
+    + expr + ")"
 }
 
 Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
@@ -69,13 +82,12 @@ Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
   for each (var f in fields) {
     ls.push ("case " + f.tag + ":");
     ls.push ("  dehydra_defineProperty(this, obj, \"" + f.name
-             + "\" , convert_" + f.type + " (this, &var->" + f.name + "));")
+             + "\" , " + callConvert (f.type, f.name, "&", "", false, true) + ");")
     ls.push ("  break;")
   }
   ls.push ("default:")
   ls.push ("  break;")
   ls.push ("}")
-  ls.push ("return OBJECT_TO_JSVAL (obj);")
   this.functions.push (
     new Function ("convert_" + type_name
                   + "_union (Dehydra *this, enum " + type_code_name
@@ -111,33 +123,20 @@ Unit.prototype.addEnum = function (fields, type_name) {
   this.functions.push (
     new Function ("convert_" + type_name
                   + " (Dehydra *this, enum " + type_name + " var)",
-                  ls.join ("\n  ")));
-}
-
-function callConvert (type, name, deref, cast) {
-  if (!cast) cast = ""
-  else cast = "(" + cast + ") "
-  return "convert_" + type + " (this, " + cast + deref + "var->" + name + ")"
+                  ls.join ("\n  "), "jsval"));
 }
 
 Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
   var ls = []
-  if (isGTY)
-    ls.push ("void **v")
-  ls.push ("if (!var) return JSVAL_VOID")
-  if (isGTY) {
-    ls.push ("v = pointer_map_contains (jsobjMap, var)")
-    ls.push ("if (v) return (jsval) *v")
-  }
-  ls.push ("JSObject *obj = JS_ConstructObject (this->cx, NULL, NULL, this->globalObj)")
-  if (isGTY)
-    ls.push ("*pointer_map_insert (jsobjMap, var) = (void*) OBJECT_TO_JSVAL (obj)")
-  ls.push ( (!isGTY ? "int key = ":"") + "dehydra_rootObject (this, OBJECT_TO_JSVAL (obj))")
+  var type = prefix + " " + type_name
+  ls.push (type + " *var = ("+ type + "*) void_var")
+  ls.push ("if (!var) return")
+ 
   for each (var f in fields) {
-    var deref = f.isPointer ? "" : "&";
+    var deref = f.isAddrOf ? "&" : "";
     if (!f.arrayLengthExpr) {
         ls.push ("dehydra_defineProperty (this, obj, \"" + f.name + "\", " 
-                 + callConvert (f.type, f.name, deref, f.cast) + ");")
+                 + callConvert (f.type, f.name, deref, f.cast, f.isPrimitive) + ")")
     } else {
       var lls = ["  {", "size_t i;"]
       lls.push ("JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);")
@@ -145,19 +144,16 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
                 + f.name + "\", OBJECT_TO_JSVAL (destArray));")
       lls.push ("for (i = 0; i < " + f.arrayLengthExpr + "; i++) {");
       lls.push ("  jsval val = "
-                + callConvert (f.type, f.name + "[i]", deref, f.cast) + ";")
+                + callConvert (f.type, f.name + "[i]", deref, f.cast, f.isPrimitive) + ";")
       lls.push ("  JS_DefineElement (this->cx, destArray, i, val, NULL, NULL, JSPROP_ENUMERATE);");
       lls.push ("}")
       lls.push ("}")
       ls.push (lls.join("\n    "))
     }
   }
-  if (!isGTY)
-    ls.push ("dehydra_unrootObject (this, key)")
-  ls.push ("return OBJECT_TO_JSVAL (obj);")
   var f = new Function (
-    "convert_" + type_name + " (Dehydra *this, " + prefix + " " + type_name + "* var)",
-    ls.join (";\n  "))
+    "lazy_" + type_name + " (Dehydra *this, void* void_var, JSObject *obj)",
+    ls.join (";\n  ") + ";")
   this.functions.push (f)
   return f
 }
@@ -266,7 +262,9 @@ function convert (unit, aggr, unionTopLevel) {
   for each (var m in aggr_ls) {
     var type = skipTypeWrappers (m.type)
     var type_name = type.name
-    var pointer = isPointer(m.type)
+    var isAddrOf = false
+    if (/base_for_components/(m.name))
+      print ("base_for_components: "+ isAddrOf)
     var type_kind = type.kind
     var tag = undefined
     var lengthExpr = undefined
@@ -282,8 +280,10 @@ function convert (unit, aggr, unionTopLevel) {
       continue;
     }
 
+    var isPrimitive = false
     if (type_kind == "struct"
         || type.name == "tree_node") {
+      isAddrOf = !isPointer(m.type)
       var subf  = convert (unit, type, isUnion)
       if (subf)
         subf.addComment("Used in " + m.loc + ";")
@@ -295,15 +295,16 @@ function convert (unit, aggr, unionTopLevel) {
         lengthExpr = getLengthExpr (m.attributes)
       }
     } else if (type_kind == "enum") {
-      pointer = true
+      isPrimitive = true
       convert (unit, type)
     } else if (isCharStar (m.type)) {
       type_name = "char_star"
       cast = "char *"
+      isPrimitive = true
     } else if (isUnsigned(m.type)) {
       type_name = "int"
       cast = "int"
-      pointer = true
+      isPrimitive = true
     } else {
       if (!type_guard[type_name]) {
         type_guard[type_name] = type_name
@@ -327,9 +328,9 @@ function convert (unit, aggr, unionTopLevel) {
     ls.push (new Field (type_name,
                         name,
                         tag,
-                        pointer,
+                        isAddrOf,
                         lengthExpr,
-                        cast))
+                        cast, isPrimitive))
   }
   this._loc = oldloc
   var ret = undefined

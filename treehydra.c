@@ -51,26 +51,81 @@ static jsval get_enum_value (Dehydra *this, const char *name) {
 #undef in_base_initializer
 #endif
 
-#include "treehydra_generated.h"
+/* put these into a custom rooted array
+   to do region-style deallocation at
+   the end of the pass*/
+typedef void (*treehydra_handler)(Dehydra *this, void *structure, JSObject *obj);
+
+typedef struct {
+  treehydra_handler handler;
+  void *data;
+} lazy_handler;
+
+/* delete me */
+JSBool tree_construct(JSContext *cx, JSObject *obj,
+                         uintN argc, jsval *argv, jsval *rval)
+{
+  fprintf(stderr, "tree_construct\n");
+  return JS_TRUE;
+}
+
+void tree_finalize(JSContext *cx, JSObject *obj)
+{
+  JS_free(cx, JS_GetPrivate(cx, obj));
+}
 
 static const char *SEQUENCE_N = "SEQUENCE_N";
 
-static jsval convert_tree_node (Dehydra *this, tree t) {
-  void **v;
-  if (!t) return JSVAL_VOID;
-  v = pointer_map_contains (jsobjMap, t);
-  if (v) return (jsval) *v;
+static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id) {
+  Dehydra *this = JS_GetContextPrivate (cx);
+  lazy_handler *lazy = JS_GetPrivate (cx, obj);
+  if (!lazy)
+    return JS_FALSE;
+  // once the materialize the object, no need to keep private data
+  JS_SetPrivate (cx, obj, NULL);
+  lazy->handler (this, lazy->data, obj);
+  free (lazy);
+  return JS_TRUE;
+}
 
-  if (cp_tree_node_structure ((union lang_tree_node*) t) != TS_CP_GENERIC) {
-    *pointer_map_insert (jsobjMap, t) = (void*) JSVAL_VOID;
-    return JSVAL_VOID;
-  } 
+static JSClass js_tree_class = {
+  "tree",  /* name */
+  JSCLASS_CONSTRUCT_PROTOTYPE | JSCLASS_HAS_PRIVATE, /* flags */
+  JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub,
+  JS_EnumerateStub, ResolveTreeNode, JS_ConvertStub, tree_finalize,
+  NULL, NULL, NULL, tree_construct, NULL, NULL, NULL, NULL
+};
 
-  JSObject *obj = JS_ConstructObject (this->cx, NULL, NULL, 
+static jsval get_lazy (Dehydra *this, treehydra_handler handler, void *v) {
+  JSObject *obj = JS_NewObject (this->cx, &js_tree_class, NULL, 
                                       this->globalObj);
   const jsval jsvalObj = OBJECT_TO_JSVAL (obj);
-  *pointer_map_insert (jsobjMap, t) = (void*) jsvalObj;
   dehydra_rootObject (this, jsvalObj);
+  lazy_handler *lazy = xmalloc (sizeof (lazy_handler));
+  lazy->handler = handler;
+  lazy->data = v;
+  JS_SetPrivate (this->cx, obj, lazy);
+  return jsvalObj;
+}
+
+/* This either returnes a cached object or creates a new lazy object */
+static jsval get_existing_or_lazy (Dehydra *this, treehydra_handler handler, void *v) {
+  if (!v) return JSVAL_VOID;
+  void **ret = pointer_map_contains (jsobjMap, v);
+  if (ret) return (jsval) *ret;
+
+  jsval jsvalObj = get_lazy (this, handler, v);
+ 
+  *pointer_map_insert (jsobjMap, v) = (void*) jsvalObj;
+  return jsvalObj;
+}
+
+static void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj);
+
+#include "treehydra_generated.h"
+
+static void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
+  tree t = (tree)structure;
   const int myseq = ++global_seq;
   dehydra_defineProperty (this, obj, SEQUENCE_N, INT_TO_JSVAL (myseq));
   enum tree_node_structure_enum i;
@@ -83,7 +138,6 @@ static jsval convert_tree_node (Dehydra *this, tree t) {
       convert_tree_node_union (this, i, t, obj);
     }
   }
-  return jsvalObj;
 }
 
 typedef struct {
@@ -148,8 +202,10 @@ void treehydra_plugin_pass (Dehydra *this) {
   jsval process_tree = dehydra_getToplevelObject(this, "process_tree");
   if (process_tree == JSVAL_VOID) return;
 
-  if (!jsobjMap) {
-    jsobjMap = pointer_map_create ();
+  /* the map is per-invocation 
+   to cope with gcc mutating things */
+  jsobjMap = pointer_map_create ();
+  if (dehydra_getToplevelObject(this, "C_walk_tree") == JSVAL_VOID) {
     xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree", 
                                 JS_C_walk_tree, 0, 0));
   }
@@ -161,11 +217,13 @@ void treehydra_plugin_pass (Dehydra *this) {
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
-  jsval bodyVal = convert_tree_node (this, body_chain);
+  jsval bodyVal = get_existing_or_lazy (this, lazy_tree_node, (void*)body_chain); //convert_tree_node (this, body_chain);
   jsval rval, argv[2];
   argv[0] = OBJECT_TO_JSVAL (fObj);
   argv[1] = bodyVal;
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
                                  sizeof (argv)/sizeof (argv[0]), argv, &rval));
   dehydra_unrootObject (this, fnkey);
+  pointer_map_destroy (jsobjMap);
+  jsobjMap = NULL;
 }

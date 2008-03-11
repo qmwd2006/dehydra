@@ -1,9 +1,9 @@
 GCCDIR=../gcc
 GCCBUILDDIR=../gcc-build
 GCCSTAGE=gcc
-#SM_INCLUDE=$(HOME)/work/spidermonkey
-#SM_LIBDIR=$(SM_INCLUDE)/Linux_All_DBG.OBJ
-SM_INCLUDE=/usr/local/include/js
+SM_INCLUDE=$(HOME)/work/spidermonkey
+SM_LIBDIR=$(SM_INCLUDE)/Linux_All_DBG.OBJ
+#SM_INCLUDE=/usr/local/include/js
 SM_LIBDIR=/usr/local/lib
 INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc \
 	-I$(GCCDIR)/gcc/. -I$(GCCDIR)/gcc/../include -I$(GCCDIR)/gcc/../libcpp/include \
