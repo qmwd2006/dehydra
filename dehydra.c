@@ -144,8 +144,10 @@ int dehydra_loadScript (Dehydra *this, const char *filename) {
     return 1;
   }
   jsval rval;
-  xassert (JS_EvaluateScript (this->cx, this->globalObj, buf, size,
-                              filename, 1, &rval));
+  if (!JS_EvaluateScript (this->cx, this->globalObj, buf, size,
+                          filename, 1, &rval)) {
+    error ("Failed to evaluate dehydra script: %s.", filename);
+  }
   return 0;
 }
 
