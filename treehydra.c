@@ -19,8 +19,8 @@
 #include "dehydra.h"
 #include "dehydra_types.h"
 
-static jsval convert_tree_node (Dehydra *this, tree t);
-
+/* The entries in the map should be transitively rooted by 
+   this->globalObj's current_function_decl property */
 static struct pointer_map_t *jsobjMap = NULL;
 /* this helps correlate js nodes to their C counterparts */
 static int global_seq = 0;
@@ -96,11 +96,19 @@ static JSClass js_tree_class = {
   NULL, NULL, NULL, tree_construct, NULL, NULL, NULL, NULL
 };
 
-static jsval get_lazy (Dehydra *this, treehydra_handler handler, void *v) {
-  JSObject *obj = JS_NewObject (this->cx, &js_tree_class, NULL, 
-                                      this->globalObj);
-  const jsval jsvalObj = OBJECT_TO_JSVAL (obj);
-  dehydra_rootObject (this, jsvalObj);
+/* setups a lazy object. transitively rooted through parent */
+static jsval get_lazy (Dehydra *this, treehydra_handler handler, void *v,
+                       JSObject *parent, const char *propname) {
+  JSObject *obj;
+  jsval jsvalObj;
+  xassert (parent && propname);
+    
+  obj = 
+    JS_DefineObject(this->cx, parent,
+                    propname, &js_tree_class, NULL,
+                    JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT);
+  jsvalObj = OBJECT_TO_JSVAL (obj);
+
   lazy_handler *lazy = xmalloc (sizeof (lazy_handler));
   lazy->handler = handler;
   lazy->data = v;
@@ -109,15 +117,24 @@ static jsval get_lazy (Dehydra *this, treehydra_handler handler, void *v) {
 }
 
 /* This either returnes a cached object or creates a new lazy object */
-static jsval get_existing_or_lazy (Dehydra *this, treehydra_handler handler, void *v) {
-  if (!v) return JSVAL_VOID;
-  void **ret = pointer_map_contains (jsobjMap, v);
-  if (ret) return (jsval) *ret;
+static jsval get_existing_or_lazy (Dehydra *this, treehydra_handler handler, void *v,
+                                   JSObject *parent, const char *propname) {
+  inline jsval assign_existing (jsval val) {
+    dehydra_defineProperty (this, parent, propname, val);
+    return val;
+  }
 
-  jsval jsvalObj = get_lazy (this, handler, v);
+  if (!v)
+    return assign_existing (JSVAL_VOID);
+
+  void **ret = pointer_map_contains (jsobjMap, v);
+  if (ret)
+    return assign_existing ((jsval) *ret);
+  
+  const jsval jsret = get_lazy (this, handler, v, parent, propname);
  
-  *pointer_map_insert (jsobjMap, v) = (void*) jsvalObj;
-  return jsvalObj;
+  *pointer_map_insert (jsobjMap, v) = (void*) jsret;
+  return jsret;
 }
 
 static void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj);
@@ -217,13 +234,14 @@ void treehydra_plugin_pass (Dehydra *this) {
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
     body_chain = BIND_EXPR_BODY (body_chain);
   }
-  jsval bodyVal = get_existing_or_lazy (this, lazy_tree_node, (void*)body_chain); //convert_tree_node (this, body_chain);
+  jsval bodyVal = get_existing_or_lazy (this, lazy_tree_node, body_chain, this->globalObj, "current_function_decl");
   jsval rval, argv[2];
   argv[0] = OBJECT_TO_JSVAL (fObj);
   argv[1] = bodyVal;
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
                                  sizeof (argv)/sizeof (argv[0]), argv, &rval));
   dehydra_unrootObject (this, fnkey);
+  JS_DeleteProperty (this->cx, this->globalObj, "current_function_decl");
   pointer_map_destroy (jsobjMap);
   jsobjMap = NULL;
 }

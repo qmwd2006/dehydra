@@ -64,25 +64,34 @@ Unit.prototype.toString = function () {
   return "#define GENERATED_C2JS 1\n" + str + bodies.join ("\n")
 }
 
-function callConvert (type, name, deref, cast, isPrimitive, lazyOnly) {
+function callGetExistingOrLazy (type, name, deref, cast, isPrimitive, isArrayItem) {
+  var index = isArrayItem ? "[i]" : "";
+  var dest = !isArrayItem ? "obj" : "destArray";
+  var propValue = !isArrayItem ? '"' + name + '"' : "buf";
   if (!cast) cast = ""
   else cast = "(" + cast + ") "
-  var expr = cast + deref + "var->" + name 
+  var expr = cast + deref + "var->" + name + index
   if (isPrimitive) {
-    return "convert_" + type + "(this, " + expr + ")"
+    var convert =  "convert_" + type + "(this, " + expr + ")";
+    return "dehydra_defineProperty (this, " + dest + ", " + propValue + ", " + convert + ")"
   }
-  var func = lazyOnly ? "get_lazy" : "get_existing_or_lazy"
+  return "get_existing_or_lazy (this, lazy_" + type + ", " 
+    + expr + ", " + dest + ", " + propValue + ")"
+}
+
+function callGetLazy (type, name) {
+  var expr = "&var->" + name 
+  var func = "get_lazy"
   return func + " (this, lazy_" + type + ", " 
-    + expr + ")"
+    + expr + ", obj, \"" + name + "\")"
 }
 
 Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
-  var ls = [""]
+  var ls = []
   ls.push ("switch (code) {");
   for each (var f in fields) {
     ls.push ("case " + f.tag + ":");
-    ls.push ("  dehydra_defineProperty(this, obj, \"" + f.name
-             + "\" , " + callConvert (f.type, f.name, "&", "", false, true) + ");")
+    ls.push ("  " + callGetLazy (f.type, f.name) + ";")
     ls.push ("  break;")
   }
   ls.push ("default:")
@@ -135,17 +144,17 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
   for each (var f in fields) {
     var deref = f.isAddrOf ? "&" : "";
     if (!f.arrayLengthExpr) {
-        ls.push ("dehydra_defineProperty (this, obj, \"" + f.name + "\", " 
-                 + callConvert (f.type, f.name, deref, f.cast, f.isPrimitive) + ")")
+        ls.push (callGetExistingOrLazy (f.type, f.name, deref, f.cast, f.isPrimitive))
     } else {
       var lls = ["  {", "size_t i;"]
-      lls.push ("JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);")
+      lls.push ("char buf[128];")
+      lls.push ("const size_t len = " + f.arrayLengthExpr + ";")
+      lls.push ("JSObject *destArray = JS_NewArrayObject (this->cx, len, NULL);")
       lls.push ("dehydra_defineProperty (this, obj, \"" 
                 + f.name + "\", OBJECT_TO_JSVAL (destArray));")
-      lls.push ("for (i = 0; i < " + f.arrayLengthExpr + "; i++) {");
-      lls.push ("  jsval val = "
-                + callConvert (f.type, f.name + "[i]", deref, f.cast, f.isPrimitive) + ";")
-      lls.push ("  JS_DefineElement (this->cx, destArray, i, val, NULL, NULL, JSPROP_ENUMERATE);");
+      lls.push ("for (i = 0; i < len; i++) {");
+      lls.push ("  sprintf (buf, \"%d\", i);")
+      lls.push ("  " + callGetExistingOrLazy (f.type, f.name, deref, f.cast, f.isPrimitive, true) + ";")
       lls.push ("}")
       lls.push ("}")
       ls.push (lls.join("\n    "))
