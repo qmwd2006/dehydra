@@ -202,7 +202,6 @@ int gcc_plugin_post_parse() {
   pset = NULL;
   pointer_set_destroy (type_pset);
   type_pset = NULL;
-  dehydra_input_end (&dehydra);
   postGlobalNamespace = 1;
   return 0;
 }
@@ -230,3 +229,6 @@ void gcc_plugin_finish_struct (tree t) {
   tree_queue_tail = q;
 }
 
+void gcc_plugin_finish () {
+  dehydra_input_end (&dehydra);
+}
