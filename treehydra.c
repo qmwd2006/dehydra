@@ -81,8 +81,12 @@ static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id) {
   /* when the going gets tough will be able to implement
    unions using the id field.for now avoiding it at all cost*/
   lazy_handler *lazy = JS_GetPrivate (cx, obj);
-  if (!lazy)
+  if (!lazy) {
+    /* This exists because spidermonkey occasionally doesn't report errors */
+    fprintf (stderr, "Warning: no .%s on lazy node\n", 
+             JS_GetStringBytes(JSVAL_TO_STRING(id)));
     return JS_FALSE;
+  }
   // once the materialize the object, no need to keep private data
   JS_SetPrivate (cx, obj, NULL);
   lazy->handler (this, lazy->data, obj);
