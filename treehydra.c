@@ -78,6 +78,8 @@ static const char *SEQUENCE_N = "SEQUENCE_N";
 
 static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id) {
   Dehydra *this = JS_GetContextPrivate (cx);
+  /* when the going gets tough will be able to implement
+   unions using the id field.for now avoiding it at all cost*/
   lazy_handler *lazy = JS_GetPrivate (cx, obj);
   if (!lazy)
     return JS_FALSE;
@@ -148,8 +150,14 @@ static void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
   enum tree_node_structure_enum i;
   enum tree_code code = TREE_CODE (t);
   i = tree_node_structure(t);
+  /* special case knowledge of non-decl nodes */
   convert_tree_node_union (this, TS_BASE, t, obj);
+  if (!GIMPLE_TUPLE_P (t)) {
+    convert_tree_node_union (this, TS_COMMON, t, obj);
+  }
   convert_tree_node_union (this, i, t, obj);
+  /* stuff below is empty for non-decls */
+  if (!DECL_P (t)) return;
   for (i = 0; i < LAST_TS_ENUM;i++) {
     if (tree_contains_struct[code][i]) {
       convert_tree_node_union (this, i, t, obj);

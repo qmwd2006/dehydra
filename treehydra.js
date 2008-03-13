@@ -92,6 +92,40 @@ function GENERIC_TREE_OPERAND (node, i)
   return TREE_OPERAND (node, i);
 }
 
+function BIND_EXPR_VARS (node) {
+  return TREE_OPERAND (TREE_CHECK (node, BIND_EXPR), 0)
+}
+
+function BIND_EXPR_BODY (node) {
+  return TREE_OPERAND (TREE_CHECK (node, BIND_EXPR), 1)
+}
+
+function GIMPLE_TUPLE_P (node) {
+  return GIMPLE_STMT_P (node) || TREE_CODE (node) == PHI_NODE
+}
+
+// not sure if this will work same way in gcc 4.3
+function TREE_CHAIN (node) {
+  if (GIMPLE_TUPLE_P (node))
+    throw new Error ("TREE_CHAIN refuses to accept GIMPLE_TUPLE_P() stuff")
+  return node.common.chain
+}
+
+function DECL_INITIAL (node) {
+  // can't do DECL_COMMON_CHECK
+  return node.decl_common.initial
+}
+
+function DECL_SIZE (node) {
+  // can't do DECL_COMMON_CHECK
+  return node.decl_common.size
+}
+
+function DECL_SIZE_UNIT (node) {
+  // can't do DECL_COMMON_CHECK
+  return node.decl_common.size_unit
+}
+
 function tree_stmt_iterator (ptr, container) {
   this.ptr = ptr
   this.container = container
@@ -145,6 +179,9 @@ Map.prototype.has = function (key) {
 // func should "return" via throw
 // *walk_subtrees=0 is the same as returning 0
 function walk_tree (t, func, guard, stack) {
+  function WALK_SUBTREE (t) {
+    walk_tree (t, func, guard, stack)
+  }
   if ((guard && guard.has (t))
       || !t) {
     return
@@ -157,6 +194,22 @@ function walk_tree (t, func, guard, stack) {
   code = TREE_CODE (t)
   stack.push (t)
   switch (code) {
+    case BIND_EXPR:
+      {
+	for (var decl = BIND_EXPR_VARS (t); decl; decl = TREE_CHAIN (decl))
+	  {
+	    /* Walk the DECL_INITIAL and DECL_SIZE.  We don't want to walk
+	       into declarations that are just mentioned, rather than
+	       declared; they don't really belong to this part of the tree.
+	       And, we can see cycles: the initializer for a declaration
+	       can refer to the declaration itself.  */
+	    WALK_SUBTREE (DECL_INITIAL (decl));
+	    WALK_SUBTREE (DECL_SIZE (decl));
+	    WALK_SUBTREE (DECL_SIZE_UNIT (decl));
+	  }
+	WALK_SUBTREE (BIND_EXPR_BODY (t));
+        break;
+      }
   case STATEMENT_LIST:
     for (var i = tsi_start (t); !i.end (i); i.next()) {
       walk_tree (i.stmt (), func, guard, stack);
@@ -209,15 +262,20 @@ function pretty_walk (b, limit) {
   }
 
 }
+function C_walk_tree_array() {
+  return C_walk_tree().split("\n")
+}
+
 /* Gets the C printout of the current function body
  and ensures that the js traversal matches */
 function sanity_check (b) {
-  var c_walkls = C_walk_tree().split("\n")
+  var c_walkls = C_walk_tree_array ()
   var current_tree_node = 0;
   
   function checker (t, stack) {
     function bail_info () {
-      print ("C Walk:\n" + c_walkls.slice (0, current_tree_node+1).join("\n"))
+      // this causes C_walk_tree() to happen again, so lazy nodes and sequence_ns get along
+      print ("C Walk:\n" + C_walk_tree_array().slice (0, current_tree_node+1).join("\n"))
       print ("JS Walk:")
       pretty_walk (b, current_tree_node + 1)
       if (stack.length) {
