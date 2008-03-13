@@ -70,7 +70,7 @@ static void dehydra_attachEnumStuff (Dehydra *this, JSObject *objEnum, tree enum
     }
   dehydra_attachTypeAttributes (this, objEnum, enumeral_type);
 }
-
+/* Note that this handles class|struct|union nodes */
 static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree record_type) {
   JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);
   tree binfo = TYPE_BINFO (record_type);
@@ -117,6 +117,8 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
     dehydra_addVar (this, field, destArray);
   }
   dehydra_attachTypeAttributes (this, objClass, record_type);
+  dehydra_defineProperty (this, objClass, "size_of", 
+                          INT_TO_JSVAL (host_integerp (TYPE_SIZE_UNIT (record_type), 1)));
 }
 
 static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tree type) {
