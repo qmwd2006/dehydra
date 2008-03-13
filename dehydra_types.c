@@ -121,6 +121,73 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
                           INT_TO_JSVAL (host_integerp (TYPE_SIZE_UNIT (record_type), 1)));
 }
 
+static bool isAnonymousStruct(tree t) {
+  tree name = TYPE_NAME (t);
+  if (name)
+    name = DECL_NAME (name);
+  return !name || ANON_AGGRNAME_P (name);
+}
+
+static void dehydra_attachTemplateStuff (Dehydra *this, JSObject *parent, tree type) {
+  /* for reference see dump_aggr_type */
+  /* ugliest guard ever */
+  tree type_name = TYPE_NAME (type);
+  bool decl_artificial = type_name ? DECL_ARTIFICIAL (type_name) : false;
+  if (!(decl_artificial && TREE_CODE (type) != ENUMERAL_TYPE
+        && TYPE_LANG_SPECIFIC (type) && CLASSTYPE_TEMPLATE_INFO (type)
+        && (TREE_CODE (CLASSTYPE_TI_TEMPLATE (type)) != TEMPLATE_DECL
+            || PRIMARY_TEMPLATE_P (CLASSTYPE_TI_TEMPLATE (type))))) {
+    return;
+  }
+        
+  tree tpl = CLASSTYPE_TI_TEMPLATE (type);
+  if (!tpl) return;
+
+  JSObject *obj = 
+    JS_DefineObject(this->cx, parent, "template", NULL, NULL, JSPROP_ENUMERATE);
+  
+  while (DECL_TEMPLATE_INFO (tpl))
+    tpl = DECL_TI_TEMPLATE (tpl);
+
+  tree name = DECL_NAME (tpl);
+  xassert (name);
+  dehydra_defineStringProperty (this, obj, NAME, IDENTIFIER_POINTER (name));
+  
+  tree info = TYPE_TEMPLATE_INFO (type);
+  tree args = info ? TI_ARGS (info) : NULL_TREE;
+  
+  if (!args) return;
+  if (TMPL_ARGS_HAVE_MULTIPLE_LEVELS (args))
+    args = TREE_VEC_ELT (args, TREE_VEC_LENGTH (args) - 1);
+
+  int len = TREE_VEC_LENGTH (args);
+  JSObject *arguments = JS_NewArrayObject (this->cx, len, NULL);
+  dehydra_defineProperty (this, obj, ARGUMENTS, OBJECT_TO_JSVAL (arguments));
+
+  int ix;
+  for (ix = 0; ix != len; ix++) {
+    tree arg = TREE_VEC_ELT (args, ix);
+    jsval val = JSVAL_VOID;
+    if (CONSTANT_CLASS_P (arg)) {
+      JSString *str = JS_NewStringCopyZ (this->cx, expr_as_string (arg, 0));
+      val = STRING_TO_JSVAL (str);
+    } else if (TYPE_P (arg)) {
+      val = dehydra_convert (this, arg);
+    }
+    xassert (val != JSVAL_VOID);
+    JS_DefineElement(this->cx, arguments, ix,
+                     val, NULL, NULL, JSPROP_ENUMERATE);
+  }
+}
+
+static void dehydra_attachClassName (Dehydra *this, JSObject *obj, tree type) {
+  if (isAnonymousStruct (type)) {
+    dehydra_defineProperty (this, obj, NAME, JSVAL_VOID);
+    return;
+  }
+  dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
+}
+
 static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tree type) {
   tree arg_type = TYPE_ARG_TYPES (type);
   /* Skip "this" argument.  */
@@ -177,13 +244,6 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
   return dehydra_convert2 (this, type, obj);
 }
 
-static bool isAnonymousStruct(tree t) {
-  tree name = TYPE_NAME (t);
-  if (name)
-    name = DECL_NAME (name);
-  return !name || ANON_AGGRNAME_P (name);
-}
-
 static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   tree next_type = NULL_TREE;
   tree type_decl = TYPE_NAME (type);
@@ -222,6 +282,8 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   case ENUMERAL_TYPE:
     dehydra_defineStringProperty (this, obj, KIND, 
                                   class_key_or_enum_as_string (type));
+    dehydra_attachClassName (this, obj, type);
+
     if (!COMPLETE_TYPE_P (type)) {
       /* need to do specal treatment for incomplete types
          Those need to be looked up later and finished
@@ -232,11 +294,7 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
     else
       dehydra_attachClassStuff (this, obj, type);
 
-    if (!isAnonymousStruct (type))
-      dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
-    else 
-      dehydra_defineProperty (this, obj, NAME, JSVAL_VOID);
-
+    dehydra_attachTemplateStuff (this, obj, type);
     dehydra_setLoc (this, obj, type);
     break;
   case VOID_TYPE:
