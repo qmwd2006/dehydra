@@ -249,10 +249,10 @@ function isCharStar (type) {
   return type.name && /char/(type.name) != undefined
 }
 
-function isUnsigned (type) {
+function isUnsignedOrInt (type) {
   while (type.typedef)
     type = type.typedef
-  return type.name && /unsigned/ (type.name) != undefined
+  return type.name && /unsigned|int/ (type.name) != undefined
 }
 
 // meaty part of the script
@@ -310,7 +310,7 @@ function convert (unit, aggr, unionTopLevel) {
       type_name = "char_star"
       cast = "char *"
       isPrimitive = true
-    } else if (isUnsigned(m.type)) {
+    } else if (isUnsignedOrInt(m.type)) {
       type_name = "int"
       cast = "int"
       isPrimitive = true
