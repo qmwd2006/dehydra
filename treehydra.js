@@ -126,6 +126,14 @@ function DECL_SIZE_UNIT (node) {
   return node.decl_common.size_unit
 }
 
+function TREE_VEC_LENGTH (node) {
+  return TREE_CHECK (node, TREE_VEC).vec.length
+}
+
+function TREE_VEC_ELT (node, i) {
+  return TREE_CHECK (node, TREE_VEC).vec.a[i]
+}
+
 function tree_stmt_iterator (ptr, container) {
   this.ptr = ptr
   this.container = container
@@ -194,22 +202,30 @@ function walk_tree (t, func, guard, stack) {
   code = TREE_CODE (t)
   stack.push (t)
   switch (code) {
+  case TREE_VEC:
+    {
+      var len = TREE_VEC_LENGTH (t);
+      while (len--) {
+	WALK_SUBTREE (TREE_VEC_ELT (t, len));
+      }
+      break;
+    }
     case BIND_EXPR:
+    {
+      for (var decl = BIND_EXPR_VARS (t); decl; decl = TREE_CHAIN (decl))
       {
-	for (var decl = BIND_EXPR_VARS (t); decl; decl = TREE_CHAIN (decl))
-	  {
-	    /* Walk the DECL_INITIAL and DECL_SIZE.  We don't want to walk
+	/* Walk the DECL_INITIAL and DECL_SIZE.  We don't want to walk
 	       into declarations that are just mentioned, rather than
 	       declared; they don't really belong to this part of the tree.
 	       And, we can see cycles: the initializer for a declaration
 	       can refer to the declaration itself.  */
-	    WALK_SUBTREE (DECL_INITIAL (decl));
-	    WALK_SUBTREE (DECL_SIZE (decl));
-	    WALK_SUBTREE (DECL_SIZE_UNIT (decl));
-	  }
-	WALK_SUBTREE (BIND_EXPR_BODY (t));
-        break;
+	WALK_SUBTREE (DECL_INITIAL (decl));
+	WALK_SUBTREE (DECL_SIZE (decl));
+	WALK_SUBTREE (DECL_SIZE_UNIT (decl));
       }
+      WALK_SUBTREE (BIND_EXPR_BODY (t));
+      break;
+    }
   case STATEMENT_LIST:
     for (var i = tsi_start (t); !i.end (i); i.next()) {
       walk_tree (i.stmt (), func, guard, stack);
@@ -241,14 +257,14 @@ function pretty_walk (b, limit) {
     var code = TREE_CODE (t)
     str += code
     switch (code) {
-    case STATEMENT_LIST:
+    /*case STATEMENT_LIST:
       var st_ls = []
       for (var i = tsi_start (t); !i.end (i); i.next()) {
         var tree_stmt = i.stmt ()
         st_ls.push (TREE_CODE (tree_stmt) + " seq:" + tree_stmt.SEQUENCE_N)
       } 
       str += " " + st_ls.toString()
-      break;
+      break;*/
     case CALL_EXPR:
       str += " operands:" + uneval(t.exp.operands.map (function (x) {return typeof x}))
     case ADDR_EXPR:
