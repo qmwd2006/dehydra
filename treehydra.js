@@ -111,6 +111,10 @@ function TREE_CHAIN (node) {
   return node.common.chain
 }
 
+function TREE_VALUE (node) {
+  return TREE_CHECK (node, TREE_LIST).list.value
+}
+
 function DECL_INITIAL (node) {
   // can't do DECL_COMMON_CHECK
   return node.decl_common.initial
@@ -132,6 +136,17 @@ function TREE_VEC_LENGTH (node) {
 
 function TREE_VEC_ELT (node, i) {
   return TREE_CHECK (node, TREE_VEC).vec.a[i]
+}
+
+function CONSTRUCTOR_ELTS (node) {
+  return TREE_CHECK (node, CONSTRUCTOR).constructor.elts
+}
+
+/* This is so much simpler than the C version 
+ because it merely returns the vector array and lets
+the client for each it*/
+function VEC_iterate (vec_node) {
+  return vec_node.base.vec
 }
 
 function tree_stmt_iterator (ptr, container) {
@@ -202,6 +217,10 @@ function walk_tree (t, func, guard, stack) {
   code = TREE_CODE (t)
   stack.push (t)
   switch (code) {
+  case TREE_LIST:
+    WALK_SUBTREE (TREE_VALUE (t));
+    WALK_SUBTREE (TREE_CHAIN (t));
+    break;
   case TREE_VEC:
     {
       var len = TREE_VEC_LENGTH (t);
@@ -210,7 +229,12 @@ function walk_tree (t, func, guard, stack) {
       }
       break;
     }
-    case BIND_EXPR:
+  case CONSTRUCTOR: 
+    for each (var ce in VEC_iterate (CONSTRUCTOR_ELTS (t))) {
+      WALK_SUBTREE (ce.value);
+    }
+    break;
+  case BIND_EXPR:
     {
       for (var decl = BIND_EXPR_VARS (t); decl; decl = TREE_CHAIN (decl))
       {
