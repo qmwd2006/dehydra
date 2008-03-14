@@ -145,10 +145,10 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
     var f = fields[i]
     var deref = f.isAddrOf ? "&" : "";
     if (!f.arrayLengthExpr) {
-      // taking address of first element of a struct will yield same address
-      // as self..and a cyclic pointer..that's obviously not what we want 
-      // thus force it to be a different element
-      const func = (i == 0 && f.isAddrOf) ? callGetLazy : callGetExistingOrLazy
+      // Only structs need their addresses to be taken
+      // Assume that that also means they are unique to the structure
+      // containing them
+      const func = f.isAddrOf ? callGetLazy : callGetExistingOrLazy
       ls.push (func (f.type, f.name, deref, f.cast, f.isPrimitive))
     } else {
       var lls = ["  {", "size_t i;"]
