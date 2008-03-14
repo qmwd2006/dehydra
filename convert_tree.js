@@ -64,21 +64,6 @@ Unit.prototype.toString = function () {
   return "#define GENERATED_C2JS 1\n" + str + bodies.join ("\n")
 }
 
-function callGetExistingOrLazy (type, name, deref, cast, isPrimitive, isArrayItem) {
-  var index = isArrayItem ? "[i]" : "";
-  var dest = !isArrayItem ? "obj" : "destArray";
-  var propValue = !isArrayItem ? '"' + name + '"' : "buf";
-  if (!cast) cast = ""
-  else cast = "(" + cast + ") "
-  var expr = cast + deref + "var->" + name + index
-  if (isPrimitive) {
-    var convert =  "convert_" + type + "(this, " + expr + ")";
-    return "dehydra_defineProperty (this, " + dest + ", " + propValue + ", " + convert + ")"
-  }
-  return "get_existing_or_lazy (this, lazy_" + type + ", " 
-    + expr + ", " + dest + ", " + propValue + ")"
-}
-
 function callGetLazy (type, name) {
   var expr = "&var->" + name 
   var func = "get_lazy"
@@ -135,16 +120,36 @@ Unit.prototype.addEnum = function (fields, type_name) {
                   ls.join ("\n  "), "jsval"));
 }
 
+function callGetExistingOrLazy (type, name, deref, cast, isPrimitive, isArrayItem) {
+  var index = isArrayItem ? "[i]" : "";
+  var dest = !isArrayItem ? "obj" : "destArray";
+  var propValue = !isArrayItem ? '"' + name + '"' : "buf";
+  if (!cast) cast = ""
+  else cast = "(" + cast + ") "
+  var expr = cast + deref + "var->" + name + index
+  if (isPrimitive) {
+    var convert =  "convert_" + type + "(this, " + expr + ")";
+    return "dehydra_defineProperty (this, " + dest + ", " + propValue + ", " + convert + ")"
+  }
+  return "get_existing_or_lazy (this, lazy_" + type + ", " 
+    + expr + ", " + dest + ", " + propValue + ")"
+}
+
 Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
   var ls = []
   var type = prefix + " " + type_name
   ls.push (type + " *var = ("+ type + "*) void_var")
   ls.push ("if (!var) return")
- 
-  for each (var f in fields) {
+  ls.push ("dehydra_defineStringProperty (this, obj, \"_struct_name\", \"" + type_name + "\")")
+  for (var i in fields) {
+    var f = fields[i]
     var deref = f.isAddrOf ? "&" : "";
     if (!f.arrayLengthExpr) {
-        ls.push (callGetExistingOrLazy (f.type, f.name, deref, f.cast, f.isPrimitive))
+      // taking address of first element of a struct will yield same address
+      // as self..and a cyclic pointer..that's obviously not what we want 
+      // thus force it to be a different element
+      const func = (i == 0 && f.isAddrOf) ? callGetLazy : callGetExistingOrLazy
+      ls.push (func (f.type, f.name, deref, f.cast, f.isPrimitive))
     } else {
       var lls = ["  {", "size_t i;"]
       lls.push ("char buf[128];")
