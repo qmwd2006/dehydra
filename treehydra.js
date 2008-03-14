@@ -146,7 +146,8 @@ function CONSTRUCTOR_ELTS (node) {
  because it merely returns the vector array and lets
 the client for each it*/
 function VEC_iterate (vec_node) {
-  return vec_node.base.vec
+  if (vec_node)
+    return vec_node.base.vec
 }
 
 function tree_stmt_iterator (ptr, container) {
