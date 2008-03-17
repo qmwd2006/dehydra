@@ -17,7 +17,7 @@ function implements_nsISupports(c) {
 function implementsCC(c) {
   function has_mRefCnt (x) {
     for each (var m in x.members) {
-      if (/::mRefCnt/(m.name)) {
+      if (m.type.name == "nsCycleCollectingAutoRefCnt") {
         return true
       }
     }
@@ -29,8 +29,10 @@ function contains_nsCOMPtr (c) {
   for each (var m in c.members) {
     var t = m.type
     // ignore nsCOMptr returning functions
-    if (!t.parameters && t.template && /nsCOMPtr|nsRefPtr/(t.template.name)) {
-      print (m.loc + " " + m.name)
+    if (t.parameters || !t.template)
+        continue
+    if (/nsCOMPtr|nsRefPtr|nsCOMArray/(t.template.name)) {
+      //print (m.loc + " " + m.name)
       return true
     }
   }
@@ -57,6 +59,8 @@ function process_type(type) {
 }
 
 function input_end() {
-  print (candidates)
-  write_file(this.aux_base_name + ".cycle", candidates.join("\n"))
+  var file = this.aux_base_name + ".cycle"
+  //print (file)
+  //write_file(file, candidates.join("\n"))
+    print(candidates.join("\n"))
 }

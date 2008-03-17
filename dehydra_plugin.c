@@ -160,7 +160,7 @@ static void process (tree t) {
   }
 }
 
-int gcc_plugin_init(const char *file, const char* arg) {
+int gcc_plugin_init(const char *file, const char* arg, char **pass) {
   if (!arg) {
     error ("Use -fplugin-arg=<scriptname> to specify the dehydra script to run");
     return 1;

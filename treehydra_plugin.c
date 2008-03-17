@@ -7,7 +7,8 @@
 
 static Dehydra dehydra = {0};
 
-int gcc_plugin_init(const char *file, const char* arg) {
+int gcc_plugin_init(const char *file, const char* arg, char **pass) {
+  *pass = "useless";
   if (!arg) {
     error ("Use -fplugin-arg=<scriptname> to specify the dehydra script to run");
     return 1;
