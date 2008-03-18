@@ -179,8 +179,7 @@ Unit.prototype.guard = function (key) {
 }
 
 function getPrefix (aggr) {
-  if (aggr.isIncomplete || !aggr.members.length) return aggr.kind
-  var aloc = aggr.members[0].loc.split(":")
+  var aloc = aggr.loc.split(":")
   var file = aloc[0]
   var line = aloc[1]*1
   for (var i = 0;i < 5;i++) {
@@ -206,43 +205,48 @@ function isPointer (type) {
   return type.isPointer;
 }
 
+const tagRegexp = /tag\s*\("([A-Z0-9_]+)"\)/
 // should probly combine attribute extraction into an eval-happy general solution
 function getUnionTag (attributes) {
   for each (var a in attributes) {
     if (a.name != "user")
       continue;
-    var m = /tag\s*\("([A-Z0-9_]+)"\)/(a.value)
+    var m = tagRegexp.exec(a.value)
     if (m) return m[1]
   }
 }
 
+const lengthRegexp = /length\s*\(\s*"(.+)"\s*\)/
 function getLengthExpr (attributes) {
   for each (var a in attributes) {
     if (a.name != "user")
       continue;
-    var m = /length\s*\(\s*"(.+)"\s*\)/(a.value);
+    var m = lengthRegexp.exec (a.value);
     if (m) return m[1].replace(/%h/, "(*var)") 
   }  
 }
 
+const specialRegexp = /special/
 function isSpecial (attributes) {
   for each (var a in attributes) {
     if (a.name != "user")
       continue;
-    if (/special/(a.value)) return true
+    if (specialRegexp.test(a.value)) return true
   }  
 }
 
+const skipRegexp = /skip/
 function isSkip (attributes) {
   for each (var a in attributes) {
     if (a.name != "user")
       continue;
-    if (/skip/(a.value)) return true
+    if (skipRegexp.test(a.value)) return true
   }  
 }
 
 var type_guard = {}
 
+const charRegexp = /char/
 function isCharStar (type) {
   while (type.typedef)
     type = type.typedef
@@ -251,15 +255,17 @@ function isCharStar (type) {
   type = type.type
   while (type.typedef)
     type = type.typedef
-  return type.name && /char/(type.name) != undefined
+  return type.name && charRegexp.test(type.name)
 }
 
+const unsignedIntRegexp = /unsigned|int/
 function isUnsignedOrInt (type) {
   while (type.typedef)
     type = type.typedef
-  return type.name && /unsigned|int/ (type.name) != undefined
+  return type.name && unsignedIntRegexp.test (type.name)
 }
 
+const stripPrefixRegexp = /([^:]+)$/
 // meaty part of the script
 function convert (unit, aggr, unionTopLevel) {
   if (!aggr || unit.guard(aggr)) {
@@ -277,8 +283,6 @@ function convert (unit, aggr, unionTopLevel) {
     var type = skipTypeWrappers (m.type)
     var type_name = type.name
     var isAddrOf = false
-    if (/base_for_components/(m.name))
-      print ("base_for_components: "+ isAddrOf)
     var type_kind = type.kind
     var tag = undefined
     var lengthExpr = undefined
@@ -298,6 +302,10 @@ function convert (unit, aggr, unionTopLevel) {
     if (type_kind == "struct"
         || type.name == "tree_node") {
       isAddrOf = !isPointer(m.type)
+      if (type.isIncomplete) {
+        print (m.name + "' type is incomplete. Skipping.");
+        continue;
+      }
       var subf  = convert (unit, type, isUnion)
       if (subf)
         subf.addComment("Used in " + m.loc + ";")
@@ -337,8 +345,7 @@ function convert (unit, aggr, unionTopLevel) {
       print ("Skipping " + m.name + ". For some reason can't see GTY(skip) for it")
       continue;
     }
-    
-    var name = /([^:]+)$/(m.name)[1]
+    var name = stripPrefixRegexp.exec(m.name)[1]
     ls.push (new Field (type_name,
                         name,
                         tag,
