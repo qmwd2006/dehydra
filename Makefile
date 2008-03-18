@@ -14,7 +14,7 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) -DDEBUG
 COMMON=dehydra.o dehydra_builtins.o util.o dehydra_types.o
 LDFLAGS=-L$(HOME)/local/lib -L$(SM_LIBDIR) -lm -ljs -shared
-TREEHYDRA_OBJS=treehydra.o treehydra_plugin.o $(COMMON)
+TREEHYDRA_OBJS=treehydra.o treehydra_plugin.o treehydra_generated.o $(COMMON)
 
 gcc_dehydra.so: dehydra_plugin.o dehydra_ast.o $(COMMON)
 	$(CC) $(LDFLAGS) -o $@ $+
@@ -27,7 +27,7 @@ gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
 
 dehydra_ast.o: dehydra_ast.c dehydra_ast.h
 
-treehydra_generated.h: gcc_cp_headers.h convert_tree.js gcc_dehydra.so
+treehydra_generated.c: gcc_cp_headers.h convert_tree.js gcc_dehydra.so
 	$(CXX) -Wp,-C -save-temps -DTREEHYDRA_CONVERT_JS -fshow-column $(CFLAGS) -fplugin=./gcc_dehydra.so -fplugin-arg=convert_tree.js -fsyntax-only $<
 
 useful_arrays.ii: useful_arrays.c
@@ -36,7 +36,7 @@ useful_arrays.ii: useful_arrays.c
 useful_arrays.js: useful_arrays.ii
 	sed -e 's/.*tree_code/var tree_code/' -e 's/^#.*//' -e 's/\[\]//' -e 's/{/[/' -e 's/}/]/' $< > $@
 
-treehydra.o: treehydra.c treehydra.h treehydra_generated.h
+treehydra.o: treehydra.c treehydra.h
 
 clean:
-	rm -f *.o *.so *~ *.ii *_generated.h
+	rm -f *.o *.so *~ *.ii *_generated.c

@@ -1,12 +1,10 @@
 var files = {}
 
-function getLine(loc) {
-  var loc = loc.split (":")
-  var fname = loc[0]
+function getLine(fname, line) {
   var fbody = files[fname]
   if (!fbody)
     files[fname] = fbody = read_file(fname).split("\n")
-  return fbody[loc[1] - 1]
+  return fbody[line - 1]
 }
 
 function skipTypeWrappers (type) {
@@ -35,11 +33,12 @@ Field.prototype.toString = function () {
   return this.type + " " + this.name + " = " + this.tag
 }
 
-function Function (name, body, type) {
+function Function (isStatic, name, body, type) {
   this.name = name
   this.body = body
   this.comment = ""
   this.type = type ? type : "void"
+  this.prefix = isStatic ? "static " : ""
 }
 
 Function.prototype.addComment = function (comment) {
@@ -53,15 +52,16 @@ function Unit () {
 }
 
 Unit.prototype.toString = function () {
-  var prefix = "static "
-  var forwards = this.functions.map (function (x) { return prefix + x.type + " " + x.name })
+  var forwards = this.functions.map (function (x) { return x.prefix + x.type + " " + x.name })
   forwards.push("")
   var str = forwards.join (";\n");
   var bodies = this.functions.map (function (x) { 
     return "// " + x.comment + "\n"
-      + prefix + x.type + " " + x.name + " {\n  " + x.body + "\n}\n";
+      + x.prefix + x.type + " " + x.name + " {\n  " + x.body + "\n}\n";
   })
-  return "#define GENERATED_C2JS 1\n" + str + bodies.join ("\n")
+  return ["#define GENERATED_C2JS 1",
+          "#include \"treehydra_generated.h\"",
+          str, bodies.join ("\n")].join("\n")
 }
 
 function callGetLazy (type, name) {
@@ -83,9 +83,9 @@ Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
   ls.push ("  break;")
   ls.push ("}")
   this.functions.push (
-    new Function ("convert_" + type_name
-                  + "_union (Dehydra *this, enum " + type_code_name
-                  + " code, union " + type_name + " *var, JSObject *obj)",
+    new Function (false, "convert_" + type_name
+                  + "_union (struct Dehydra *this, enum " + type_code_name
+                  + " code, union " + type_name + " *var, struct JSObject *obj)",
                   ls.join ("\n  ")));
 }
 
@@ -112,11 +112,11 @@ Unit.prototype.addEnum = function (fields, type_name) {
     this.registerEnumValue (f.name, f.value)
   }
   ls.push ("default:")
-  ls.push ("  return JSVAL_VOID;")
+  ls.push ("  return JSVAL_NULL;")
   ls.push ("}")
   this.functions.push (
-    new Function ("convert_" + type_name
-                  + " (Dehydra *this, enum " + type_name + " var)",
+    new Function (true, "convert_" + type_name
+                  + " (struct Dehydra *this, enum " + type_name + " var)",
                   ls.join ("\n  "), "jsval"));
 }
 
@@ -154,9 +154,8 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
       var lls = ["  {", "size_t i;"]
       lls.push ("char buf[128];")
       lls.push ("const size_t len = " + f.arrayLengthExpr + ";")
-      lls.push ("JSObject *destArray = JS_NewArrayObject (this->cx, len, NULL);")
-      lls.push ("dehydra_defineProperty (this, obj, \"" 
-                + f.name + "\", OBJECT_TO_JSVAL (destArray));")
+      lls.push ("struct JSObject *destArray =  dehydra_defineArrayProperty (this, obj, \"" 
+                + f.name + "\", len);")
       lls.push ("for (i = 0; i < len; i++) {");
       lls.push ("  sprintf (buf, \"%d\", i);")
       lls.push ("  " + callGetExistingOrLazy (f.type, f.name, deref, f.cast, f.isPrimitive, true) + ";")
@@ -165,8 +164,8 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
       ls.push (lls.join("\n    "))
     }
   }
-  var f = new Function (
-    "lazy_" + type_name + " (Dehydra *this, void* void_var, JSObject *obj)",
+  var f = new Function (true,
+    "lazy_" + type_name + " (struct Dehydra *this, void* void_var, struct JSObject *obj)",
     ls.join (";\n  ") + ";")
   this.functions.push (f)
   return f
@@ -183,11 +182,22 @@ function getPrefix (aggr) {
   var file = aloc[0]
   var line = aloc[1]*1
   for (var i = 0;i < 5;i++) {
-    var str = getLine(file + ":" + (line - i))
-    var pos = str.lastIndexOf(aggr.kind)
-    if (pos == -1) continue
+    // first find the begining of struct ... {} part
+    var str = getLine (file, line)
+    var pos = str.indexOf (aggr.kind)
+    if (pos == -1) {
+      line--;
+      continue
+    }
+    // capture multiline struct decls
+    for (var x = 1; x <= 5; x++) {
+      str += getLine(file, line + x);
+    }
+    
     //typedef struct struct_name..means have to use struct on var
-    if (str.indexOf (aggr.name) != -1)
+    var bracePos = str.indexOf ("{", pos);
+    var namePos = str.indexOf (aggr.name, pos);
+    if (namePos != -1 && namePos < bracePos)
       break;
     //typedef struct{  is the opposite
     if (str.lastIndexOf ("typedef", pos) != -1)
@@ -265,7 +275,8 @@ function isUnsignedOrInt (type) {
   return type.name && unsignedIntRegexp.test (type.name)
 }
 
-const stripPrefixRegexp = /([^:]+)$/
+const stripPrefixRegexp = /([^:]+)$/;
+const arraySizeRegexp = /^(\d)u$/;
 // meaty part of the script
 function convert (unit, aggr, unionTopLevel) {
   if (!aggr || unit.guard(aggr)) {
@@ -286,6 +297,11 @@ function convert (unit, aggr, unionTopLevel) {
     var type_kind = type.kind
     var tag = undefined
     var lengthExpr = undefined
+    /* Extract size if type is an array */
+    var lengthResults = arraySizeRegexp.exec (m.type.size);
+    /* arrays of size 1 are actually funky var length arrays */
+    if (lengthResults && lengthResults[1] != "u")
+      lengthExpr = lengthResults[1]*1 + 1
     var cast = undefined
     if (m.name == "tree_base::code") {
       type_kind = "enum"
@@ -391,7 +407,7 @@ function process_type(type) {
     }
     convert(unit, this.tree_node)
     var str = unit.toString()
-    var fname = "treehydra_generated.h";
+    var fname = "treehydra_generated.c";
     write_file (fname, str)
     print ("Generated " + fname)
     unit.saveEnums ("enums.js")

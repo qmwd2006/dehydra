@@ -13,6 +13,7 @@
 #include <coretypes.h>
 #include <tm.h>
 #include <tree.h>
+#include <basic-block.h>
 #include <cp-tree.h>
 #include <cxx-pretty-print.h>
 #include <tree-iterator.h>

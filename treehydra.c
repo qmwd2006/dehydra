@@ -18,43 +18,13 @@
 #include "util.h"
 #include "dehydra.h"
 #include "dehydra_types.h"
+#include "treehydra.h"
 
 /* The entries in the map should be transitively rooted by 
    this->globalObj's current_function_decl property */
 static struct pointer_map_t *jsobjMap = NULL;
 /* this helps correlate js nodes to their C counterparts */
 static int global_seq = 0;
-
-static jsval convert_int (Dehydra *this, int i) {
-  return INT_TO_JSVAL (i);
-}
- 
-static jsval convert_char_star (Dehydra *this, const char *str) {
-  return STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, str));
-}
-
-static jsval get_enum_value (Dehydra *this, const char *name) {
-  jsval val = JSVAL_VOID;
-  JS_GetProperty(this->cx, this->globalObj, name, &val);
-  if (val == JSVAL_VOID) {
-    error ("EnumValue '%s' not found. enums.js isn't loaded", name);
-  }
-  return val;
-}
-
-// cleanup some gcc polution in GCC trunk as of Mar 5, 2008
-#ifdef in_function_try_handler
-#undef in_function_try_handler
-#endif
-
-#ifdef in_base_initializer
-#undef in_base_initializer
-#endif
-
-/* put these into a custom rooted array
-   to do region-style deallocation at
-   the end of the pass*/
-typedef void (*treehydra_handler)(Dehydra *this, void *structure, JSObject *obj);
 
 typedef struct {
   treehydra_handler handler;
@@ -103,7 +73,7 @@ static JSClass js_tree_class = {
 };
 
 /* setups a lazy object. transitively rooted through parent */
-static jsval get_lazy (Dehydra *this, treehydra_handler handler, void *v,
+jsval get_lazy (Dehydra *this, treehydra_handler handler, void *v,
                        JSObject *parent, const char *propname) {
   JSObject *obj;
   jsval jsvalObj;
@@ -123,7 +93,7 @@ static jsval get_lazy (Dehydra *this, treehydra_handler handler, void *v,
 }
 
 /* This either returnes a cached object or creates a new lazy object */
-static jsval get_existing_or_lazy (Dehydra *this, treehydra_handler handler, void *v,
+jsval get_existing_or_lazy (Dehydra *this, treehydra_handler handler, void *v,
                                    JSObject *parent, const char *propname) {
   inline jsval assign_existing (jsval val) {
     dehydra_defineProperty (this, parent, propname, val);
@@ -143,11 +113,7 @@ static jsval get_existing_or_lazy (Dehydra *this, treehydra_handler handler, voi
   return jsret;
 }
 
-static void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj);
-
-#include "treehydra_generated.h"
-
-static void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
+void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
   tree t = (tree)structure;
   const int myseq = ++global_seq;
   dehydra_defineProperty (this, obj, SEQUENCE_N, INT_TO_JSVAL (myseq));
@@ -167,6 +133,24 @@ static void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
       convert_tree_node_union (this, i, t, obj);
     }
   }
+}
+
+/* Next 3 functions are for treehydra_generated */
+jsval get_enum_value (struct Dehydra *this, const char *name) {
+  jsval val = JSVAL_VOID;
+  JS_GetProperty(this->cx, this->globalObj, name, &val);
+  if (val == JSVAL_VOID) {
+    error ("EnumValue '%s' not found. enums.js isn't loaded", name);
+  }
+  return val;
+}
+
+jsval convert_char_star (struct Dehydra *this, const char *str) {
+  return STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, str));
+}
+
+jsval convert_int (struct Dehydra *this, int i) {
+  return INT_TO_JSVAL (i);
 }
 
 typedef struct {
@@ -227,6 +211,15 @@ JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
   return JS_TRUE;
 }
 
+struct JSObject *dehydra_defineArrayProperty (struct Dehydra *this,
+                                              struct JSObject *obj,
+                                              char const *name,
+                                              int length) {
+  JSObject *destArray = JS_NewArrayObject (this->cx, length, NULL);
+  dehydra_defineProperty (this, obj, name, OBJECT_TO_JSVAL (destArray));
+  return destArray;  
+}
+
 void treehydra_plugin_pass (Dehydra *this) {
   jsval process_tree = dehydra_getToplevelObject(this, "process_tree");
   if (process_tree == JSVAL_VOID) return;
@@ -235,8 +228,11 @@ void treehydra_plugin_pass (Dehydra *this) {
    to cope with gcc mutating things */
   jsobjMap = pointer_map_create ();
   if (dehydra_getToplevelObject(this, "C_walk_tree") == JSVAL_VOID) {
+    /* Check conditions that should hold for treehydra_generated.h */
+    xassert (NULL == JSVAL_NULL && sizeof (void*) == sizeof (jsval));
     xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree", 
                                 JS_C_walk_tree, 0, 0));
+    
   }
   int fnkey = dehydra_getArrayLength (this,
                                       this->rootedArgDestArray);
