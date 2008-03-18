@@ -137,17 +137,31 @@ void dehydra_defineStringProperty (Dehydra *this, JSObject *obj,
 }
 
 int dehydra_loadScript (Dehydra *this, const char *filename) {
+  /* Read the file. There's a JS function for this, but Dehydra
+     wants to search for the file in different dirs. */
   long size = 0;
   char *buf = readFile (filename, this->dir, &size);
   if (!buf) {
-    error ("Could not load dehydra script: %s", filename);
-    return 1;
+    fprintf (stderr, "Dehydra error: failed loading script file: %s\n", 
+             filename);
+    exit(1);    /* To match ReportError behavior */
   }
+
+  JSScript *script = JS_CompileScript(this->cx, this->globalObj,
+                                      buf, size, filename, 1);
+  /* We expect not to reach here with script == NULL because that
+     would have called ReportError and then exited. */
+  xassert (script != NULL);
+
+  JSObject *sobj = JS_NewScriptObject(this->cx, script);
+  JS_AddNamedRoot(this->cx, &sobj, filename);
   jsval rval;
-  if (!JS_EvaluateScript (this->cx, this->globalObj, buf, size,
-                          filename, 1, &rval)) {
-    error ("Failed to evaluate dehydra script: %s.", filename);
-  }
+  JSBool rv = JS_ExecuteScript(this->cx, this->globalObj, script, &rval);
+  /* We expect not to reach here with script == NULL because that
+     would have called ReportError and then exited. */
+  xassert (rv);
+
+  JS_RemoveRoot(this->cx, &sobj);
   return 0;
 }
 
