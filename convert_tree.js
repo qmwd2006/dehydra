@@ -281,7 +281,7 @@ function convert (unit, aggr, unionTopLevel) {
   var oldloc = this._loc
   for each (var m in aggr_ls) {
     var type = skipTypeWrappers (m.type)
-    var type_name = type.name
+    var type_name = stripPrefixRegexp.exec(type.name)[1]
     var isAddrOf = false
     var type_kind = type.kind
     var tag = undefined
@@ -363,7 +363,7 @@ function convert (unit, aggr, unionTopLevel) {
   } else if (isEnum) {
     ret = unit.addEnum (aggr.members.map (function (x) {
       return {name : x.name, value: x.value}
-    }), aggr.name)
+    }), stripPrefixRegexp.exec(aggr.name)[1])
   } 
   return ret
 }
