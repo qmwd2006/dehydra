@@ -157,7 +157,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     }
     *walk_subtrees = 0;
     break;
-   case TARGET_EXPR:
+  case TARGET_EXPR:
      {
        /* this is a weird initializer tree node, however it's usually with INIT_EXPR
           so info in it is redudent */

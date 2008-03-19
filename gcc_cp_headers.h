@@ -13,7 +13,10 @@
 #include <coretypes.h>
 #include <tm.h>
 #include <tree.h>
+#ifdef TREEHYDRA_CONVERT_JS
+/* this header conflicts with spidermonkey */
 #include <basic-block.h>
+#endif
 #include <cp-tree.h>
 #include <cxx-pretty-print.h>
 #include <tree-iterator.h>

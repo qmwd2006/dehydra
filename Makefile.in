@@ -1,19 +1,14 @@
-GCCDIR=../gcc
-GCCBUILDDIR=../gcc-build
 GCCSTAGE=gcc
-SM_INCLUDE=$(HOME)/work/spidermonkey
-SM_LIBDIR=$(SM_INCLUDE)/Linux_All_DBG.OBJ
-#SM_INCLUDE=/usr/local/include/js
-SM_LIBDIR=/usr/local/lib
+include config.mk
 INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc \
 	-I$(GCCDIR)/gcc/. -I$(GCCDIR)/gcc/../include -I$(GCCDIR)/gcc/../libcpp/include \
 	-I$(GCCDIR)/gcc/../libdecnumber -I$(GCCDIR)/gcc/../libdecnumber/bid \
 	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp \
 	-I$(SM_INCLUDE) -I/$(HOME)/local/include/js/ 
 #-I/$(HOME)/local/include/js/ 
-CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) -DDEBUG
+CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) $(CONFIGURE_CFLAGS)
 COMMON=dehydra.o dehydra_builtins.o util.o dehydra_types.o
-LDFLAGS=-L$(HOME)/local/lib -L$(SM_LIBDIR) -lm -ljs -shared
+LDFLAGS= -L$(SM_LIBDIR) -lm -l$(SM_NAME) -shared
 TREEHYDRA_OBJS=treehydra.o treehydra_plugin.o treehydra_generated.o $(COMMON)
 
 gcc_dehydra.so: dehydra_plugin.o dehydra_ast.o $(COMMON)
