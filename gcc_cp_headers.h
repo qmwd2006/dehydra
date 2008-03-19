@@ -13,8 +13,8 @@
 #include <coretypes.h>
 #include <tm.h>
 #include <tree.h>
-#ifdef TREEHYDRA_CONVERT_JS
-/* this header conflicts with spidermonkey */
+#if defined(TREEHYDRA_CONVERT_JS) || defined(TREEHYDRA_GENERATED)
+/* this header conflicts with spidermonkey. sorry for above code */
 #include <basic-block.h>
 #endif
 #include <cp-tree.h>
