@@ -13,7 +13,7 @@ Usage: ./configure ...
 
 def error(msg):
     print >> sys.stderr, "Error: " + msg
-    exit(1)
+    sys.exit(1)
 
 def checkdir(path,opt):
     print "Checking " + opt + ": " + path
@@ -79,13 +79,13 @@ if __name__ == "__main__":
             jsname = val
             jsnamels = [jsname]
         elif o == "--js-libs":
-            jslibs = val
+            jslibs = os.path.expanduser(val)
         elif o == "--js-headers":
-            jsheaders = val
+            jsheaders = os.path.expanduser(val)
         elif o == "--gcc-build":
-            gcc_build = val
+            gcc_build = os.path.expanduser(val)
         elif o == "--gcc-src":
-            gcc_src = val
+            gcc_src = os.path.expanduser(val)
         elif o in ("-h", "--help"):
             usage()
             exit(0)
@@ -97,11 +97,10 @@ if __name__ == "__main__":
     #Detect js stuff
     for loop_jsname in jsnamels:
         before = [jslibs, jsheaders]
-        if jslibs == None or jsheaders == None:
-            jslibs, jsheaders = getjsdirs(loop_jsname, jslibs, jsheaders)
-            if [jslibs, jsheaders] != before:
-                break
-            jsname = loop_jsname
+        jslibs, jsheaders = getjsdirs(loop_jsname, jslibs, jsheaders)
+        jsname = loop_jsname
+        if (jslibs != None and jsheaders != None) or [jslibs, jsheaders] != before:
+            break
     if jslibs == None:
         error("Must indicate javascript library directory with --js-libs=")
     if jsheaders == None:
