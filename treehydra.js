@@ -130,6 +130,14 @@ function DECL_SIZE_UNIT (node) {
   return node.decl_common.size_unit
 }
 
+function DECL_NAME (node) {
+  return node.decl_minimal.name
+}
+
+function IDENTIFIER_POINTER (node) {
+  return node.identifier.id.str
+}
+
 function TREE_VEC_LENGTH (node) {
   return TREE_CHECK (node, TREE_VEC).vec.length
 }
@@ -142,6 +150,15 @@ function CONSTRUCTOR_ELTS (node) {
   return TREE_CHECK (node, CONSTRUCTOR).constructor.elts
 }
 
+function TREE_TYPE (node) {
+  if (GIMPLE_TUPLE_P (node))
+    throw new Error ("Don't be passing GIMPLE stuff to TREE_TYPE")
+  return node.common.type
+}
+
+function TYPE_NAME (node) {
+  return node.type.name
+}
 /* This is so much simpler than the C version 
  because it merely returns the vector array and lets
 the client for each it*/
@@ -282,6 +299,11 @@ function pretty_walk (b, limit) {
     var code = TREE_CODE (t)
     str += code
     switch (code) {
+    case FUNCTION_DECL:
+      var n = DECL_NAME (t)
+      if (n)
+        str += " " + IDENTIFIER_POINTER (n)
+      break;
     /*case STATEMENT_LIST:
       var st_ls = []
       for (var i = tsi_start (t); !i.end (i); i.next()) {
@@ -290,10 +312,6 @@ function pretty_walk (b, limit) {
       } 
       str += " " + st_ls.toString()
       break;*/
-    case CALL_EXPR:
-      str += " operands:" + uneval(t.exp.operands.map (function (x) {return typeof x}))
-    case ADDR_EXPR:
-      str += " length:" + TREE_OPERAND_LENGTH (t)
     }
     print (str)
   }
