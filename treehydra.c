@@ -221,13 +221,13 @@ struct JSObject *dehydra_defineArrayProperty (struct Dehydra *this,
 }
 
 void treehydra_plugin_pass (Dehydra *this) {
-  jsval process_tree = dehydra_getToplevelObject(this, "process_tree");
+  jsval process_tree = dehydra_getToplevelFunction(this, "process_tree");
   if (process_tree == JSVAL_VOID) return;
 
   /* the map is per-invocation 
    to cope with gcc mutating things */
   jsobjMap = pointer_map_create ();
-  if (dehydra_getToplevelObject(this, "C_walk_tree") == JSVAL_VOID) {
+  if (dehydra_getToplevelFunction(this, "C_walk_tree") == JSVAL_VOID) {
     /* Check conditions that should hold for treehydra_generated.h */
     xassert (NULL == JSVAL_NULL && sizeof (void*) == sizeof (jsval));
     xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree", 

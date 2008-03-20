@@ -98,6 +98,10 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
   /* register error handler */
   JS_SetErrorReporter (this->cx, ReportError);
   xassert (JS_DefineFunctions (this->cx, this->globalObj, shell_functions));
+  if (dehydra_getToplevelFunction(this, "error") == JSVAL_VOID) {
+    fprintf (stderr, "Your version of spidermonkey has broken JS_DefineFunctions, upgrade it or ./configure with another version\n");
+    exit(1);
+  }
   this->rootedArgDestArray = 
     JS_NewArrayObject (this->cx, 0, NULL);
   JS_AddRoot (this->cx, &this->rootedArgDestArray);
@@ -165,7 +169,7 @@ int dehydra_loadScript (Dehydra *this, const char *filename) {
   return 0;
 }
 
-jsval dehydra_getToplevelObject(Dehydra *this, char const *name) {
+jsval dehydra_getToplevelFunction(Dehydra *this, char const *name) {
   jsval val = JSVAL_VOID;
   return (JS_GetProperty(this->cx, this->globalObj, name, &val)
           && val != JSVAL_VOID
@@ -257,7 +261,7 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
 }
 
 int dehydra_visitType (Dehydra *this, tree t) {
-  jsval process_type = dehydra_getToplevelObject(this, "process_type");
+  jsval process_type = dehydra_getToplevelFunction(this, "process_type");
   if (process_type == JSVAL_VOID) return true;
   
   jsval rval, argv[1];
@@ -268,7 +272,7 @@ int dehydra_visitType (Dehydra *this, tree t) {
 }
 
 static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
-  jsval process_function = dehydra_getToplevelObject (this, "process_function");
+  jsval process_function = dehydra_getToplevelFunction (this, "process_function");
   if (process_function == JSVAL_VOID) return;
 
   void **v = pointer_map_contains (this->fndeclMap, f);
@@ -294,7 +298,7 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
 }
 
 static void dehydra_visitVarDecl (Dehydra *this, tree d) {
-  jsval process_var = dehydra_getToplevelObject (this, "process_var");
+  jsval process_var = dehydra_getToplevelFunction (this, "process_var");
   if (process_var == JSVAL_VOID) return;
 
   /* this is a hack,basically does dehydra_rootObject manually*/
@@ -352,7 +356,7 @@ void dehydra_visitDecl (Dehydra *this, tree d) {
 }
 
 void dehydra_print(Dehydra *this, jsval arg) {
-  jsval print = dehydra_getToplevelObject(this, "user_print");
+  jsval print = dehydra_getToplevelFunction(this, "user_print");
   if (print == JSVAL_VOID) {
     fprintf(stderr, "function user_print() not defined in JS\n");
     return;
@@ -363,7 +367,7 @@ void dehydra_print(Dehydra *this, jsval arg) {
 }
 
 void dehydra_input_end (Dehydra *this) {
-  jsval input_end = dehydra_getToplevelObject(this, "input_end");
+  jsval input_end = dehydra_getToplevelFunction(this, "input_end");
   if (input_end == JSVAL_VOID) return;
   
   jsval rval;
