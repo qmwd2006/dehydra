@@ -233,23 +233,12 @@ void treehydra_plugin_pass (Dehydra *this) {
     xassert (NULL == JSVAL_NULL && sizeof (void*) == sizeof (jsval));
     xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree", 
                                 JS_C_walk_tree, 0, 0));
-    
   }
-  int fnkey = dehydra_getArrayLength (this,
-                                      this->rootedArgDestArray);
-  JSObject *fObj = dehydra_addVar (this, current_function_decl,
-                                   this->rootedArgDestArray);
-  tree body_chain = DECL_SAVED_TREE (current_function_decl);
-  if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
-    body_chain = BIND_EXPR_BODY (body_chain);
-  }
-  jsval bodyVal = get_existing_or_lazy (this, lazy_tree_node, body_chain, this->globalObj, "current_function_decl");
-  jsval rval, argv[2];
-  argv[0] = OBJECT_TO_JSVAL (fObj);
-  argv[1] = bodyVal;
+
+  jsval fnval  = get_existing_or_lazy (this, lazy_tree_node, current_function_decl, this->globalObj, "current_function_decl");
+  jsval rval;
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
-                                 sizeof (argv)/sizeof (argv[0]), argv, &rval));
-  dehydra_unrootObject (this, fnkey);
+                                 1, &fnval, &rval));
   JS_DeleteProperty (this->cx, this->globalObj, "current_function_decl");
   pointer_map_destroy (jsobjMap);
   jsobjMap = NULL;

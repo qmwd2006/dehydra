@@ -104,6 +104,15 @@ function BIND_EXPR_BODY (node) {
   return TREE_OPERAND (TREE_CHECK (node, BIND_EXPR), 1)
 }
 
+function CALL_EXPR_FN (node) {
+  return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), 1)
+}
+
+
+function CALL_EXPR_ARG(node, i) {
+  return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), i + 3)
+}
+
 function GIMPLE_TUPLE_P (node) {
   return GIMPLE_STMT_P (node) || TREE_CODE (node) == PHI_NODE
 }
@@ -117,6 +126,10 @@ function TREE_CHAIN (node) {
 
 function TREE_VALUE (node) {
   return TREE_CHECK (node, TREE_LIST).list.value
+}
+
+function DECL_P (node) {
+  return TREE_CODE_CLASS (TREE_CODE (node)) == tcc_declaration
 }
 
 function DECL_INITIAL (node) {
@@ -136,6 +149,14 @@ function DECL_SIZE_UNIT (node) {
 
 function DECL_NAME (node) {
   return node.decl_minimal.name
+}
+
+function DECL_CONTEXT (node) {
+  return node.decl_minimal.context
+}
+
+function DECL_SAVED_TREE (node) {
+  return TREE_CHECK (node, FUNCTION_DECL).decl_non_common.saved_tree
 }
 
 function IDENTIFIER_POINTER (node) {
@@ -222,7 +243,7 @@ Map.prototype.has = function (key) {
 }
 
 // func should "return" via throw
-// *walk_subtrees=0 is the same as returning 0
+// *walk_subtrees=0 is the same as returning false from func
 function walk_tree (t, func, guard, stack) {
   function WALK_SUBTREE (t) {
     walk_tree (t, func, guard, stack)
@@ -235,7 +256,8 @@ function walk_tree (t, func, guard, stack) {
   if (!stack)
     stack = [];
   var walk_subtrees = func (t, stack)
-
+  if (walk_subtrees === false)
+    return
   code = TREE_CODE (t)
   stack.push (t)
   switch (code) {
@@ -292,7 +314,7 @@ function walk_tree (t, func, guard, stack) {
   stack.pop ()
 }
 
-function pretty_walk (b, limit) {
+function pretty_walk (body, limit) {
   var counter = 0;
   function code_printer (t, depth) {
     if (++counter == limit) throw "done"
@@ -320,7 +342,7 @@ function pretty_walk (b, limit) {
     print (str)
   }
   try {
-    walk_tree (b, code_printer, new Map())
+    walk_tree (body, code_printer, new Map())
   } catch (e if e == "done") {
   }
 
@@ -331,7 +353,7 @@ function C_walk_tree_array() {
 
 /* Gets the C printout of the current function body
  and ensures that the js traversal matches */
-function sanity_check (b) {
+function sanity_check (body) {
   var c_walkls = C_walk_tree_array ()
   var current_tree_node = 0;
   
@@ -361,9 +383,16 @@ function sanity_check (b) {
     }
     ++current_tree_node;
   }
-  walk_tree (b, checker, new Map())
+  walk_tree (body, checker, new Map())
   if (current_tree_node != c_walkls.length) {
     throw Error("walk_tree didn't visit enough nodes, " + current_tree_node 
                + " out of " + c_walkls.length + "visited")
   }
+}
+
+function fn_decl_body (function_decl) {
+  body_chain = DECL_SAVED_TREE (function_decl)
+  if (body_chain && TREE_CODE (body_chain) == BIND_EXPR)
+    return BIND_EXPR_BODY (body_chain)
+  return body_chain
 }
