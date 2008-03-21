@@ -2,7 +2,7 @@ include ("treehydra.js")
 
 function process_tree(function_decl) {
   print (IDENTIFIER_POINTER (DECL_NAME (function_decl)) + "()")
-  var b = fn_decl_body (function_decl)
+  var b = DECL_SAVED_TREE (function_decl)
   sanity_check (b)
   pretty_walk (b)
 }

@@ -198,9 +198,6 @@ JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
   gstr->length = 0;
   gstr->str[0] = 0;
   tree body_chain = DECL_SAVED_TREE (current_function_decl);
-  if (body_chain && TREE_CODE (body_chain) == BIND_EXPR) {
-    body_chain = BIND_EXPR_BODY (body_chain);
-  }
   struct pointer_set_t *pset = pointer_set_create ();
   walk_tree (&body_chain, walk_n_test, &gstr, pset);
   pointer_set_destroy (pset);
