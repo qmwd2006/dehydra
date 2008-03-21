@@ -44,7 +44,8 @@ void dehydra_defineProperty(Dehydra *this, JSObject *obj,
                             char const *name, jsval value);
 void dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
                                   char const *name, char const *value);
-
+JSObject *dehydra_defineArrayProperty (Dehydra *this, JSObject *obj,
+                                       char const *name, int length);
 int dehydra_init(Dehydra *this, const char *file, const char *script);
 int dehydra_visitType(Dehydra *this, tree c);
 void dehydra_visitDecl (Dehydra *this, tree f);

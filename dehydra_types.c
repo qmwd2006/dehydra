@@ -255,6 +255,11 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
       jsval subval = dehydra_convert (this, original_type);
       dehydra_defineProperty (this, obj, TYPEDEF, subval);
       dehydra_setLoc (this, obj, type_decl);
+      tree attributes = DECL_ATTRIBUTES (type_decl);
+      if (attributes) {
+        JSObject *tmp = dehydra_defineArrayProperty (this, obj, ATTRIBUTES, 0);
+        dehydra_addAttributes (this, tmp, attributes);
+      }
       return OBJECT_TO_JSVAL (obj);
     }
   }

@@ -11,3 +11,5 @@ class Klass {
 
 A<Klass> foo;
 
+typedef void MySpecialVoidType __attribute__((user("NS_ImSoSpecial")));
+MySpecialVoidType *s;

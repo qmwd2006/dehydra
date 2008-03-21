@@ -209,15 +209,6 @@ JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
   return JS_TRUE;
 }
 
-struct JSObject *dehydra_defineArrayProperty (struct Dehydra *this,
-                                              struct JSObject *obj,
-                                              char const *name,
-                                              int length) {
-  JSObject *destArray = JS_NewArrayObject (this->cx, length, NULL);
-  dehydra_defineProperty (this, obj, name, OBJECT_TO_JSVAL (destArray));
-  return destArray;  
-}
-
 void treehydra_plugin_pass (Dehydra *this) {
   jsval process_tree = dehydra_getToplevelFunction(this, "process_tree");
   if (process_tree == JSVAL_VOID) return;
