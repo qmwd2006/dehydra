@@ -151,6 +151,10 @@ function DECL_NAME (node) {
   return node.decl_minimal.name
 }
 
+function DECL_UID (node) {
+  return node.decl_minimal.uid
+}
+
 function DECL_CONTEXT (node) {
   return node.decl_minimal.context
 }
@@ -242,6 +246,15 @@ Map.prototype.has = function (key) {
   return this.keys.indexOf (key) != -1
 }
 
+Map.prototype.remove = function (key) {
+  var k = this.keys.lastIndexOf (key)
+  if (k == -1)
+    return false
+  this.keys.splice (k, k)
+  this.values.splice (k, k)
+  return true
+}
+
 // func should "return" via throw
 // *walk_subtrees=0 is the same as returning false from func
 function walk_tree (t, func, guard, stack) {
@@ -314,6 +327,12 @@ function walk_tree (t, func, guard, stack) {
   stack.pop ()
 }
 
+/* prints a nice name for decls */
+function decl_name (decl) {
+  var name = DECL_NAME (decl)
+  return name ? IDENTIFIER_POINTER (name) : ("<anonymous" + DECL_UID (decl) + ">")
+}
+
 function pretty_walk (body, limit) {
   var counter = 0;
   function code_printer (t, depth) {
@@ -324,21 +343,10 @@ function pretty_walk (body, limit) {
       str += " "
     var code = TREE_CODE (t)
     str += code
-    switch (code) {
-    case FUNCTION_DECL:
-      var n = DECL_NAME (t)
-      if (n)
-        str += " " + IDENTIFIER_POINTER (n)
-      break;
-    /*case STATEMENT_LIST:
-      var st_ls = []
-      for (var i = tsi_start (t); !i.end (i); i.next()) {
-        var tree_stmt = i.stmt ()
-        st_ls.push (TREE_CODE (tree_stmt) + " seq:" + tree_stmt.SEQUENCE_N)
-      } 
-      str += " " + st_ls.toString()
-      break;*/
-    }
+    
+    if (DECL_P (t))
+      str += " " + decl_name (t);
+
     print (str)
   }
   try {
