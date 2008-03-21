@@ -53,9 +53,10 @@ static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id) {
   lazy_handler *lazy = JS_GetPrivate (cx, obj);
   if (!lazy) {
     /* This exists because spidermonkey occasionally doesn't report errors */
-    fprintf (stderr, "Warning: no .%s on lazy node\n", 
-             JS_GetStringBytes(JSVAL_TO_STRING(id)));
-    return JS_FALSE;
+    jsval process_tree = dehydra_getToplevelFunction(this, "unhandledLazyProperty");
+    jsval rval;
+    return JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
+                                 1, &id, &rval);
   }
   // once the materialize the object, no need to keep private data
   JS_SetPrivate (cx, obj, NULL);

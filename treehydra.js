@@ -1,3 +1,7 @@
+function unhandledLazyProperty (prop) {
+  throw new Error("No " + prop + " in this lazy object")
+}
+
 function EnumValue (name, value) {
   this.name = name
   this.value = value
