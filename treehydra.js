@@ -188,6 +188,11 @@ function TREE_TYPE (node) {
 function TYPE_NAME (node) {
   return node.type.name
 }
+
+function TYPE_P (node) {
+  return TREE_CODE_CLASS (TREE_CODE (node)) == tcc_type
+}
+
 /* This is so much simpler than the C version 
  because it merely returns the vector array and lets
 the client for each it*/
@@ -329,8 +334,21 @@ function walk_tree (t, func, guard, stack) {
 
 /* prints a nice name for decls */
 function decl_name (decl) {
+  var str = ""
+  var context = DECL_CONTEXT (decl)
+
+  if (context) {
+    var code = TREE_CODE (context) 
+    if (TYPE_P (context)) {
+      context = TYPE_NAME (context)
+    }
+    if (code != FUNCTION_DECL) {
+      str = decl_name (context) + "::"
+    }
+  }
   var name = DECL_NAME (decl)
-  return name ? IDENTIFIER_POINTER (name) : ("<anonymous" + DECL_UID (decl) + ">")
+  str += name ? IDENTIFIER_POINTER (name) : ("<anonymous" + DECL_UID (decl) + ">")
+  return str
 }
 
 function pretty_walk (body, limit) {
