@@ -37,8 +37,14 @@ function IS_GIMPLE_STMT_CODE_CLASS (code_class) {
 
 // comparable to CHECK_foo..except here foo is the second parameter
 function TREE_CHECK (tree_node, expected_code) {
-  if (TREE_CODE (tree_node) != expected_code)
+  const code = TREE_CODE (tree_node)
+  if (code != expected_code) {
+    const a = TREE_CHECK.arguments
+    for (var i = 2; i < a.length; i++)
+      if (a[i] == code)
+        return tree_node
     throw Error("Expected " + expected_code + ", got " + TREE_CODE (tree_node))
+  }
   return tree_node
 }
 
@@ -49,8 +55,8 @@ function TREE_CLASS_CHECK (node, expected_code) {
   return node
 }
 
-function STATEMENT_LIST_HEAD(NODE) {
-  return TREE_CHECK (NODE, STATEMENT_LIST).stmt_list.head
+function STATEMENT_LIST_HEAD(node) {
+  return node.stmt_list.head
 }
 
 function VL_EXP_CLASS_P (node) {
@@ -108,13 +114,16 @@ function CALL_EXPR_FN (node) {
   return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), 1)
 }
 
-
 function CALL_EXPR_ARG(node, i) {
   return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), i + 3)
 }
 
 function GIMPLE_TUPLE_P (node) {
   return GIMPLE_STMT_P (node) || TREE_CODE (node) == PHI_NODE
+}
+
+function TYPE_BINFO (node) {
+  return TREE_CHECK (node, RECORD_TYPE, UNION_TYPE, QUAL_UNION_TYPE).type.binfo
 }
 
 // not sure if this will work same way in gcc 4.3
@@ -126,6 +135,18 @@ function TREE_CHAIN (node) {
 
 function TREE_VALUE (node) {
   return TREE_CHECK (node, TREE_LIST).list.value
+}
+
+function TREE_PURPOSE (node) {
+  return node.list.purpose
+}
+
+function TREE_STRING_POINTER (node) {
+  return node.string.str
+}
+
+function DECL_ATTRIBUTES (node) {
+  return node.decl_common.attributes
 }
 
 function DECL_P (node) {
@@ -192,6 +213,12 @@ function TYPE_NAME (node) {
 function TYPE_P (node) {
   return TREE_CODE_CLASS (TREE_CODE (node)) == tcc_type
 }
+
+function BINFO_BASE_BINFOS (node) {
+  return node.binfo.base_binfos
+}
+
+var BINFO_TYPE = TREE_TYPE
 
 /* This is so much simpler than the C version 
  because it merely returns the vector array and lets
@@ -421,4 +448,31 @@ function fn_decl_body (function_decl) {
   if (body_chain && TREE_CODE (body_chain) == BIND_EXPR)
     return BIND_EXPR_BODY (body_chain)
   return body_chain
+}
+
+// runs f against record_type and all base classes of it
+function walk_hierarchy (f, record_type) {
+  var ret = f (record_type)
+  if (ret) return ret;
+
+  var binfo = TYPE_BINFO (record_type)
+  for each (var base in VEC_iterate(BINFO_BASE_BINFOS (binfo))) {
+    var ret = walk_hierarchy (f, BINFO_TYPE (base))
+    if (ret)
+      return ret
+  }
+}
+
+function get_user_attribute (attributes) {
+  for (var a = attributes;
+       a;
+       a = TREE_CHAIN (a)) {
+    const name = IDENTIFIER_POINTER (TREE_PURPOSE (a));
+    if (name != "user")
+      continue
+    var args = TREE_VALUE (a);
+    for (; args; args = TREE_CHAIN (args)) {
+      return TREE_STRING_POINTER(TREE_VALUE(args))
+    }
+  }
 }

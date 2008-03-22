@@ -261,7 +261,7 @@ function isCharStar (type) {
   while (type.typedef)
     type = type.typedef
 
-  if (!type.isPointer) return false
+  if (!(type.isPointer || (type.isArray && type.size == "0u"))) return false
   type = type.type
   while (type.typedef)
     type = type.typedef
@@ -314,6 +314,9 @@ function convert (unit, aggr, unionTopLevel) {
       continue;
     }
 
+    if (/tree_string::str/(m.name)) {
+      print (m.type)
+    }
     var isPrimitive = false
     if (type_kind == "struct"
         || type.name == "tree_node") {
@@ -339,6 +342,7 @@ function convert (unit, aggr, unionTopLevel) {
       type_name = "char_star"
       cast = "char *"
       isPrimitive = true
+      lengthExpr = undefined
     } else if (isUnsignedOrInt(m.type)) {
       type_name = "int"
       cast = "int"

@@ -6,7 +6,7 @@ PLUGINARG = -fplugin=$(PLUGIN)
 SCRIPT=test.js
 CXXFLAGS = $(PLUGINARG) -fplugin-arg=$(SCRIPT)
 
-all: test.o assign.o typedef.o operator_new.o destr_order.o init.o virtual.o constructor.o types.o templ-spec.o constructor.o stack_fieldOf.o templ-simple.o longevity.o
+all: test.o assign.o typedef.o operator_new.o destr_order.o init.o virtual.o constructor.o types.o templ-spec.o constructor.o stack_fieldOf.o templ-simple.o longevity.o finalizers.o
 
 %.o: %.cc $(PLUGIN)
 	$(CC1PLUS) $(CXXFLAGS) $< -o /dev/null
@@ -26,7 +26,8 @@ virtual.o: virtual.cc
 
 tree: tree.js ../gcc_treehydra.so
 	$(MAKE) PLUGIN=../gcc_treehydra.so SCRIPT=tree.js $(TEST)
-#	$(CC1PLUS) $(PLUGINARG) -fplugin-arg=tree.js -fpreprocessed $< -o /dev/null 
 
+finalizer: finalizers.cc finalizers.js
+	$(MAKE) PLUGIN=../gcc_treehydra.so SCRIPT=finalizers.js finalizers.o
 clean:
 	rm -f *.o *~ a.out
