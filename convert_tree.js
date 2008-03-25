@@ -65,11 +65,26 @@ Unit.prototype.toString = function () {
           str, bodies.join ("\n")].join("\n")
 }
 
-function callGetLazy (type, name) {
-  var expr = "&var->" + name 
-  var func = "get_lazy"
-  return func + " (this, lazy_" + type + ", " 
-    + expr + ", obj, \"" + name + "\")"
+function callGetExistingOrLazy (type, name, isAddrOf, cast, isPrimitive, isArrayItem) {
+  if (isAddrOf && !isArrayItem) {
+    var expr = "&var->" + name 
+    var func = "get_lazy";
+    return func + " (this, lazy_" + type + ", " 
+      + expr + ", obj, \"" + name + "\")"
+  }
+  var deref = isAddrOf ? "&" : "";
+  var index = isArrayItem ? "[i]" : "";
+  var dest = !isArrayItem ? "obj" : "destArray";
+  var propValue = !isArrayItem ? '"' + name + '"' : "buf";
+  if (!cast) cast = ""
+  else cast = "(" + cast + ") "
+  var expr = cast + deref + "var->" + name + index
+  if (isPrimitive) {
+    var convert = "convert_" + type + "(this, " + expr + ")";
+    return "dehydra_defineProperty (this, " + dest + ", " + propValue + ", " + convert + ")"
+  }
+  return "get_existing_or_lazy (this, lazy_" + type + ", " 
+    + expr + ", " + dest + ", " + propValue + ")"
 }
 
 Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
@@ -77,7 +92,7 @@ Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
   ls.push ("switch (code) {");
   for each (var f in fields) {
     ls.push ("case " + f.tag + ":");
-    ls.push ("  " + callGetLazy (f.type, f.name) + ";")
+    ls.push ("  " + callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive) + ";")
     ls.push ("  break;")
   }
   ls.push ("default:")
@@ -128,21 +143,6 @@ function callUnion (type, name, unionResolver) {
     + ", " + obj + ")";
 }
 
-function callGetExistingOrLazy (type, name, deref, cast, isPrimitive, isArrayItem) {
-  var index = isArrayItem ? "[i]" : "";
-  var dest = !isArrayItem ? "obj" : "destArray";
-  var propValue = !isArrayItem ? '"' + name + '"' : "buf";
-  if (!cast) cast = ""
-  else cast = "(" + cast + ") "
-  var expr = cast + deref + "var->" + name + index
-  if (isPrimitive) {
-    var convert = "convert_" + type + "(this, " + expr + ")";
-    return "dehydra_defineProperty (this, " + dest + ", " + propValue + ", " + convert + ")"
-  }
-  return "get_existing_or_lazy (this, lazy_" + type + ", " 
-    + expr + ", " + dest + ", " + propValue + ")"
-}
-
 Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
   var ls = []
   var type = prefix + " " + type_name
@@ -151,15 +151,13 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
   ls.push ("dehydra_defineStringProperty (this, obj, \"_struct_name\", \"" + type_name + "\")")
   for (var i in fields) {
     var f = fields[i]
-    var deref = f.isAddrOf ? "&" : "";
     if (f.unionResolver) {
       ls.push (callUnion (f.type, f.name, f.unionResolver))
     } else if (!f.arrayLengthExpr) {
       // Only structs need their addresses to be taken
       // Assume that that also means they are unique to the structure
       // containing them
-      const func = f.isAddrOf ? callGetLazy : callGetExistingOrLazy
-      ls.push (func (f.type, f.name, deref, f.cast, f.isPrimitive))
+      ls.push (callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive))
     } else {
       var lls = ["  {", "size_t i;"]
       lls.push ("char buf[128];")
@@ -168,7 +166,7 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
                 + f.name + "\", len);")
       lls.push ("for (i = 0; i < len; i++) {");
       lls.push ("  sprintf (buf, \"%d\", i);")
-      lls.push ("  " + callGetExistingOrLazy (f.type, f.name, deref, f.cast, f.isPrimitive, true) + ";")
+      lls.push ("  " + callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive, true) + ";")
       lls.push ("}")
       lls.push ("}")
       ls.push (lls.join("\n    "))
