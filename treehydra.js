@@ -1,4 +1,9 @@
 function unhandledLazyProperty (prop) {
+    /* Special case: the interpreter will look for this property when
+     * iterating. It doesn't appear in the prototype chain either, but
+     * apparently that's fine--the interpreter will use default iterator
+     * behavior, but only if we return true here. */
+  if (prop == "__iterator__") return;
   throw new Error("No " + prop + " in this lazy object")
 }
 

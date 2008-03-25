@@ -46,19 +46,35 @@ void tree_finalize(JSContext *cx, JSObject *obj)
 
 static const char *SEQUENCE_N = "SEQUENCE_N";
 
+/* JavaScript class resolve hook function for Treehydra lazy objects.
+ * The strategy here is to call the lazy handler exactly once, the
+ * first time any property is asked for. Thus, the handler must install
+ * all lazy properties. */
 static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id) {
   Dehydra *this = JS_GetContextPrivate (cx);
   /* when the going gets tough will be able to implement
    unions using the id field.for now avoiding it at all cost*/
   lazy_handler *lazy = JS_GetPrivate (cx, obj);
   if (!lazy) {
-    /* This exists because spidermonkey occasionally doesn't report errors */
-    jsval process_tree = dehydra_getToplevelFunction(this, "unhandledLazyProperty");
+    /* The lazy handler has already been called. Standard behavior would
+     * be to let the interpreter to continue searching the scope chain.
+     * Instead, we're going to check it first so that we can return an 
+     * error if and only if the property doesn't exist.
+     *
+     * A better way to do this would be to simply set strict mode, but
+     * strict mode doesn't always report this condition (see bug 425066). */
+    const char *prop_name = JS_GetStringBytes(JSVAL_TO_STRING(id));
+    JSBool has_prop;
+    JSBool rv = JS_HasProperty(cx, JS_GetPrototype(cx, obj), 
+                               prop_name, &has_prop);
+    if (rv && has_prop) return JS_TRUE;
+    /* Property not found anywhere: produce the error. */
+    jsval unhandled_property_handler = dehydra_getToplevelFunction(
+        this, "unhandledLazyProperty");
     jsval rval;
-    return JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
+    return JS_CallFunctionValue (this->cx, this->globalObj, unhandled_property_handler,
                                  1, &id, &rval);
   }
-  // once the materialize the object, no need to keep private data
   JS_SetPrivate (cx, obj, NULL);
   lazy->handler (this, lazy->data, obj);
   free (lazy);
