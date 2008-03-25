@@ -19,7 +19,7 @@ function skipTypeWrappers (type) {
   return type
 }
 
-function Field (type, name, tag, isAddrOf, arrayLengthExpr, cast, isPrimitive) {
+function Field (type, name, tag, isAddrOf, arrayLengthExpr, cast, isPrimitive, unionResolver) {
   this.type = type
   this.name = name
   this.tag = tag
@@ -27,6 +27,7 @@ function Field (type, name, tag, isAddrOf, arrayLengthExpr, cast, isPrimitive) {
   this.arrayLengthExpr = arrayLengthExpr
   this.cast = cast
   this.isPrimitive = isPrimitive
+  this.unionResolver = unionResolver
 }
 
 Field.prototype.toString = function () {
@@ -84,7 +85,7 @@ Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
   ls.push ("}")
   this.functions.push (
     new Function (false, "convert_" + type_name
-                  + "_union (struct Dehydra *this, enum " + type_code_name
+                  + "_union (struct Dehydra *this, " + type_code_name
                   + " code, union " + type_name + " *var, struct JSObject *obj)",
                   ls.join ("\n  ")));
 }
@@ -120,6 +121,13 @@ Unit.prototype.addEnum = function (fields, type_name) {
                   ls.join ("\n  "), "jsval"));
 }
 
+function callUnion (type, name, unionResolver) {
+  var obj = "obj_" + name
+  var p1 = "struct JSObject *" + obj + " = dehydra_defineObjectProperty (this, obj, \"" + name + "\");"
+  return p1 + "\nconvert_" + type + "_union (this, " + unionResolver + ", &var->" + name 
+    + ", " + obj + ")";
+}
+
 function callGetExistingOrLazy (type, name, deref, cast, isPrimitive, isArrayItem) {
   var index = isArrayItem ? "[i]" : "";
   var dest = !isArrayItem ? "obj" : "destArray";
@@ -128,7 +136,7 @@ function callGetExistingOrLazy (type, name, deref, cast, isPrimitive, isArrayIte
   else cast = "(" + cast + ") "
   var expr = cast + deref + "var->" + name + index
   if (isPrimitive) {
-    var convert =  "convert_" + type + "(this, " + expr + ")";
+    var convert = "convert_" + type + "(this, " + expr + ")";
     return "dehydra_defineProperty (this, " + dest + ", " + propValue + ", " + convert + ")"
   }
   return "get_existing_or_lazy (this, lazy_" + type + ", " 
@@ -144,7 +152,9 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
   for (var i in fields) {
     var f = fields[i]
     var deref = f.isAddrOf ? "&" : "";
-    if (!f.arrayLengthExpr) {
+    if (f.unionResolver) {
+      ls.push (callUnion (f.type, f.name, f.unionResolver))
+    } else if (!f.arrayLengthExpr) {
       // Only structs need their addresses to be taken
       // Assume that that also means they are unique to the structure
       // containing them
@@ -226,6 +236,16 @@ function getUnionTag (attributes) {
   }
 }
 
+const descRegexp = /desc\s*\("(.*)"\)/
+function getUnionResolver(attributes) {
+  for each (var a in attributes) {
+    if (a.name != "user")
+      continue;
+    var m = descRegexp.exec(a.value)
+    if (m) return m[1].replace(/%1/, "(*var)")
+  }
+}
+
 const lengthRegexp = /length\s*\(\s*"(.+)"\s*\)/
 function getLengthExpr (attributes) {
   for each (var a in attributes) {
@@ -299,6 +319,7 @@ function convert (unit, aggr, unionTopLevel) {
     var lengthExpr = undefined
     /* Extract size if type is an array */
     var lengthResults = arraySizeRegexp.exec (m.type.size);
+    var unionResolver = undefined
     /* arrays of size 1 are actually funky var length arrays */
     if (lengthResults && lengthResults[1] != "u")
       lengthExpr = lengthResults[1]*1 + 1
@@ -314,12 +335,10 @@ function convert (unit, aggr, unionTopLevel) {
       continue;
     }
 
-    if (/tree_string::str/(m.name)) {
-      print (m.type)
-    }
     var isPrimitive = false
     if (type_kind == "struct"
-        || type.name == "tree_node") {
+        || type.name == "tree_node"
+        || type.name == "basic_block_def::basic_block_il_dependent") {
       isAddrOf = !isPointer(m.type)
       if (type.isIncomplete) {
         print (m.name + "' type is incomplete. Skipping.");
@@ -334,6 +353,8 @@ function convert (unit, aggr, unionTopLevel) {
         tag = getUnionTag(m.attributes);
       } else {
         lengthExpr = getLengthExpr (m.attributes)
+        if (type.name != "tree_node")
+          unionResolver = getUnionResolver (m.type.attributes)
       }
     } else if (type_kind == "enum") {
       isPrimitive = true
@@ -371,13 +392,15 @@ function convert (unit, aggr, unionTopLevel) {
                         tag,
                         isAddrOf,
                         lengthExpr,
-                        cast, isPrimitive))
+                        cast, isPrimitive, unionResolver))
   }
   this._loc = oldloc
   var ret = undefined
   var isGTY = !unionTopLevel && aggr.attributes && aggr.attributes.length
   if (isUnion) {
-    ret = unit.addUnion (ls, aggr.name, "tree_node_structure_enum", isGTY)
+    ret = unit.addUnion (ls, stripPrefixRegexp.exec(aggr.name)[1],
+                         (aggr.name == "tree_node" ? "enum tree_node_structure_enum" : "unsigned int"),
+                         isGTY)
   } else if (aggr.kind == "struct") {
     ret = unit.addStruct (ls, aggr.name, getPrefix(aggr), isGTY)
   } else if (isEnum) {

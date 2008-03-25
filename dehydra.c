@@ -147,6 +147,13 @@ JSObject *dehydra_defineArrayProperty (Dehydra *this, JSObject *obj,
   return destArray;  
 }
 
+JSObject *dehydra_defineObjectProperty (Dehydra *this, JSObject *obj,
+                                       char const *name) {
+  return JS_DefineObject(this->cx, obj,
+                  name, NULL, NULL,
+                  JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT);
+}
+
 int dehydra_loadScript (Dehydra *this, const char *filename) {
   /* Read the file. There's a JS function for this, but Dehydra
      wants to search for the file in different dirs. */

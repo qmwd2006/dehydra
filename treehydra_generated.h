@@ -24,6 +24,9 @@ void dehydra_defineProperty(struct Dehydra *this, struct JSObject *obj,
                             char const *name, jsval value);
 void dehydra_defineStringProperty(struct Dehydra *this, struct JSObject *obj,
                                   char const *name, char const *value);
+struct JSObject *dehydra_defineObjectProperty (struct Dehydra *this, struct JSObject *obj,
+                                               char const *name);
+
 #include "treehydra.h"
 
 #endif
