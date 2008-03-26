@@ -50,12 +50,17 @@ static const char *SEQUENCE_N = "SEQUENCE_N";
  * The strategy here is to call the lazy handler exactly once, the
  * first time any property is asked for. Thus, the handler must install
  * all lazy properties. */
-static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id) {
+static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id,
+                               uintN flags, JSObject **objp) {
   Dehydra *this = JS_GetContextPrivate (cx);
   /* when the going gets tough will be able to implement
    unions using the id field.for now avoiding it at all cost*/
   lazy_handler *lazy = JS_GetPrivate (cx, obj);
+  *objp = obj;
   if (!lazy) {
+    if (flags & JSRESOLVE_ASSIGNING) {
+      return JS_TRUE;
+    }
     /* The lazy handler has already been called. Standard behavior would
      * be to let the interpreter to continue searching the scope chain.
      * Instead, we're going to check it first so that we can return an 
@@ -83,9 +88,9 @@ static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id) {
 
 static JSClass js_tree_class = {
   "tree",  /* name */
-  JSCLASS_CONSTRUCT_PROTOTYPE | JSCLASS_HAS_PRIVATE, /* flags */
+  JSCLASS_CONSTRUCT_PROTOTYPE | JSCLASS_HAS_PRIVATE | JSCLASS_NEW_RESOLVE, /* flags */
   JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub,
-  JS_EnumerateStub, ResolveTreeNode, JS_ConvertStub, tree_finalize,
+  JS_EnumerateStub,(JSResolveOp) ResolveTreeNode, JS_ConvertStub, tree_finalize,
   NULL, NULL, NULL, tree_construct, NULL, NULL, NULL, NULL
 };
 
