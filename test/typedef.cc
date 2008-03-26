@@ -11,4 +11,12 @@ class s {
   TypedefTypedef tt;
 };
 
+typedef long long __m64 __attribute__ ((__vector_size__ (8), __may_alias__));
+
+static __inline __m64
+_mm_setzero_si64 (void)
+{
+  return (__m64)0LL;
+}
+
 

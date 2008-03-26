@@ -238,6 +238,9 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     break;
   case INTEGER_CST:
   case REAL_CST:
+  case FIXED_CST:
+  case COMPLEX_CST:
+  case VECTOR_CST:
   case STRING_CST:
     {
       JSObject *obj = dehydra_addVar(this, NULL_TREE, NULL);
