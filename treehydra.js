@@ -7,6 +7,13 @@ function unhandledLazyProperty (prop) {
   throw new Error("No " + prop + " in this lazy object")
 }
 
+var hash_counter = 0
+Object.prototype.hashcode = function () {
+  if (!this._hashcode)
+    this._hashcode = "" + ++hash_counter
+  return this._hashcode
+}
+
 function EnumValue (name, value) {
   this.name = name
   this.value = value
@@ -258,38 +265,25 @@ tree_stmt_iterator.prototype.next = function () {
 }
 
 function Map() {
-  this.keys = []
-  this.values = []
 }
 
 Map.prototype.put = function (key, value) {
-  var k = this.keys.indexOf (key)
-  if (k == -1) {
-    this.keys.push (key)
-    this.values.push (value)
-  } else {
-    this.keys[k] = key;
-    this.values[k] = value;
-  }
+  if (!key._hashcode)
+    key._hashcode = "" + ++hash_counter
+  
+  this[key.hashcode()] = value
 }
 
 Map.prototype.get = function (key) {
-  var k = this.keys.indexOf (key)
-  if (k != -1)
-    return this.values[k]
+  return this[key.hashcode()]
 }
 
 Map.prototype.has = function (key) {
-  return this.keys.indexOf (key) != -1
+  return this.hasOwnProperty(key.hashcode())
 }
 
 Map.prototype.remove = function (key) {
-  var k = this.keys.lastIndexOf (key)
-  if (k == -1)
-    return false
-  this.keys.splice (k, k)
-  this.values.splice (k, k)
-  return true
+  delete this[key.hashcode()]
 }
 
 // func should "return" via throw
@@ -298,8 +292,7 @@ function walk_tree (t, func, guard, stack) {
   function WALK_SUBTREE (t) {
     walk_tree (t, func, guard, stack)
   }
-  if ((guard && guard.has (t))
-      || !t) {
+  if (!t || guard.has (t)) {
     return
   }
   guard.put (t)

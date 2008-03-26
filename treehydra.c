@@ -58,7 +58,7 @@ static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id,
   lazy_handler *lazy = JS_GetPrivate (cx, obj);
   *objp = obj;
   if (!lazy) {
-    if (flags & JSRESOLVE_ASSIGNING) {
+    if (flags & (JSRESOLVE_ASSIGNING | JSRESOLVE_DETECTING)) {
       return JS_TRUE;
     }
     /* The lazy handler has already been called. Standard behavior would
