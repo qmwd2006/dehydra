@@ -168,10 +168,13 @@ char *readFile(const char *filename, const char *dir, long *size) {
 
 JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
                jsval *argv, jsval *rval) {
+  // The following looks kind of funny -- should probably generate an error
   if (!(argc == 1 && JSVAL_IS_STRING(argv[0]))) return JS_TRUE;
   const char *filename = JS_GetStringBytes(JSVAL_TO_STRING(argv[0]));
   Dehydra *this = JS_GetContextPrivate (cx);
-  if (!dehydra_loadScript (this, filename))
-    *rval = JS_TRUE;
+  if (dehydra_loadScript (this, filename)) {
+    return JS_FALSE;
+  }
+  *rval = JS_TRUE;
   return JS_TRUE;
 }

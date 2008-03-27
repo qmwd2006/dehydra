@@ -154,6 +154,15 @@ JSObject *dehydra_defineObjectProperty (Dehydra *this, JSObject *obj,
                   JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT);
 }
 
+/* Load and execute a Javascript file. 
+ * Return:    0 on success
+ *            1 on failure if a Javascript exception is pending
+ *            does not return if a Javascript error is reported
+ * The general behavior of (De|Tree)hydra is to print a message and
+ * exit if a JS error is reported at the top level. But if this function
+ * is called from JS, then the JS_* functions will instead set an
+ * exception, which will be propgated back up to the callers for
+ * eventual handling or exit. */
 int dehydra_loadScript (Dehydra *this, const char *filename) {
   /* Read the file. There's a JS function for this, but Dehydra
      wants to search for the file in different dirs. */
@@ -167,17 +176,19 @@ int dehydra_loadScript (Dehydra *this, const char *filename) {
 
   JSScript *script = JS_CompileScript(this->cx, this->globalObj,
                                       buf, size, filename, 1);
-  /* We expect not to reach here with script == NULL because that
-     would have called ReportError and then exited. */
-  xassert (script != NULL);
+  if (script == NULL) {
+    xassert(JS_IsExceptionPending(this->cx));
+    return 1;
+  }
 
   JSObject *sobj = JS_NewScriptObject(this->cx, script);
   JS_AddNamedRoot(this->cx, &sobj, filename);
   jsval rval;
   JSBool rv = JS_ExecuteScript(this->cx, this->globalObj, script, &rval);
-  /* We expect not to reach here with script == NULL because that
-     would have called ReportError and then exited. */
-  xassert (rv);
+  if (!rv) {
+    xassert(JS_IsExceptionPending(this->cx));
+    return 1;
+  }
 
   JS_RemoveRoot(this->cx, &sobj);
   return 0;
