@@ -13,7 +13,8 @@ int gcc_plugin_init(const char *file, const char* arg, char **pass) {
     error ("Use -fplugin-arg=<scriptname> to specify the dehydra script to run");
     return 1;
   }
-  return dehydra_init (&dehydra, file,  arg);
+  dehydra_init (&dehydra, file);
+  return treehydra_startup (&dehydra, arg);
 }
 
 void gcc_plugin_pass (void) {

@@ -167,7 +167,8 @@ int gcc_plugin_init(const char *file, const char* arg, char **pass) {
   }
   pset = pointer_set_create ();
   type_pset = pointer_set_create ();
-  return dehydra_init (&dehydra, file,  arg);
+  dehydra_init (&dehydra, file);
+  return dehydra_startup (&dehydra, arg);
 }
 
 /* template instations happen late

@@ -87,7 +87,7 @@ static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id,
 }
 
 static JSClass js_tree_class = {
-  "tree",  /* name */
+  "GCCNode",  /* name */
   JSCLASS_CONSTRUCT_PROTOTYPE | JSCLASS_HAS_PRIVATE | JSCLASS_NEW_RESOLVE, /* flags */
   JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub,
   JS_EnumerateStub,(JSResolveOp) ResolveTreeNode, JS_ConvertStub, tree_finalize,
@@ -237,13 +237,7 @@ void treehydra_plugin_pass (Dehydra *this) {
   /* the map is per-invocation 
    to cope with gcc mutating things */
   jsobjMap = pointer_map_create ();
-  if (dehydra_getToplevelFunction(this, "C_walk_tree") == JSVAL_VOID) {
-    /* Check conditions that should hold for treehydra_generated.h */
-    xassert (NULL == JSVAL_NULL && sizeof (void*) == sizeof (jsval));
-    xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree", 
-                                JS_C_walk_tree, 0, 0));
-  }
-
+  
   jsval fnval  = get_existing_or_lazy (this, lazy_tree_node, current_function_decl, this->globalObj, "current_function_decl");
   jsval rval;
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
@@ -251,4 +245,15 @@ void treehydra_plugin_pass (Dehydra *this) {
   JS_DeleteProperty (this->cx, this->globalObj, "current_function_decl");
   pointer_map_destroy (jsobjMap);
   jsobjMap = NULL;
+}
+
+int treehydra_startup (Dehydra *this, const char *script) {
+  /* Check conditions that should hold for treehydra_generated.h */
+  xassert (NULL == JSVAL_NULL && sizeof (void*) == sizeof (jsval));
+  xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree", 
+                              JS_C_walk_tree, 0, 0));
+
+  xassert (JS_InitClass(this->cx, this->globalObj, NULL
+                        ,&js_tree_class , NULL, 0, NULL, NULL, NULL, NULL));
+  return dehydra_startup (this, script);  
 }

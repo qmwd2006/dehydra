@@ -55,7 +55,7 @@ GCZeal(JSContext *cx, uintN argc, jsval *vp)
 }
 #endif /* JS_GC_ZEAL */
 
-int dehydra_init(Dehydra *this, const char *file, const char *script) {
+void dehydra_init(Dehydra *this, const char *file) {
   static JSClass global_class = {
     "global", JSCLASS_NEW_RESOLVE,
     JS_PropertyStub,  JS_PropertyStub,
@@ -116,9 +116,13 @@ int dehydra_init(Dehydra *this, const char *file, const char *script) {
                                                        dump_base_name));
     dehydra_defineProperty (this, this->globalObj, "aux_base_name", strval);
   }
+}
+
+int dehydra_startup (Dehydra *this, const char *script) {
   if (dehydra_loadScript (this, "system.js")) return 1;
   return dehydra_loadScript (this, script);
 }
+
 
 jsuint dehydra_getArrayLength (Dehydra *this, JSObject *array) {
   jsuint length = 0;

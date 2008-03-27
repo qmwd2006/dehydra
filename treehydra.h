@@ -1,8 +1,8 @@
 #ifndef TREEHYDRA_H
 #define TREEHYDRA_H
 
+int treehydra_startup (struct Dehydra *this, const char *script);
 void treehydra_plugin_pass (struct Dehydra *this);
-
 typedef void (*treehydra_handler)(struct Dehydra *this, void *structure, struct JSObject *obj);
 jsval get_lazy (struct Dehydra *this, treehydra_handler handler, void *v,
                struct JSObject *parent, const char *propname);
