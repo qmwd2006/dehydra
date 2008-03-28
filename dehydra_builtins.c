@@ -123,11 +123,10 @@ ReportError(JSContext *cx, const char *message, JSErrorReport *report)
 
 JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
                 jsval *argv, jsval *rval) {
-  if (!(argc == 1 && JSVAL_IS_STRING(argv[0]))) {
-    JS_ReportError(cx, "read_file: invalid arguments, requires string");
-    return JS_FALSE;
-  }
-  const char *filename = JS_GetStringBytes(JSVAL_TO_STRING(argv[0])); 
+  const char *filename;
+  JSBool rv = JS_ConvertArguments(cx, argc, argv, "s", &filename);
+  if (!rv) return JS_FALSE;
+
   long size = 0;
   char *buf = readFile (filename, NULL, &size);
   if(!buf) {
@@ -141,18 +140,17 @@ JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
 
 JSBool WriteFile(JSContext *cx, JSObject *obj, uintN argc,
                 jsval *argv, jsval *rval) {
-  if (!(argc == 2 && JSVAL_IS_STRING(argv[0]) && JSVAL_IS_STRING(argv[1]))) {
-    JS_ReportError(cx, "write_file: invalid arguments, requires (string, string)");
-    return JS_FALSE;
-  }
-  const char *filename = JS_GetStringBytes (JSVAL_TO_STRING (argv[0]));
+  const char *filename;
+  JSString *str;
+  JSBool rv = JS_ConvertArguments(cx, argc, argv, "sS", &filename, &str);
+  if (!rv) return JS_FALSE;
+
   FILE *f = fopen (filename, "w");
   if (!f) {
     JS_ReportError(cx, "write_file: error opening file '%s': %s",
                    filename, strerror(errno));
     return JS_FALSE;
   }
-  JSString *str = JSVAL_TO_STRING(argv[1]);
   fwrite (JS_GetStringBytes(str), 1, JS_GetStringLength(str), f);
   fclose (f);
   return JS_TRUE;
@@ -184,9 +182,10 @@ char *readFile(const char *filename, const char *dir, long *size) {
 
 JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
                jsval *argv, jsval *rval) {
-  // The following looks kind of funny -- should probably generate an error
-  if (!(argc == 1 && JSVAL_IS_STRING(argv[0]))) return JS_TRUE;
-  const char *filename = JS_GetStringBytes(JSVAL_TO_STRING(argv[0]));
+  const char *filename;
+  JSBool rv = JS_ConvertArguments(cx, argc, argv, "s", &filename);
+  if (!rv) return JS_FALSE;
+
   Dehydra *this = JS_GetContextPrivate (cx);
   if (dehydra_loadScript (this, filename)) {
     return JS_FALSE;
