@@ -1,3 +1,5 @@
+include ("map.js")
+
 function unhandledLazyProperty (prop) {
     /* Special case: the interpreter will look for this property when
      * iterating. It doesn't appear in the prototype chain either, but
@@ -5,13 +7,6 @@ function unhandledLazyProperty (prop) {
      * behavior, but only if we return true here. */
   if (prop == "__iterator__") return;
   throw new Error("No " + prop + " in this lazy object")
-}
-
-var hash_counter = 0
-Object.prototype.hashcode = function () {
-  if (!this._hashcode)
-    this._hashcode = "" + ++hash_counter
-  return this._hashcode
 }
 
 function EnumValue (name, value) {
@@ -262,28 +257,6 @@ tree_stmt_iterator.prototype.stmt = function () {
 //tsi_next (tree_stmt_iterator *i)
 tree_stmt_iterator.prototype.next = function () {
   this.ptr = this.ptr.next;
-}
-
-function Map() {
-}
-
-Map.prototype.put = function (key, value) {
-  if (!key._hashcode)
-    key._hashcode = "" + ++hash_counter
-  
-  this[key.hashcode()] = value
-}
-
-Map.prototype.get = function (key) {
-  return this[key.hashcode()]
-}
-
-Map.prototype.has = function (key) {
-  return this.hasOwnProperty(key.hashcode())
-}
-
-Map.prototype.remove = function (key) {
-  delete this[key.hashcode()]
 }
 
 // func should "return" via throw

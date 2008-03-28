@@ -116,6 +116,8 @@ void dehydra_init(Dehydra *this, const char *file) {
                                                        dump_base_name));
     dehydra_defineProperty (this, this->globalObj, "aux_base_name", strval);
   }
+  xassert (JS_DefineFunction (this->cx, JS_GetPrototype(this->cx, this->globalObj),
+                              "hashcode", obj_hashcode, 0, 0));
 }
 
 int dehydra_startup (Dehydra *this, const char *script) {
