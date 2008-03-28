@@ -1,3 +1,7 @@
+#include <string.h>
+#include <errno.h>
+#include <stdarg.h>
+
 #include <config.h>
 #include <system.h>
 #include <coretypes.h>
@@ -119,12 +123,17 @@ ReportError(JSContext *cx, const char *message, JSErrorReport *report)
 
 JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
                 jsval *argv, jsval *rval) {
-  if (!(argc == 1 && JSVAL_IS_STRING(argv[0]))) return JS_TRUE;
+  if (!(argc == 1 && JSVAL_IS_STRING(argv[0]))) {
+    JS_ReportError(cx, "read_file: invalid arguments, requires string");
+    return JS_FALSE;
+  }
+  const char *filename = JS_GetStringBytes(JSVAL_TO_STRING(argv[0])); 
   long size = 0;
-  char *buf = readFile (JS_GetStringBytes(JSVAL_TO_STRING(argv[0])), NULL, &size);
-  if(!buf)
-  {
-    return JS_TRUE;
+  char *buf = readFile (filename, NULL, &size);
+  if(!buf) {
+    JS_ReportError(cx, "read_file: error opening file '%s': %s",
+                filename, strerror(errno));
+    return JS_FALSE;
   }
   *rval = STRING_TO_JSVAL(JS_NewString(cx, buf, size));
   return JS_TRUE;
@@ -133,9 +142,16 @@ JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
 JSBool WriteFile(JSContext *cx, JSObject *obj, uintN argc,
                 jsval *argv, jsval *rval) {
   if (!(argc == 2 && JSVAL_IS_STRING(argv[0]) && JSVAL_IS_STRING(argv[1]))) {
-    return JS_TRUE;
+    JS_ReportError(cx, "write_file: invalid arguments, requires (string, string)");
+    return JS_FALSE;
   }
-  FILE *f = fopen (JS_GetStringBytes (JSVAL_TO_STRING (argv[0])), "w");
+  const char *filename = JS_GetStringBytes (JSVAL_TO_STRING (argv[0]));
+  FILE *f = fopen (filename, "w");
+  if (!f) {
+    JS_ReportError(cx, "write_file: error opening file '%s': %s",
+                   filename, strerror(errno));
+    return JS_FALSE;
+  }
   JSString *str = JSVAL_TO_STRING(argv[1]);
   fwrite (JS_GetStringBytes(str), 1, JS_GetStringLength(str), f);
   fclose (f);
