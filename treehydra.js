@@ -5,8 +5,8 @@ function unhandledLazyProperty (prop) {
      * iterating. It doesn't appear in the prototype chain either, but
      * apparently that's fine--the interpreter will use default iterator
      * behavior, but only if we return true here. */
-  if (prop == "__iterator__") return;
-  throw new Error("No " + prop + " in this lazy object")
+  if (prop != "__iterator__")
+    throw new Error("No " + prop + " in this lazy object")
 }
 
 function EnumValue (name, value) {
@@ -21,8 +21,47 @@ EnumValue.prototype.toString = function () {
 include ("enums.js")
 include ("useful_arrays.js")
 
+// Class that the lazyness builds itself around of
+function GCCNode () {
+}
+
+GCCNode.prototype.toString = function () {
+  if (!this._struct_name)
+    if (this.common) {
+      let ls = ["{tree_code:" + this.tree_code()]
+      let name = this.toCString()
+      if (name)
+        ls.push ('toCString:"' + name + '"')
+      let operands = this.operands
+      if (operands)
+        ls.push ("operands[" + operands.length + "]")
+      ls.push ("}")
+      return ls.join(" ")
+    }
+  return "I am a " + this._struct_name
+}
+
+GCCNode.prototype.tree_code = function () {
+  return this.base.code
+}
+
+/* Convienient thing along the lines of GENERIC_TREE_OPERAND */
+GCCNode.prototype.operands = function () {
+  if (GIMPLE_STMT_P (this))
+    return this.gstmt.operands
+  else if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (this.tree_code())))
+  {
+    return this.exp.operands
+  }
+}
+
+GCCNode.prototype.toCString = function () {
+  if (DECL_P (this))
+    return decl_name(this)
+}
+
 function TREE_CODE (tree) {
-  return tree.base.code
+  return tree.tree_code()
 }
 
 function TREE_CODE_CLASS (code) {
@@ -274,7 +313,7 @@ function walk_tree (t, func, guard, stack) {
   var walk_subtrees = func (t, stack)
   if (walk_subtrees === false)
     return
-  code = TREE_CODE (t)
+  code = t.tree_code ()
   stack.push (t)
   switch (code) {
   case TREE_LIST:
@@ -319,10 +358,8 @@ function walk_tree (t, func, guard, stack) {
     if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (code))
         || IS_GIMPLE_STMT_CODE_CLASS (TREE_CODE_CLASS (code)))
     {
-      //    print(t.exp.operands)
-      var length = TREE_OPERAND_LENGTH (t)
-      for (var i = 0; i < length;i++) {
-        walk_tree (GENERIC_TREE_OPERAND (t, i), func, guard, stack)
+      for each (let o in t.operands()) {
+        walk_tree (o, func, guard, stack)
       }
     }
     break;
