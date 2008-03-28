@@ -197,12 +197,9 @@ int gcc_plugin_post_parse() {
     tree_queue_head = q->next;
     free(q);
   }
+  tree_queue_tail = NULL;
   process(global_namespace);
 
-  pointer_set_destroy (pset);
-  pset = NULL;
-  pointer_set_destroy (type_pset);
-  type_pset = NULL;
   postGlobalNamespace = 1;
   return 0;
 }
@@ -216,6 +213,13 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
 
 void gcc_plugin_finish_struct (tree t) {
   dehydra_finishStruct (&dehydra, t);
+  /* It's lame but types are still instantiated after post_parse
+    when some of the stuff saved by dehydra_cp_pre_genericize has been 
+    freed by GCC */
+  if (postGlobalNamespace) {
+    process_type (t);
+    return;
+  }
   /* Appending stuff to the queue instead of 
      processing immediately is because gcc is overly
      lazy and does some things (like setting anonymous
@@ -231,5 +235,9 @@ void gcc_plugin_finish_struct (tree t) {
 }
 
 void gcc_plugin_finish () {
+  pointer_set_destroy (pset);
+  pset = NULL;
+  pointer_set_destroy (type_pset);
+  type_pset = NULL;
   dehydra_input_end (&dehydra);
 }
