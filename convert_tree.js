@@ -1,3 +1,4 @@
+include ("map.js")
 var files = {}
 
 function getLine(fname, line) {
@@ -48,7 +49,7 @@ Function.prototype.addComment = function (comment) {
 
 function Unit () {
   this.functions = []
-  this.guarded = {}
+  this.guarded = new Map()
   this.enumValues = {}
 }
 
@@ -180,8 +181,8 @@ Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
 }
 
 Unit.prototype.guard = function (key) {
-  if (this.guarded[key]) return true;
-  this.guarded[key] = key
+  if (this.guarded.has(key)) return true;
+  this.guarded.put(key)
   return false
 }
 
@@ -271,8 +272,6 @@ function isSkip (attributes) {
     if (skipRegexp.test(a.value)) return true
   }  
 }
-
-var type_guard = {}
 
 const charRegexp = /char/
 function isCharStar (type) {
@@ -367,10 +366,7 @@ function convert (unit, aggr, unionTopLevel) {
       cast = "int"
       isPrimitive = true
     } else {
-      if (!type_guard[type_name]) {
-        type_guard[type_name] = type_name
-        print("Unhandled " + type_name + " " +  m.name + " " + m.loc)
-      }
+      print("Unhandled " + type_name + " " +  m.name + " " + m.loc)
       continue
     }
     if (isSpecial (m.attributes)) {

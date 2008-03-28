@@ -178,3 +178,27 @@ JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
   *rval = JS_TRUE;
   return JS_TRUE;
 }
+
+/* author: tglek
+   The ES4 spec says that it shouldn't be a pointer(with good reason).
+   A counter is morally wrong because in theory it could loop around and bite me,
+   but I lack in moral values and don't enjoy abusing pointers any further */
+JSBool obj_hashcode(JSContext *cx, JSObject *obj, uintN argc,
+                    jsval *argv, jsval *rval)
+{
+  JSBool has_prop;
+  /* Need to check for property first to keep treehydra from getting angry */
+  if (JS_AlreadyHasOwnProperty(cx, obj, "_hashcode", &has_prop) && has_prop) {
+    JS_GetProperty(cx, obj, "_hashcode", rval);
+  } else {
+    static int counter = 0;
+    char str[256];
+    jsval val;
+    snprintf (str, sizeof (str), "%x", ++counter);
+    val = STRING_TO_JSVAL (JS_NewStringCopyZ (cx, str));
+    JS_DefineProperty (cx, obj, "_hashcode", val,
+                       NULL, NULL, JSPROP_PERMANENT | JSPROP_READONLY);
+    *rval = val;
+  }
+  return JS_TRUE;
+}
