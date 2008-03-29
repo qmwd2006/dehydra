@@ -16,6 +16,7 @@
 #if defined(TREEHYDRA_CONVERT_JS) || defined(TREEHYDRA_GENERATED)
 /* this header conflicts with spidermonkey. sorry for above code */
 #include <basic-block.h>
+#include <tree-flow.h>
 #endif
 #include <cp-tree.h>
 #include <cxx-pretty-print.h>
