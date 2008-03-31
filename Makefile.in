@@ -8,7 +8,7 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 #-I/$(HOME)/local/include/js/ 
 CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) $(CONFIGURE_CFLAGS)
 COMMON=dehydra.o dehydra_builtins.o util.o dehydra_types.o
-LDFLAGS=  -lm $(SM_LIBDIR)/lib$(SM_NAME).so -shared
+LDFLAGS=  -lm $(SM_LIBDIR)/lib$(SM_NAME)$(SM_SUFFIX) $(SHARED_LINK_FLAGS)
 TREEHYDRA_OBJS=treehydra.o treehydra_plugin.o treehydra_generated.o $(COMMON)
 
 gcc_dehydra.so: dehydra_plugin.o dehydra_ast.o $(COMMON)

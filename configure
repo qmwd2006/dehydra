@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-import getopt, sys, os.path, os
+# Author: Taras Glek
+# OSX support by Vlad Sukhoy
+import getopt, sys, os.path, os, platform
 
 def usage():
     print """
@@ -40,9 +42,16 @@ def check_gcc_srcdir(gcc_src):
     if not os.path.isfile (os.path.join (gcc_src, "gcc/tree-plugin-pass.c")):
         error("GCC sources in "  + gcc_src + " do not have plugin patch applied")
 
+if platform.system() != 'Darwin':
+    so_suffix = '.so'
+    shared_link_flags = '-shared'
+else:
+    so_suffix = '.dylib'
+    shared_link_flags = '-bundle -bundle_loader $(GCCBUILDDIR)/gcc/cc1plus'
+
 def getjsdirs(jsname, jslibs, jsheaders):
     if jslibs == None:
-        libjs = "/usr/lib/lib" + jsname + ".so"
+        libjs = "/usr/lib/lib" + jsname + so_suffix
         if (os.path.isfile (libjs)):
             jslibs = os.path.dirname(libjs)
             print "Detected JavaScript library: " + libjs
@@ -114,9 +123,12 @@ if __name__ == "__main__":
     f.write("""GCCDIR=%s
 GCCBUILDDIR=%s
 SM_NAME=%s
+SM_SUFFIX=%s
 SM_INCLUDE=%s
 SM_LIBDIR=%s
-CONFIGURE_CFLAGS=%s""" % (gcc_src, gcc_build, jsname, jsheaders, jslibs, cflags))
+SHARED_LINK_FLAGS=%s
+CONFIGURE_CFLAGS=%s""" % (gcc_src, gcc_build, jsname, so_suffix, jsheaders,
+                          jslibs, shared_link_flags, cflags))
     f.close()
     if os.path.exists("Makefile"):
         os.unlink("Makefile")
