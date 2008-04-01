@@ -246,6 +246,9 @@ void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
   }
 }
 
+/* Add a Dehydra variable to the given parent array corresponding to
+ * the GCC tree v, which must represent a declaration (e.g., v can
+ * be a DECL_*. */
 JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   if (!parentArray) parentArray = this->destArray;
   unsigned int length = dehydra_getArrayLength (this, parentArray);
@@ -256,36 +259,49 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
                     OBJECT_TO_JSVAL(obj),
                     NULL, NULL, JSPROP_ENUMERATE);
   if (!v) return obj;
-  xassert (DECL_P (v));
-  char const *name = decl_as_string (v, 0);
-  dehydra_defineStringProperty (this, obj, NAME, 
-                                name);
-  tree typ = TREE_TYPE (v);
-  if (TREE_CODE (v) == FUNCTION_DECL) {
-    dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
-    if (DECL_CONSTRUCTOR_P (v))
-      dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
+  if (DECL_P(v)) {
+    /* Common case */
+    char const *name = decl_as_string (v, 0);
+    dehydra_defineStringProperty (this, obj, NAME, 
+                                  name);
+    tree typ = TREE_TYPE (v);
+    if (TREE_CODE (v) == FUNCTION_DECL) {
+      dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
+      if (DECL_CONSTRUCTOR_P (v))
+        dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
 
-    if (TREE_CODE (typ) == METHOD_TYPE || DECL_CONSTRUCTOR_P (v)) {
-      dehydra_defineProperty (this, obj, METHOD_OF, 
-                              dehydra_convertType (this, DECL_CONTEXT (v)));
+      if (TREE_CODE (typ) == METHOD_TYPE || DECL_CONSTRUCTOR_P (v)) {
+        dehydra_defineProperty (this, obj, METHOD_OF, 
+                                dehydra_convertType (this, DECL_CONTEXT (v)));
+      }
+
+      if (DECL_PURE_VIRTUAL_P (v))
+        dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
+      else if (DECL_VIRTUAL_P (v))
+        dehydra_defineProperty (this, obj, VIRTUAL, JSVAL_TRUE);
     }
-
-    if (DECL_PURE_VIRTUAL_P (v))
-      dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
-    else if (DECL_VIRTUAL_P (v))
-      dehydra_defineProperty (this, obj, VIRTUAL, JSVAL_TRUE);
+    dehydra_defineProperty (this, obj, TYPE, 
+                            dehydra_convertType (this, typ));
+    tree attributes = DECL_ATTRIBUTES (v);
+    if (attributes) {
+      JSObject *tmp = JS_NewArrayObject (this->cx, 0, NULL);
+      dehydra_defineProperty (this, obj, ATTRIBUTES, OBJECT_TO_JSVAL (tmp));
+      dehydra_addAttributes (this, tmp, attributes);
+    }
+    if (TREE_STATIC (v))
+      dehydra_defineProperty (this, obj, STATIC, JSVAL_TRUE);
+  } else if (TREE_CODE(v) == CONSTRUCTOR) {
+    /* Special case for this node type */
+    tree type = TREE_TYPE(v);
+    dehydra_defineStringProperty(this, obj, NAME, 
+                                 type_as_string(type, 0));
+    dehydra_defineProperty(this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
+    dehydra_defineProperty(this, obj, METHOD_OF, 
+                           dehydra_convertType(this, type));
+  } else {
+    /* Invalid argument tree code */
+    xassert(0);
   }
-  dehydra_defineProperty (this, obj, TYPE, 
-                          dehydra_convertType (this, typ));
-  tree attributes = DECL_ATTRIBUTES (v);
-  if (attributes) {
-    JSObject *tmp = JS_NewArrayObject (this->cx, 0, NULL);
-    dehydra_defineProperty (this, obj, ATTRIBUTES, OBJECT_TO_JSVAL (tmp));
-    dehydra_addAttributes (this, tmp, attributes);
-  }
-  if (TREE_STATIC (v))
-    dehydra_defineProperty (this, obj, STATIC, JSVAL_TRUE);
 
   dehydra_setLoc(this, obj, v);
   return obj;

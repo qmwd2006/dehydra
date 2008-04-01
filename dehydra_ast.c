@@ -21,6 +21,11 @@ static void dehydra_iterate_statementlist (Dehydra *, tree);
 static tree statement_walker (tree *, int *walk_, void *);
 
 
+/* Make a Dehydra variable to represent the value of the given
+ * AST expression node. 
+ * This function does not itself create a Dehydra variable. Instead,
+ * it relies on the tree walk of the tree to create a Dehydra variable
+ * by calling dehydra_addVar at some point. */
 /*todo: make this avoid consecutive vars of the same thing */
 static JSObject* dehydra_makeVar (Dehydra *this, tree t, 
                                   char const *prop, JSObject *attachToObj) {
@@ -93,7 +98,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     for (d = 0; d < statement_walker_depth;d++) {
       fprintf(stderr, " ");
     }
-    fprintf(stderr, "ast: %s\n",tree_code_name[TREE_CODE(*tp)]);
+    fprintf(stderr, "ast: %s %s\n",tree_code_name[TREE_CODE(*tp)], TREE_CODE(*tp) == TARGET_EXPR ? expr_as_string(*tp, 0) : "");
   }
   switch (code) {
   case STATEMENT_LIST:
@@ -159,8 +164,9 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     break;
   case TARGET_EXPR:
      {
-       /* this is a weird initializer tree node, however it's usually with INIT_EXPR
-          so info in it is redudent */
+       /* This is a weird initializer tree node. It seems to be used to
+        * decorate regular initializers to add cleanup code, etc. We'll
+        * just skip the wrapping. */
        cp_walk_tree_without_duplicates(&TARGET_EXPR_INITIAL(*tp),
                                       statement_walker, this);        
        *walk_subtrees = 0;
@@ -168,12 +174,22 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
      }
   case AGGR_INIT_EXPR:
     {
-      /* another weird initializer */
+      /* C++ constructor invocation. */
       int paramCount = aggr_init_expr_nargs(*tp) + 3;
       tree fn = AGGR_INIT_EXPR_FN(*tp);
       JSObject *obj = dehydra_makeVar (this, fn, NULL, NULL);
       dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
       dehydra_fcallDoArgs (this, obj, *tp, 4, paramCount);
+      *walk_subtrees = 0;
+      break;
+    }
+  case CONSTRUCTOR:
+    {
+      /* In C, this is used for struct/array initializers. It appears
+       * that in C++ it is also used for default constructor invocations. */
+      (void) dehydra_addVar(this, *tp, NULL);
+      /* This tree type has an argument list, but the arguments should
+       * all be default zero values of no interest. */
       *walk_subtrees = 0;
       break;
     }
