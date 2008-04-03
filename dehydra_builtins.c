@@ -15,6 +15,107 @@
 #include "dehydra_builtins.h"
 #include "xassert.h"
 
+JSBool require_version(JSContext *cx, jsval val) {
+  JSString *version_str = JS_ValueToString(cx, val);
+  if (!version_str) return JS_FALSE;
+  JS_AddRoot(cx, &version_str);
+  char *version_cstr = JS_GetStringBytes(version_str);
+  JSVersion version = JS_StringToVersion(version_cstr);
+  JSBool retval;
+  if (version == JSVERSION_UNKNOWN) {
+    JS_ReportError(cx, "Invalid version '%s'", version_cstr);
+    retval = JS_FALSE;
+  } else {
+    JS_SetVersion(cx, version);
+    retval = JS_TRUE;
+  }
+  JS_RemoveRoot(cx, &version_str);
+  return retval;
+}
+
+JSBool require_option(JSContext *cx, jsval val, uint32 option) {
+  JSBool flag;
+  if (!JS_ValueToBoolean(cx, val, &flag)) return JS_FALSE;
+  if (flag) {
+    JS_SetOptions(cx, JS_GetOptions(cx) | option);
+  } else {
+    JS_SetOptions(cx, JS_GetOptions(cx) & ~option);
+  }
+  return JS_TRUE;
+}
+
+JSBool dispatch_require(JSContext *cx, const char *prop_name, jsval prop_val) {
+  if (strcmp(prop_name, "version") == 0) {
+    return require_version(cx, prop_val);
+  } else if (strcmp(prop_name, "strict") == 0) {
+    return require_option(cx, prop_val, JSOPTION_STRICT);
+  } else if (strcmp(prop_name, "werror") == 0) {
+    return require_option(cx, prop_val, JSOPTION_WERROR);
+  } else {
+    JS_ReportWarning(cx, "Unrecognized require keyword '%s'", prop_name);
+    return JS_TRUE;
+  }
+}
+
+/* Helper to return the current version as a JS string. */
+jsval get_version(JSContext *cx)
+{
+  const char *version_cstr = JS_VersionToString(JS_GetVersion(cx));
+  if (version_cstr == NULL) {
+    return JSVAL_VOID;
+  }
+  JSString *version_str = JS_NewStringCopyZ(cx, version_cstr);
+  return STRING_TO_JSVAL(version_str);
+}
+
+JSBool Require(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
+               jsval *rval)
+{
+  JSObject *args;
+  if (!JS_ConvertArguments(cx, argc, argv, "o", &args)) return JS_FALSE;
+  JSIdArray *prop_ids = JS_Enumerate(cx, args);
+  if (!prop_ids) return JS_FALSE;
+
+  /* Apply the options. */
+  JSBool retval = JS_TRUE;
+  int i;
+  for (i = 0; i < prop_ids->length; ++i) {
+    jsval prop;
+    JSBool rv = JS_IdToValue(cx, prop_ids->vector[i], &prop);
+    xassert(rv);
+    JS_AddRoot(cx, &prop);
+    JSString *prop_str = JSVAL_TO_STRING(prop);
+    char *prop_name = JS_GetStringBytes(prop_str);
+    jsval prop_val;
+    rv = JS_GetProperty(cx, args, prop_name, &prop_val);
+    xassert(rv);
+    JS_AddRoot(cx, &prop_val);
+
+    rv = dispatch_require(cx, prop_name, prop_val);
+    if (rv == JS_FALSE) retval = JS_FALSE;
+
+    JS_RemoveRoot(cx, &prop_val);
+    JS_RemoveRoot(cx, &prop);
+  }
+  JS_DestroyIdArray(cx, prop_ids);
+  if (!retval) return retval;
+
+  /* Report the now-current options. */
+  JSObject *rvalo = JS_NewObject(cx, NULL, NULL, NULL);
+  if (!rvalo) return JS_FALSE;
+  *rval = OBJECT_TO_JSVAL(rvalo);
+  JS_DefineProperty(
+      cx, rvalo, "version", get_version(cx), NULL, NULL, JSPROP_ENUMERATE);
+  uint32 options = JS_GetOptions(cx);
+  JS_DefineProperty(
+      cx, rvalo, "strict", (options | JSOPTION_STRICT) ? JS_TRUE : JS_FALSE, 
+      NULL, NULL, JSPROP_ENUMERATE);
+  JS_DefineProperty(
+      cx, rvalo, "werror", (options | JSOPTION_WERROR) ? JS_TRUE : JS_FALSE, 
+      NULL, NULL, JSPROP_ENUMERATE);
+  return JS_TRUE;
+}
+
 JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
              jsval *rval)
 {
@@ -60,17 +161,6 @@ JSBool Warning(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
       return JS_FALSE;
     warning (code, "%s", JS_GetStringBytes(str));
   }
-  return JS_TRUE;
-}
-
-
-JSBool Version(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-               jsval *rval)
-{
-  if (argc > 0 && JSVAL_IS_INT(argv[0]))
-    *rval = INT_TO_JSVAL(JS_SetVersion(cx, (JSVersion) JSVAL_TO_INT(argv[0])));
-  else
-    *rval = INT_TO_JSVAL(JS_GetVersion(cx));
   return JS_TRUE;
 }
 
