@@ -22,10 +22,10 @@ class CLITestCase(PluginTestCase):
     """Test case class for looking for expected items in the error output;
     or for no error output."""
 
-    def __init__(self, script_path, *expected_errors):
+    def __init__(self, script_path, ccfile, *expected_errors):
         super(CLITestCase, self).__init__()
         self.filename = script_path
-        self.ccfile = 'empty.cc'
+        self.ccfile = ccfile
         self.expected_errors = expected_errors
 
     def checkOutput(self, out, err):
@@ -35,6 +35,14 @@ class CLITestCase(PluginTestCase):
            for e in self.expected_errors:
                if err.find(e) == -1:
                    self.fail("Expected '%s' in error output; not found"%e)
+
+    def __str__(self):
+       return "<test %s %s>"%(self.filename, self.ccfile)
+
+class TreehydraCLITestCase(CLITestCase):
+    def __init__(self, *args, **kw):
+        super(TreehydraCLITestCase, self).__init__(*args, **kw)
+        self.plugin = 'treehydra'
 
 class JSUnitTestCase(PluginTestCase):
     """Test case class for running a JS unit test and checking for OK
@@ -72,12 +80,16 @@ TREEHYDRA_CMD_FORMAT = sys.argv[1]
 s = TestSuite()
 
 # Ensure that all of these produce errors.
-s.addTest(CLITestCase('nofile.js', 'Cannot find include file'))
-s.addTest(CLITestCase('syntax_error.js', 'SyntaxError'))
-s.addTest(CLITestCase('semantic_error.js', 'TypeError'))
+s.addTest(CLITestCase('nofile.js', 'empty.cc', 'Cannot find include file'))
+s.addTest(CLITestCase('syntax_error.js', 'empty.cc', 'SyntaxError'))
+s.addTest(CLITestCase('semantic_error.js', 'empty.cc', 'TypeError'))
 
 # Ensure that the full path appears
-s.addTest(CLITestCase('lib_error.js', 'TypeError', '/treehydra.js'))
+s.addTest(CLITestCase('lib_error.js', 'empty.cc', 'TypeError', '/treehydra.js'))
+
+# Require pass tests
+s.addTest(TreehydraCLITestCase('tc_pass1.js', 'onefunc.cc'))
+s.addTest(TreehydraCLITestCase('tc_pass2.js', 'onefunc.cc', 'Cannot set gcc_pass_after'))
 
 # Run Dehydra unit tests
 s.addTest(JSUnitTestCase('test_include.js'))
