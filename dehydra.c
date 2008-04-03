@@ -96,7 +96,7 @@ void dehydra_init(Dehydra *this, const char *file) {
   this->globalObj = JS_NewObject (this->cx, &global_class, 0, 0);
   JS_InitStandardClasses (this->cx, this->globalObj);
   /* register error handler */
-  JS_SetErrorReporter (this->cx, ReportError);
+  JS_SetErrorReporter (this->cx, ErrorReporter);
   xassert (JS_DefineFunctions (this->cx, this->globalObj, shell_functions));
   if (dehydra_getToplevelFunction(this, "error") == JSVAL_VOID) {
     fprintf (stderr, "Your version of spidermonkey has broken JS_DefineFunctions, upgrade it or ./configure with another version\n");
@@ -170,18 +170,25 @@ JSObject *dehydra_defineObjectProperty (Dehydra *this, JSObject *obj,
  * exception, which will be propgated back up to the callers for
  * eventual handling or exit. */
 int dehydra_loadScript (Dehydra *this, const char *filename) {
-  /* Read the file. There's a JS function for this, but Dehydra
+  /* Read the file. There's a JS function for reading scripts, but Dehydra
      wants to search for the file in different dirs. */
   long size = 0;
-  char *buf = readFile (filename, this->dir, &size);
-  if (!buf) {
-    fprintf (stderr, "Dehydra error: failed loading script file: %s\n", 
-             filename);
-    exit(1);    /* To match ReportError behavior */
+  char *realname;
+  FILE *f = findFile(filename, this->dir, &realname);
+  if (!f) {
+    REPORT_ERROR_1(this->cx, "Cannot find include file '%s'", filename);
+    return 1;
+  }
+  char *content = readEntireFile(f, &size);
+  if (!content) {
+    REPORT_ERROR_1(this->cx, "Cannot read include file '%s'", realname);
+    free(realname);
+    return 1;
   }
 
   JSScript *script = JS_CompileScript(this->cx, this->globalObj,
-                                      buf, size, filename, 1);
+                                      content, size, realname, 1);
+  free(realname);
   if (script == NULL) {
     xassert(JS_IsExceptionPending(this->cx));
     return 1;
