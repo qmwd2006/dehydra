@@ -18,7 +18,6 @@
 JSBool require_version(JSContext *cx, jsval val) {
   JSString *version_str = JS_ValueToString(cx, val);
   if (!version_str) return JS_FALSE;
-  JS_AddRoot(cx, &version_str);
   char *version_cstr = JS_GetStringBytes(version_str);
   JSVersion version = JS_StringToVersion(version_cstr);
   JSBool retval;
@@ -29,7 +28,6 @@ JSBool require_version(JSContext *cx, jsval val) {
     JS_SetVersion(cx, version);
     retval = JS_TRUE;
   }
-  JS_RemoveRoot(cx, &version_str);
   return retval;
 }
 
@@ -82,20 +80,16 @@ JSBool Require(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
   for (i = 0; i < prop_ids->length; ++i) {
     jsval prop;
     JSBool rv = JS_IdToValue(cx, prop_ids->vector[i], &prop);
+    argv[argc+1] = prop;
     xassert(rv);
-    JS_AddRoot(cx, &prop);
     JSString *prop_str = JSVAL_TO_STRING(prop);
     char *prop_name = JS_GetStringBytes(prop_str);
     jsval prop_val;
     rv = JS_GetProperty(cx, args, prop_name, &prop_val);
     xassert(rv);
-    JS_AddRoot(cx, &prop_val);
 
     rv = dispatch_require(cx, prop_name, prop_val);
     if (rv == JS_FALSE) retval = JS_FALSE;
-
-    JS_RemoveRoot(cx, &prop_val);
-    JS_RemoveRoot(cx, &prop);
   }
   JS_DestroyIdArray(cx, prop_ids);
   if (!retval) return retval;
@@ -108,10 +102,12 @@ JSBool Require(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
       cx, rvalo, "version", get_version(cx), NULL, NULL, JSPROP_ENUMERATE);
   uint32 options = JS_GetOptions(cx);
   JS_DefineProperty(
-      cx, rvalo, "strict", (options | JSOPTION_STRICT) ? JS_TRUE : JS_FALSE, 
+      cx, rvalo, "strict", 
+     (options | JSOPTION_STRICT) ? JSVAL_TRUE : JSVAL_FALSE, 
       NULL, NULL, JSPROP_ENUMERATE);
   JS_DefineProperty(
-      cx, rvalo, "werror", (options | JSOPTION_WERROR) ? JS_TRUE : JS_FALSE, 
+      cx, rvalo, "werror", 
+     (options | JSOPTION_WERROR) ? JSVAL_TRUE : JSVAL_FALSE, 
       NULL, NULL, JSPROP_ENUMERATE);
   return JS_TRUE;
 }
@@ -231,7 +227,9 @@ ErrorReporter(JSContext *cx, const char *message, JSErrorReport *report)
     }
   }
   fflush(stderr);
-  exit(1);
+  
+  if (!JSREPORT_IS_WARNING(report->flags))
+    exit(1);
 }
 
 JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
