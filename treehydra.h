@@ -3,6 +3,8 @@
 
 int treehydra_startup (struct Dehydra *this, const char *script);
 void treehydra_plugin_pass (struct Dehydra *this);
+int set_after_gcc_pass(const char *pass);
+
 typedef void (*treehydra_handler)(struct Dehydra *this, void *structure, struct JSObject *obj);
 jsval get_lazy (struct Dehydra *this, treehydra_handler handler, void *v,
                struct JSObject *parent, const char *propname);

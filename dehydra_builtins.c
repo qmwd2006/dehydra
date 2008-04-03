@@ -15,6 +15,9 @@
 #include "dehydra_builtins.h"
 #include "xassert.h"
 
+/* Prototype from treehydra.h. */
+int set_after_gcc_pass(const char *pass);
+
 JSBool require_version(JSContext *cx, jsval val) {
   JSString *version_str = JS_ValueToString(cx, val);
   if (!version_str) return JS_FALSE;
@@ -42,6 +45,22 @@ JSBool require_option(JSContext *cx, jsval val, uint32 option) {
   return JS_TRUE;
 }
 
+JSBool require_pass(JSContext *cx, jsval val) {
+  JSString *str = JS_ValueToString(cx, val);
+  if (!str) return JS_FALSE;
+  JS_AddRoot(cx, &str);
+  char *cstr = JS_GetStringBytes(str);
+  JSBool retval;
+  if (set_after_gcc_pass(cstr)) {
+    JS_ReportError(cx, "Cannot set gcc_pass_after after initialization is finished");
+    retval = JS_FALSE;
+  } else {
+    retval = JS_TRUE;
+  }
+  JS_RemoveRoot(cx, &str);
+  return retval;
+}
+
 JSBool dispatch_require(JSContext *cx, const char *prop_name, jsval prop_val) {
   if (strcmp(prop_name, "version") == 0) {
     return require_version(cx, prop_val);
@@ -49,6 +68,8 @@ JSBool dispatch_require(JSContext *cx, const char *prop_name, jsval prop_val) {
     return require_option(cx, prop_val, JSOPTION_STRICT);
   } else if (strcmp(prop_name, "werror") == 0) {
     return require_option(cx, prop_val, JSOPTION_WERROR);
+  } else if (strcmp(prop_name, "after_gcc_pass") == 0) {
+    return require_pass(cx, prop_val);
   } else {
     JS_ReportWarning(cx, "Unrecognized require keyword '%s'", prop_name);
     return JS_TRUE;
