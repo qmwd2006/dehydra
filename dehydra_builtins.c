@@ -7,7 +7,7 @@
 #include <coretypes.h>
 #include <tm.h>
 #include <tree.h>
-#include <cp-tree.h>
+#include "cp-tree-jsapi-workaround.h"
 #include <toplev.h>
 #include <jsapi.h>
 

@@ -1,4 +1,3 @@
-#include <linux/limits.h>
 #include <config.h>
 #include <system.h>
 #include <coretypes.h>
@@ -10,6 +9,7 @@
 #include <pointer-set.h>
 #include <toplev.h>
 
+#include "util.h"
 
 static char locationbuf[PATH_MAX];
 
@@ -33,8 +33,15 @@ location_of (tree t)
 }
 
 char const * loc_as_string (location_t loc) {
-  if (!loc || loc == UNKNOWN_LOCATION) return NULL;
+  if (loc_is_unknown(loc)) return NULL;
   expanded_location eloc = expand_location(loc);
+#ifdef expand_location
+  // if this is a macro, then most likely locations are not mapped, so
+  // the column number is unavailable
+  sprintf(locationbuf, "%s:%d", eloc.file, eloc.line);
+#else
+  // a function, so locations are likely to be mapped, so we have columns
   sprintf(locationbuf, "%s:%d:%d", eloc.file, eloc.line, eloc.column);
+#endif
   return locationbuf;
 }

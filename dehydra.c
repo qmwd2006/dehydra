@@ -7,7 +7,7 @@
 #include <coretypes.h>
 #include <tm.h>
 #include <tree.h>
-#include <cp-tree.h>
+#include "cp-tree-jsapi-workaround.h"
 #include <cxx-pretty-print.h>
 #include <tree-iterator.h>
 #include <pointer-set.h>
@@ -216,7 +216,7 @@ jsval dehydra_getToplevelFunction(Dehydra *this, char const *name) {
 
 void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
   location_t loc = location_of (t);
-  if (!loc || loc == UNKNOWN_LOCATION) return;
+  if (loc_is_unknown(loc)) return;
 
   char const *strLoc = loc_as_string (loc);
   /* Don't attach empty locations */
