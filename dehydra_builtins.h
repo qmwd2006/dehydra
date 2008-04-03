@@ -3,32 +3,20 @@
 
 /* JS Natives */
 
-JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-             jsval *rval);
-
-JSBool Error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-             jsval *rval);
-
-
-JSBool Warning(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-               jsval *rval);
-
-JSBool Version(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-               jsval *rval);
+#define DH_JSNATIVE(fname) JSBool fname(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval);
+ 
+DH_JSNATIVE(Require);
+DH_JSNATIVE(Include);
+ 
+DH_JSNATIVE(Error);
+DH_JSNATIVE(Print);
+DH_JSNATIVE(Warning);
+ 
+DH_JSNATIVE(WriteFile);
+DH_JSNATIVE(ReadFile);
+DH_JSNATIVE(obj_hashcode);
 
 void ErrorReporter(JSContext *cx, const char *message, JSErrorReport *report);
-
-JSBool WriteFile (JSContext *cx, JSObject *obj, uintN argc,
-                  jsval *argv, jsval *rval);
-
-JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
-                jsval *argv, jsval *rval);
-
-JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
-               jsval *argv, jsval *rval);
-
-JSBool obj_hashcode(JSContext *cx, JSObject *obj, uintN argc,
-                    jsval *argv, jsval *rval);
 
 /* Related C functions */
 

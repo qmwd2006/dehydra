@@ -71,7 +71,7 @@ void dehydra_init(Dehydra *this, const char *file) {
     {"read_file",       ReadFile,       1},
     {"error",           Error,          0},
     {"warning",         Warning,        0},
-    {"version",         Version,        0},
+    {"require",         Require,        0},
 #ifdef JS_GC_ZEAL
     JS_FN("gczeal",     GCZeal,     1,1,0),
 #endif
