@@ -78,6 +78,7 @@ s.addTest(CLITestCase('lib_error.js', 'TypeError', '/treehydra.js'))
 
 # Run Dehydra unit tests
 s.addTest(JSUnitTestCase('test_include.js'))
+s.addTest(JSUnitTestCase('test_require.js'))
 
 r = MyTestResult()
 

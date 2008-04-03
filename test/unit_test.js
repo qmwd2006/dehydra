@@ -1,12 +1,4 @@
-/*
-# test cases
-
-# include nonexistent file
-# include file with syntax error
-# include file with semantic error
-
-# all of the above with cli file
-*/
+/** Unit test framework for JS */
 
 function TestResults() {
   this.testsRun = 0;
@@ -41,6 +33,11 @@ TestResults.prototype.list = function () {
 
 function TestCase() {
   this.results = undefined;
+  this.name = "TestCase";
+}
+
+TestCase.prototype.toString = function() {
+  return this.name;
 }
 
 TestCase.prototype.run = function(results_arg) {
@@ -53,6 +50,41 @@ TestCase.prototype.run = function(results_arg) {
   }
 };
 
+// Build test cases for methods named 'test' in this object.
+TestCase.prototype.buildTestCases = function() {
+  let ans = new Array();
+
+  for (let k in this) {
+    let v = this[k];
+    if (k.substr(0, 4) == 'test' && typeof v == 'function') {
+      let c = new TestCase();
+      c.name = k;
+      c.runTest = v;
+      ans.push(c);
+    }
+  }
+  return ans;
+};
+
+TestCase.prototype.runTestCases = function(results) {
+  let cs = this.buildTestCases()
+  for (let i = 0; i < cs.length; ++i) {
+    cs[i].run(results);
+  }
+}
+
 TestCase.prototype.fail = function(msg) {
   throw new Error(msg);
+};
+
+TestCase.prototype.assertEquals = function(v1, v2) {
+  if (v1 != v2) {
+    throw new Error(v1 + ' != ' + v2);
+  }
+};
+
+TestCase.prototype.assertTrue = function(v) {
+  if (!v) {
+    throw new Error(v + ' is false');
+  }
 };
