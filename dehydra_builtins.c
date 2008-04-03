@@ -316,18 +316,55 @@ FILE *findFile(const char *filename, const char *dir, char **realname) {
   return NULL;
 }
 
+/* should use this function to load all objects to avoid possibity of objects including themselves */
 JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
                jsval *argv, jsval *rval) {
-  const char *filename;
+  if (!argc) return JS_FALSE;
+  char *filename;
+  // first arg is string filename..second arg is optional namespace
   JSBool rv = JS_ConvertArguments(cx, argc, argv, "s", &filename);
   if (!rv) return JS_FALSE;
 
   Dehydra *this = JS_GetContextPrivate (cx);
-  if (dehydra_loadScript (this, filename)) {
-    return JS_FALSE;
+  JSObject *namespaceObject = this->globalObj;
+  if (argc > 1) {
+    if (!JS_ConvertArguments(cx, argc  - 1, argv + 1, "o", &this->globalObj)) {
+      goto err_out;
+    }
   }
-  *rval = JS_TRUE;
+
+  JSObject *includedArray = NULL;
+  do {
+    jsval val;
+    JS_GetProperty(cx, this->globalObj, "_includedArray", &val);
+    if (!JSVAL_IS_OBJECT (val)) {
+      includedArray = JS_NewArrayObject (this->cx, 0, NULL);
+      dehydra_defineProperty (this, this->globalObj, "_includedArray",
+                              OBJECT_TO_JSVAL (includedArray));
+      break;
+    }
+    includedArray = JSVAL_TO_OBJECT (val);
+    xassert (JS_CallFunctionName (this->cx, includedArray, "lastIndexOf",
+                                   1, argv, &val));
+    // file has already been included
+    if (JSVAL_TO_INT (val) != -1) {
+      goto out;
+    }
+  } while (false);
+
+  // push the included file
+  JS_CallFunctionName (this->cx, includedArray, "push",
+                              1, argv, rval);
+  if (dehydra_loadScript (this, filename)) {
+    goto err_out;
+  }
+
+ out:
+  this->globalObj = namespaceObject;
   return JS_TRUE;
+ err_out:
+  this->globalObj = namespaceObject;
+  return JS_FALSE;
 }
 
 /* author: tglek
