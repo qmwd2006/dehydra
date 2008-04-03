@@ -2,8 +2,11 @@ import os, re, sys
 from subprocess import Popen, PIPE, STDOUT
 from unittest import TestCase, TestSuite, TestLoader, TestResult
 
-class TreehydraTestCase(TestCase):
+class PluginTestCase(TestCase):
     """Test case for running Treehydra and checking output."""
+    def __init__(self):
+        super(PluginTestCase, self).__init__()
+        self.plugin = "dehydra"
 
     def runTest(self):
         cmd = self.getCommand()
@@ -13,9 +16,9 @@ class TreehydraTestCase(TestCase):
         self.checkOutput(out, err)
 
     def getCommand(self):
-        return TREEHYDRA_CMD_FORMAT%(self.filename, self.ccfile)
+        return TREEHYDRA_CMD_FORMAT%(self.plugin, self.filename, self.ccfile)
 
-class CLITestCase(TreehydraTestCase):
+class CLITestCase(PluginTestCase):
     """Test case class for looking for expected items in the error output;
     or for no error output."""
 
@@ -33,7 +36,7 @@ class CLITestCase(TreehydraTestCase):
                if err.find(e) == -1:
                    self.fail("Expected '%s' in error output; not found"%e)
 
-class JSUnitTestCase(TreehydraTestCase):
+class JSUnitTestCase(PluginTestCase):
     """Test case class for running a JS unit test and checking for OK
     in the results."""
 
