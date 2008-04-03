@@ -8,6 +8,10 @@ CXXFLAGS = $(PLUGINARG) -fplugin-arg=$(SCRIPT)
 
 all: test.o assign.o typedef.o operator_new.o destr_order.o init.o virtual.o constructor.o types.o templ-spec.o constructor.o stack_fieldOf.o templ-simple.o longevity.o finalizers.o
 
+# Treehydra unit tests
+unit_tests:
+	python unit_test_harness.py "$(CC1PLUS) -fplugin=../gcc_treehydra.so -o /dev/null -fplugin-arg=%s %s"
+
 %.o: %.cc $(PLUGIN)
 	$(CC1PLUS) $(CXXFLAGS) $< -o /dev/null
 
