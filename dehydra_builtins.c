@@ -74,8 +74,31 @@ JSBool Version(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
   return JS_TRUE;
 }
 
+/* Report an error.
+ * If we are currently inside JS, we'll report an error to JS. But
+ * otherwise, we'll report it to the user and then exit. */
+void reportError(JSContext *cx, const char *file, int line, 
+                 const char *fmt, ...) 
+{
+  char msg[1024];
+  const int size = sizeof(msg) / sizeof(msg[0]);
+  va_list ap;
+  va_start(ap, fmt);
+  int nw = vsnprintf(msg, size, fmt, ap);
+  va_end(ap);
+  if (nw >= size) msg[size-1] = '\0';
+  
+  if (JS_IsRunning(cx)) {
+    JS_ReportError(cx, "%s (from %s:%d)", msg, file, line);
+  } else {
+    fflush(stdout);
+    fprintf(stderr, "%s:%d: Error: %s\n", file, line, msg);
+    exit(1);
+  }
+}
+
 void
-ReportError(JSContext *cx, const char *message, JSErrorReport *report)
+ErrorReporter(JSContext *cx, const char *message, JSErrorReport *report)
 {
   int error = JSREPORT_IS_EXCEPTION(report->flags);
   jsval exn;
@@ -128,10 +151,10 @@ JSBool ReadFile(JSContext *cx, JSObject *obj, uintN argc,
   if (!rv) return JS_FALSE;
 
   long size = 0;
-  char *buf = readFile (filename, NULL, &size);
+  char *buf = readFile (filename, &size);
   if(!buf) {
-    JS_ReportError(cx, "read_file: error opening file '%s': %s",
-                filename, strerror(errno));
+    REPORT_ERROR_2(cx, "read_file: error opening file '%s': %s",
+                   filename, strerror(errno));
     return JS_FALSE;
   }
   *rval = STRING_TO_JSVAL(JS_NewString(cx, buf, size));
@@ -147,7 +170,7 @@ JSBool WriteFile(JSContext *cx, JSObject *obj, uintN argc,
 
   FILE *f = fopen (filename, "w");
   if (!f) {
-    JS_ReportError(cx, "write_file: error opening file '%s': %s",
+    REPORT_ERROR_2(cx, "write_file: error opening file '%s': %s",
                    filename, strerror(errno));
     return JS_FALSE;
   }
@@ -156,28 +179,53 @@ JSBool WriteFile(JSContext *cx, JSObject *obj, uintN argc,
   return JS_TRUE;
 }
 
-char *readFile(const char *filename, const char *dir, long *size) {
-  char *buf;
-  FILE *f = fopen(filename, "r");
-  if (!f) {
-    if (dir && *filename && filename[0] != '/') {
-      buf = xmalloc(strlen(dir) + strlen(filename) + 2);
-      sprintf(buf, "%s/%s", dir, filename);
-      f = fopen(buf, "r");
-      free(buf);
-    }
-    if (!f) {
-      return NULL;
-    }
-  }
-  xassert(!fseek(f, 0, SEEK_END));
+char *readEntireFile(FILE *f, long *size) {
+  xassert(f);
+  if (fseek(f, 0, SEEK_END)) return NULL;
   *size = ftell(f);
-  xassert(!fseek(f, 0, SEEK_SET));
-  buf = xmalloc(*size + 1);
+  if (fseek(f, 0, SEEK_SET)) return NULL;
+  char *buf = xmalloc(*size + 1);
   xassert(*size == fread(buf, 1, *size, f));
   buf[*size] = 0;
   fclose(f);
   return buf;
+}
+
+/* Read the entire contents of a file.
+ *      path   path of the file to read
+ *      size   (out) number of bytes of file data read
+ *    return   null-terminated file contents, or NULL on error. Caller
+ *             should free when done. */
+char *readFile(const char *path, long *size) {
+  FILE *f = fopen(path, "r");
+  if (!f) return NULL;
+  return readEntireFile(f, size);
+}
+
+/* Find a file, searching another dir if necessary.  If the file is
+ * found, return a file handle open for reading and store the malloc'd
+ * name where the file was found in realname. Otherwise, return
+ * NULL. */
+FILE *findFile(const char *filename, const char *dir, char **realname) {
+  FILE *f = fopen(filename, "r");
+  if (f) {
+    *realname = xstrdup(filename);
+    return f;
+  }
+  if (dir && dir[0] && filename[0] && filename[0] != '/') {
+    char *buf = xmalloc(strlen(dir) + strlen(filename) + 2);
+    /* Doing a little extra work here to get rid of unneeded '/'. */
+    char *sep = dir[strlen(dir)-1] == '/' ? "" : "/";
+    sprintf(buf, "%s%s%s", dir, sep, filename);
+    f = fopen(buf, "r");
+    if (f) {
+      *realname = buf;
+      return f;
+    } else {
+      free(buf);
+    }
+  }
+  return NULL;
 }
 
 JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
