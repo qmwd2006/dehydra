@@ -2,16 +2,7 @@
 #include <unistd.h>
 #include <stdio.h>
 
-#include <config.h>
-#include <system.h>
-#include <coretypes.h>
-#include <tm.h>
-#include <tree.h>
-#include <cp-tree.h>
-#include <cxx-pretty-print.h>
-#include <tree-iterator.h>
-#include <pointer-set.h>
-#include <toplev.h>
+#include "gcc_compat.h"
 
 #include "xassert.h"
 #include "dehydra.h"
@@ -175,11 +166,18 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case AGGR_INIT_EXPR:
     {
       /* C++ constructor invocation. */
-      int paramCount = aggr_init_expr_nargs(*tp) + 3;
       tree fn = AGGR_INIT_EXPR_FN(*tp);
       JSObject *obj = dehydra_makeVar (this, fn, NULL, NULL);
       dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
-      dehydra_fcallDoArgs (this, obj, *tp, 4, paramCount);
+#ifdef DEHYDRA_INPLACE_ARGS
+      // the arguments are not operands but a chain, like in apple gcc42
+      dehydra_attachNestedFields(this, obj, ARGUMENTS,
+				 aggr_init_expr_args(*tp));
+#else
+      // the arguments are operands
+      dehydra_fcallDoArgs (this, obj, *tp, aggr_init_expr_first_param_index,
+			   TREE_OPERAND_LENGTH(*tp));
+#endif
       *walk_subtrees = 0;
       break;
     }
@@ -205,7 +203,9 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     *walk_subtrees = 0;
     break;
   case TRY_CATCH_EXPR:
+#ifdef POINTER_PLUS_EXPR_CHECK
   case POINTER_PLUS_EXPR:
+#endif
   case ADDR_EXPR:
   case INDIRECT_REF:
   case CLEANUP_POINT_EXPR:
@@ -219,16 +219,30 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       if (TREE_CODE (fn) == ADDR_EXPR)
         fn = TREE_OPERAND (fn, 0);
 
-      /* index of first param */
-      int i = 3;
+      int offset = 0;
       JSObject *obj = dehydra_makeVar (this, fn, NULL, NULL);
       dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
+      tree args;
       if (TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE) {
-        tree o = GENERIC_TREE_OPERAND(*tp, i);
-        ++i;
+        tree o = call_expr_first_arg(*tp);
+        ++offset;
         xassert (dehydra_makeVar (this, o, FIELD_OF, obj));
+	args = call_expr_rest_args(*tp);
       }
-      dehydra_fcallDoArgs (this, obj, *tp, i, TREE_OPERAND_LENGTH (*tp));
+      else {
+#ifdef DEHYDRA_INPLACE_ARGS
+	args = call_expr_args(*tp);
+#else
+	args = *tp; // confusing call_expr_args is defined in gcc
+#endif
+      }
+#ifdef DEHYDRA_INPLACE_ARGS
+        dehydra_attachNestedFields(this, obj, ARGUMENTS, args);
+#else
+        dehydra_fcallDoArgs (this, obj, *tp,
+			     call_expr_first_param_index + offset,
+			     TREE_OPERAND_LENGTH(*tp));
+#endif
       *walk_subtrees = 0;
       break;
     }
@@ -254,7 +268,9 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     break;
   case INTEGER_CST:
   case REAL_CST:
+#ifdef FIXED_CST_CHECK
   case FIXED_CST:
+#endif
   case COMPLEX_CST:
   case VECTOR_CST:
   case STRING_CST:
@@ -336,7 +352,7 @@ static void dehydra_nextStatement(Dehydra *this, location_t loc) {
                             OBJECT_TO_JSVAL (this->destArray));
   }
   /* always update location */
-  if (this->loc) {
+  if (!loc_is_unknown(this->loc)) {
     const char *loc_str = loc_as_string (this->loc);
     const char *s = strrchr (loc_str, '/');
     if (s) loc_str = s + 1;

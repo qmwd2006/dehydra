@@ -7,7 +7,7 @@
 #include <coretypes.h>
 #include <tm.h>
 #include <tree.h>
-#include <cp-tree.h>
+#include "cp-tree-jsapi-workaround.h"
 #include <cxx-pretty-print.h>
 #include <tree-iterator.h>
 #include <pointer-set.h>
@@ -306,14 +306,18 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   case BOOLEAN_TYPE:
   case INTEGER_TYPE:
   case REAL_TYPE:
+#ifdef FIXED_POINT_TYPE_CHECK
   case FIXED_POINT_TYPE:
+#endif
     if (!type_decl)
       {
         int prec = TYPE_PRECISION (type);
         dehydra_defineProperty (this, obj, BITFIELD, INT_TO_JSVAL (prec));
+#ifdef ALL_FIXED_POINT_MODE_P
         if (ALL_FIXED_POINT_MODE_P (TYPE_MODE (type)))
           type = c_common_type_for_mode (TYPE_MODE (type), TYPE_SATURATING (type));
         else
+#endif
           type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
         type_decl = TYPE_NAME (type);
       }

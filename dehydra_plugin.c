@@ -224,6 +224,7 @@ void gcc_plugin_finish_struct (tree t) {
      processing immediately is because gcc is overly
      lazy and does some things (like setting anonymous
      struct names) sometime after completing the type */
+  xassert(!tree_queue_tail || tree_queue_head);
   tree_queue *q = xmalloc (sizeof (tree_queue));
   q->t = t;
   q->next = NULL;
