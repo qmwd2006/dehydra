@@ -339,6 +339,9 @@ JSBool obj_hashcode(JSContext *cx, JSObject *obj, uintN argc,
 {
   JSBool has_prop;
   /* Need to check for property first to keep treehydra from getting angry */
+#if JS_VERSION < 180
+#define JS_AlreadyHasOwnProperty JS_HasProperty
+#endif
   if (JS_AlreadyHasOwnProperty(cx, obj, "_hashcode", &has_prop) && has_prop) {
     JS_GetProperty(cx, obj, "_hashcode", rval);
   } else {

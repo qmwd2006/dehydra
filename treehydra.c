@@ -20,6 +20,9 @@
 #include "dehydra_types.h"
 #include "treehydra.h"
 
+#if JS_VERSION < 180
+#error "Need SpiderMonkey 1.8 or higher. Treehydra does not support older spidermonkeys due to lack of JS_AlreadyHasOwnProperty"
+#endif
 /* The entries in the map should be transitively rooted by 
    this->globalObj's current_function_decl property */
 static struct pointer_map_t *jsobjMap = NULL;
