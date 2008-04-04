@@ -6,6 +6,15 @@
 #include "dehydra.h"
 #include "dehydra_ast.h"
 #include "dehydra_types.h"
+#ifdef TREEHYDRA_PLUGIN
+#include "treehydra.h"
+
+/* True if initialization has been completed. */
+static int init_finished = 0;
+
+/* Plugin pass position. This is kept here so that JS can set it. */
+static char *after_gcc_pass = 0;
+#endif
 
 static int processed = 0;
 static Dehydra dehydra = {0};
@@ -168,8 +177,39 @@ int gcc_plugin_init(const char *file, const char* arg, char **pass) {
   pset = pointer_set_create ();
   type_pset = pointer_set_create ();
   dehydra_init (&dehydra, file);
-  return dehydra_startup (&dehydra, arg);
+  int ret = dehydra_startup (&dehydra, arg);
+  if (ret) return ret;
+#ifdef TREEHYDRA_PLUGIN
+  ret = treehydra_startup (&dehydra, arg);
+  init_finished = 1;
+  if (after_gcc_pass)
+    *pass = after_gcc_pass;
+#endif
+  return ret;
 }
+
+#ifdef TREEHYDRA_PLUGIN
+/* API function to set the plugin pass position. This should be called
+ * only before/during plugin initialization. 
+ * Return nonzero on failure. */
+int set_after_gcc_pass(const char *pass) {
+  if (init_finished) return 1;
+  if (after_gcc_pass) free(after_gcc_pass);
+  after_gcc_pass = xstrdup(pass);
+  return 0;
+}
+
+void gcc_plugin_pass (void) {
+  // TODO  This is rather painful, but we really don't have any other
+  //       place to put it.
+  if (after_gcc_pass) {
+    free(after_gcc_pass);
+    after_gcc_pass = 0;
+  }
+
+  treehydra_plugin_pass (&dehydra);
+}
+#endif
 
 /* template instations happen late
    and various code gets nuked so we can't hook into them
