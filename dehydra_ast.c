@@ -1,3 +1,4 @@
+/* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 #include <jsapi.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -240,8 +241,8 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
         dehydra_attachNestedFields(this, obj, ARGUMENTS, args);
 #else
         dehydra_fcallDoArgs (this, obj, *tp,
-			     call_expr_first_param_index + offset,
-			     TREE_OPERAND_LENGTH(*tp));
+                            call_expr_first_param_index + offset,
+                            TREE_OPERAND_LENGTH(*tp));
 #endif
       *walk_subtrees = 0;
       break;

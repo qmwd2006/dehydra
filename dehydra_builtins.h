@@ -1,3 +1,4 @@
+/* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 #ifndef DEHYDRA_BUILTINS_H
 #define DEHYDRA_BUILTINS_H
 

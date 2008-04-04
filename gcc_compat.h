@@ -1,3 +1,4 @@
+/* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 #ifndef GCC_COMPAT_H
 #define GCC_COMPAT_H
 
