@@ -160,7 +160,7 @@ void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
   }
 }
 
-/* Next 3 functions are for treehydra_generated */
+/* BEGIN Functions for treehydra_generated */
 jsval get_enum_value (struct Dehydra *this, const char *name) {
   jsval val = JSVAL_VOID;
   JS_GetProperty(this->cx, this->globalObj, name, &val);
@@ -177,6 +177,26 @@ jsval convert_char_star (struct Dehydra *this, const char *str) {
 jsval convert_int (struct Dehydra *this, int i) {
   return INT_TO_JSVAL (i);
 }
+
+jsval convert_location_t (struct Dehydra *this, location_t loc) {
+  if (loc == UNKNOWN_LOCATION) return JSVAL_VOID;
+  expanded_location eloc = expand_location(loc);
+
+  JSObject *obj = JS_NewObject(this->cx, NULL, 0, 0);
+  if (!obj) error("Treehydra internal error: Failed to create location object");
+  jsval retval = OBJECT_TO_JSVAL(obj);
+  // Need to root here while we convert the fields
+  JS_AddRoot(this->cx, &retval);
+  
+  dehydra_defineStringProperty(this, obj, "file", eloc.file);
+  JS_DefineProperty(this->cx, obj, "line", INT_TO_JSVAL(eloc.line),
+                    NULL, NULL, JSPROP_ENUMERATE);
+  JS_DefineProperty(this->cx, obj, "column", INT_TO_JSVAL(eloc.column),
+                    NULL, NULL, JSPROP_ENUMERATE);
+  JS_RemoveRoot(this->cx, &retval);
+  return retval;
+}
+/* END Functions for treehydra_generated */
 
 typedef struct {
   size_t capacity;

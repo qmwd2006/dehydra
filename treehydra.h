@@ -11,6 +11,7 @@ jsval get_lazy (struct Dehydra *this, treehydra_handler handler, void *v,
 jsval get_existing_or_lazy (struct Dehydra *this, treehydra_handler handler, void *v,
                             struct JSObject *parent, const char *propname);
 jsval convert_int (struct Dehydra *this, int i);
+jsval convert_location_t (struct Dehydra *this, location_t loc);
  
 jsval convert_char_star (struct Dehydra *this, const char *str);
 jsval get_enum_value (struct Dehydra *this, const char *name);
