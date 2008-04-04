@@ -60,5 +60,5 @@ int dehydra_rootObject (Dehydra *this, jsval val);
 void dehydra_unrootObject (Dehydra *this, int pos);
 jsval dehydra_getRootedObject (Dehydra *this, int pos);
 void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t);
-int dehydra_loadScript(Dehydra *this, const char *filename);
+int dehydra_includeScript(Dehydra *this, const char *filename);
 #endif

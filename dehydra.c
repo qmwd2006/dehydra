@@ -121,10 +121,19 @@ void dehydra_init(Dehydra *this, const char *file) {
 }
 
 int dehydra_startup (Dehydra *this, const char *script) {
-  if (dehydra_loadScript (this, "system.js")) return 1;
-  return dehydra_loadScript (this, script);
+  if (dehydra_includeScript (this, "system.js")) return 1;
+  return dehydra_includeScript (this, script);
 }
 
+int dehydra_includeScript (Dehydra *this, const char *script) {
+  jsval strval = STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, 
+                                                     script));
+  int key = dehydra_rootObject (this, strval);
+  jsval rval;
+  int ret = !Include (this->cx, this->globalObj, 1, &strval, &rval);
+  dehydra_unrootObject (this, key);
+  return ret;
+}
 
 jsuint dehydra_getArrayLength (Dehydra *this, JSObject *array) {
   jsuint length = 0;
@@ -169,43 +178,6 @@ JSObject *dehydra_defineObjectProperty (Dehydra *this, JSObject *obj,
  * is called from JS, then the JS_* functions will instead set an
  * exception, which will be propgated back up to the callers for
  * eventual handling or exit. */
-int dehydra_loadScript (Dehydra *this, const char *filename) {
-  /* Read the file. There's a JS function for reading scripts, but Dehydra
-     wants to search for the file in different dirs. */
-  long size = 0;
-  char *realname;
-  FILE *f = findFile(filename, this->dir, &realname);
-  if (!f) {
-    REPORT_ERROR_1(this->cx, "Cannot find include file '%s'", filename);
-    return 1;
-  }
-  char *content = readEntireFile(f, &size);
-  if (!content) {
-    REPORT_ERROR_1(this->cx, "Cannot read include file '%s'", realname);
-    free(realname);
-    return 1;
-  }
-
-  JSScript *script = JS_CompileScript(this->cx, this->globalObj,
-                                      content, size, realname, 1);
-  free(realname);
-  if (script == NULL) {
-    xassert(JS_IsExceptionPending(this->cx));
-    return 1;
-  }
-
-  JSObject *sobj = JS_NewScriptObject(this->cx, script);
-  JS_AddNamedRoot(this->cx, &sobj, filename);
-  jsval rval;
-  JSBool rv = JS_ExecuteScript(this->cx, this->globalObj, script, &rval);
-  if (!rv) {
-    xassert(JS_IsExceptionPending(this->cx));
-    return 1;
-  }
-
-  JS_RemoveRoot(this->cx, &sobj);
-  return 0;
-}
 
 jsval dehydra_getToplevelFunction(Dehydra *this, char const *name) {
   jsval val = JSVAL_VOID;

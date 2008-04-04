@@ -337,6 +337,44 @@ FILE *findFile(const char *filename, const char *dir, char **realname) {
   return NULL;
 }
 
+static int dehydra_loadScript (Dehydra *this, const char *filename) {
+  /* Read the file. There's a JS function for reading scripts, but Dehydra
+     wants to search for the file in different dirs. */
+  long size = 0;
+  char *realname;
+  FILE *f = findFile(filename, this->dir, &realname);
+  if (!f) {
+    REPORT_ERROR_1(this->cx, "Cannot find include file '%s'", filename);
+    return 1;
+  }
+  char *content = readEntireFile(f, &size);
+  if (!content) {
+    REPORT_ERROR_1(this->cx, "Cannot read include file '%s'", realname);
+    free(realname);
+    return 1;
+  }
+
+  JSScript *script = JS_CompileScript(this->cx, this->globalObj,
+                                      content, size, realname, 1);
+  free(realname);
+  if (script == NULL) {
+    xassert(JS_IsExceptionPending(this->cx));
+    return 1;
+  }
+
+  JSObject *sobj = JS_NewScriptObject(this->cx, script);
+  JS_AddNamedRoot(this->cx, &sobj, filename);
+  jsval rval;
+  JSBool rv = JS_ExecuteScript(this->cx, this->globalObj, script, &rval);
+  if (!rv) {
+    xassert(JS_IsExceptionPending(this->cx));
+    return 1;
+  }
+
+  JS_RemoveRoot(this->cx, &sobj);
+  return 0;
+}
+
 /* should use this function to load all objects to avoid possibity of objects including themselves */
 JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
                jsval *argv, jsval *rval) {
