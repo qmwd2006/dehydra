@@ -1,3 +1,4 @@
+/* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 #ifndef TREEHYDRA_H
 #define TREEHYDRA_H
 

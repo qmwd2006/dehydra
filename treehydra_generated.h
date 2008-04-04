@@ -1,3 +1,4 @@
+/* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 #ifndef TREEHYDRA_GENERATED
 #define TREEHYDRA_GENERATED
 /* This file isn't generated, but it's used by the generated one*/

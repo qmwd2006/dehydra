@@ -1,3 +1,4 @@
+/* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 #define DEFTREECODE(SYM, NAME, TYPE, LENGTH) TYPE,
 
 const enum tree_code_class tree_code_type[] = {

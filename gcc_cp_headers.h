@@ -1,3 +1,4 @@
+/* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 #ifndef GCC_CP_HEADERS
 #define GCC_CP_HEADERS
 /* Purpose of this header is to have 

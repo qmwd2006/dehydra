@@ -1,3 +1,4 @@
+/* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* A workaround for weird conflict between Apple GCC 4.2 Preview 1's cp-tree.h
    and SpiderMonkey's jsotypes.h */
 #include "jsapi.h"
