@@ -48,10 +48,10 @@ class JSUnitTestCase(PluginTestCase):
     """Test case class for running a JS unit test and checking for OK
     in the results."""
 
-    def __init__(self, script_path):
+    def __init__(self, script_path, ccfile):
         super(JSUnitTestCase, self).__init__()
         self.filename = script_path
-        self.ccfile = 'empty.cc'
+        self.ccfile = ccfile
 
     def checkOutput(self, out, err):
         # Get last line
@@ -61,6 +61,11 @@ class JSUnitTestCase(PluginTestCase):
         self.failUnless(lines, "Expected 'OK' output; got empty output")
         last = lines[-1]
         self.failUnless(last.startswith('OK'), "Expected 'OK' output; got '%s'"%last)
+
+class TreehydraJSUnitTestCase(JSUnitTestCase):
+    def __init__(self, *args, **kw):
+        super(TreehydraJSUnitTestCase, self).__init__(*args, **kw)
+        self.plugin = 'treehydra'
 
 class MyTestResult(TestResult):
     """The default version stores formatted tracebacks for the failures.
@@ -92,9 +97,13 @@ s.addTest(TreehydraCLITestCase('tc_pass1.js', 'onefunc.cc'))
 s.addTest(TreehydraCLITestCase('tc_pass2.js', 'onefunc.cc', 'Cannot set gcc_pass_after'))
 
 # Run Dehydra unit tests
-s.addTest(JSUnitTestCase('test_include.js'))
-s.addTest(JSUnitTestCase('test_include2.js'))
-s.addTest(JSUnitTestCase('test_require.js'))
+s.addTest(JSUnitTestCase('test_include.js', 'empty.cc'))
+s.addTest(JSUnitTestCase('test_include2.js', 'empty.cc'))
+s.addTest(JSUnitTestCase('test_require.js', 'empty.cc'))
+
+# Treehydra unit tests
+s.addTest(TreehydraJSUnitTestCase('test_location.js', 'onefunc.cc'))
+
 
 r = MyTestResult()
 

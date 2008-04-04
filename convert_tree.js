@@ -361,6 +361,12 @@ function convert (unit, aggr, unionTopLevel) {
       cast = "char *"
       isPrimitive = true
       lengthExpr = undefined
+    } else if (m.type.name == 'location_t') {
+      // This must appear before isUnsignedOrInt because location_t is an
+      // int, but we want to convert it to a formatted location.
+      type_name = 'location_t';
+      cast = 'location_t';
+      isPrimitive = true;
     } else if (isUnsignedOrInt(m.type)) {
       type_name = "int"
       cast = "int"
