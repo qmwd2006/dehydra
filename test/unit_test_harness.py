@@ -100,6 +100,7 @@ s.addTest(TreehydraCLITestCase('tc_pass2.js', 'onefunc.cc', 'Cannot set gcc_pass
 s.addTest(JSUnitTestCase('test_include.js', 'empty.cc'))
 s.addTest(JSUnitTestCase('test_include2.js', 'empty.cc'))
 s.addTest(JSUnitTestCase('test_require.js', 'empty.cc'))
+s.addTest(JSUnitTestCase('test_skipthis.js', 'skipthis.cc'))
 
 # Treehydra unit tests
 s.addTest(TreehydraJSUnitTestCase('test_location.js', 'onefunc.cc'))

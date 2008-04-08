@@ -191,8 +191,8 @@ static void dehydra_attachClassName (Dehydra *this, JSObject *obj, tree type) {
 
 static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tree type) {
   tree arg_type = TYPE_ARG_TYPES (type);
-  /* Skip "this" argument.  */
-  if (DECL_NONSTATIC_MEMBER_FUNCTION_P (type))
+  /* Skip "this" argument. */
+  if (TREE_CODE(type) == METHOD_TYPE) 
       arg_type = TREE_CHAIN (arg_type);
 
   /* return type */
