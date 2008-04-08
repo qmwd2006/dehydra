@@ -29,6 +29,7 @@ static const char *INCOMPLETE = "isIncomplete";
 
 static struct pointer_map_t *typeMap = NULL;
 
+static const char *dehydra_typeString(tree type);
 static jsval dehydra_convert (Dehydra *this, tree type);
 static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj);
 
@@ -184,7 +185,7 @@ static void dehydra_attachClassName (Dehydra *this, JSObject *obj, tree type) {
     dehydra_defineProperty (this, obj, NAME, JSVAL_VOID);
     return;
   }
-  dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
+  dehydra_defineStringProperty (this, obj, NAME, dehydra_typeString(type));
 }
 
 static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tree type) {
@@ -249,8 +250,10 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   if (type_decl != NULL_TREE) {
     tree original_type = DECL_ORIGINAL_TYPE (type_decl);
     if (original_type) {
+      //dehydra_defineStringProperty (this, obj, NAME, 
+      //decl_as_string (type_decl, 0));
       dehydra_defineStringProperty (this, obj, NAME, 
-                                    decl_as_string (type_decl, 0));
+                                    IDENTIFIER_POINTER(DECL_NAME(type_decl)));
       jsval subval = dehydra_convert (this, original_type);
       dehydra_defineProperty (this, obj, TYPEDEF, subval);
       dehydra_setLoc (this, obj, type_decl);
@@ -330,7 +333,7 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
     /* maybe should add an isTemplateParam? */
   case TEMPLATE_TYPE_PARM:
   case TYPENAME_TYPE:
-    dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
+    dehydra_defineStringProperty (this, obj, NAME, dehydra_typeString(type));
     break;
   case FUNCTION_TYPE:
   case METHOD_TYPE:
@@ -365,4 +368,19 @@ jsval dehydra_convertType (Dehydra *this, tree type) {
     typeMap = pointer_map_create ();
   }
   return dehydra_convert (this, type);
+}
+
+/* Return a string name for the given type to be used as the NAME property.
+ *
+ * The design of this function is rather unfortunate. Pretty-printing
+ * can get complicated with templates, and the GCC code isn't easy to
+ * reuse, so we're going to call GCC and then fix up the results if
+ * needed. */
+static const char *dehydra_typeString(tree type) {
+  const char *ans = type_as_string(type, 0);
+  const char *chop_prefix = "const ";
+  if (!strncmp(ans, chop_prefix, strlen(chop_prefix))) {
+    ans += strlen(chop_prefix);
+  }
+  return ans;
 }
