@@ -6,8 +6,10 @@ class __attribute__((user("default"))) A
 public:
   T  __attribute__((user(0)))  i;
 };
-class Klass {
+struct Klass {
 };
+
+struct Klass * __attribute__((user("value")))  varAttrOnType;
 
 A<Klass> foo;
 
