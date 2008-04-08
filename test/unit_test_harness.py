@@ -105,6 +105,8 @@ DEHYDRA_TESTS = [
 
     # Verify the 'const' doesn't appear in the name field.
     (JSUnitTestCase, 'test_const.js', 'const.cc'),
+    # Check that attributes are applied properly
+    (JSUnitTestCase, 'test_attributes.js', 'attributes2.cc')
 ]
 
 TREEHYDRA_TESTS = [
