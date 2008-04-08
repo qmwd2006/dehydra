@@ -99,6 +99,9 @@ BOTH_TESTS = [
 DEHYDRA_TESTS = [
     # This will produce a JS exception, but should not produce linker errors
     (CLITestCase, 'tc_pass1.js', 'onefunc.cc', 'Unrecognized require keyword'),
+
+    # Verify scope/namespace printing.
+    (JSUnitTestCase, 'test_scopes.js', 'scopes.cc'),
 ]
 
 TREEHYDRA_TESTS = [
