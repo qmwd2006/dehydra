@@ -102,6 +102,9 @@ DEHYDRA_TESTS = [
 
     # Verify scope/namespace printing.
     (JSUnitTestCase, 'test_scopes.js', 'scopes.cc'),
+
+    # Verify the 'const' doesn't appear in the name field.
+    (JSUnitTestCase, 'test_const.js', 'const.cc'),
 ]
 
 TREEHYDRA_TESTS = [
