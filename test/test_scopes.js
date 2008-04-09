@@ -1,3 +1,5 @@
+// { 'test': 'dehydra', 'input': 'scopes.cc', 'output': 'unit_test' }
+
 // Test that scoping operators appear in type names as expected.
 
 include('unit_test.js');

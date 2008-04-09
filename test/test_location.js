@@ -1,3 +1,5 @@
+// { 'test': 'treehydra', 'input': 'onefunc.cc', 'output': 'unit_test' }
+
 include('treehydra.js');
 include('unit_test.js');
 //include('/home/dmandelin/treehydra-analysis/util.js')

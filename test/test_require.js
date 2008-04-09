@@ -1,3 +1,5 @@
+// { 'test': 'dehydra,treehydra', 'input': 'empty.cc', 'output': 'unit_test' }
+
 include('unit_test.js');
 
 function RequireTestCase() {

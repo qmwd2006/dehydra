@@ -1,3 +1,5 @@
+// { 'test': 'treehydra', 'input': 'onefunc.cc', 'output': 'stderr_empty' }
+
 // Test that pass option is accepted and we get CFG
 // Should print: 0
 
