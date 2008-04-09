@@ -1,3 +1,5 @@
+// { 'test': 'dehydra', 'input': 'const.cc', 'output': 'unit_test' }
+
 // Test that 'const' is handled correctly.
 
 include('unit_test.js');

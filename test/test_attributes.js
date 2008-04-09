@@ -1,3 +1,5 @@
+// { 'test': 'dehydra', 'input': 'attributes2.cc', 'output': 'unit_test' }
+
 function process_type(c) {
   //print (c)
 }

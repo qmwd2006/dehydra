@@ -1,3 +1,5 @@
+// { 'test': 'dehydra,treehydra', 'input': 'empty.cc', 'output': 'unit_test' }
+
 const GUARD_AGAINST_MULTIPLE_INCLUSIONS = 0
 
 var foo = {}
