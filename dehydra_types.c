@@ -38,7 +38,9 @@ void dehydra_attachTypeAttributes (Dehydra *this, JSObject *obj, tree type) {
   dehydra_defineProperty (this, obj, ATTRIBUTES,
                           OBJECT_TO_JSVAL (destArray));
   /* first add attributes from template */
-  tree decl_template_info = TYPE_TEMPLATE_INFO (type);
+  tree decl_template_info = TREE_CODE (type) == RECORD_TYPE 
+    ? TYPE_TEMPLATE_INFO (type) : NULL_TREE;
+  
   if (decl_template_info) {
     tree template_decl = TREE_PURPOSE (decl_template_info);
     tree type = TREE_TYPE (template_decl);
