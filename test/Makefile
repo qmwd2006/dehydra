@@ -15,6 +15,9 @@ unit_tests:
 dehydra_unit_tests:
 	python unit_test_harness.py dehydra "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null -fplugin-arg=%s %s"
 
+treehydra_unit_tests:
+	python unit_test_harness.py treehydra "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null -fplugin-arg=%s %s"
+
 %.o: %.cc $(PLUGIN)
 	$(CC1PLUS) $(CXXFLAGS) $< -o /dev/null
 
