@@ -35,11 +35,11 @@ Field.prototype.toString = function () {
   return this.type + " " + this.name + " = " + this.tag
 }
 
-function Function (isStatic, name, body, type) {
+function Function (isStatic, name, body) {
   this.name = name
   this.body = body
   this.comment = ""
-  this.type = type ? type : "void"
+  this.type = "void"
   this.prefix = isStatic ? "static " : ""
 }
 
@@ -81,8 +81,7 @@ function callGetExistingOrLazy (type, name, isAddrOf, cast, isPrimitive, isArray
   else cast = "(" + cast + ") "
   var expr = cast + deref + "var->" + name + index
   if (isPrimitive) {
-    var convert = "convert_" + type + "(this, " + expr + ")";
-    return "dehydra_defineProperty (this, " + dest + ", " + propValue + ", " + convert + ")"
+      return "convert_" + type + "(this, " +  dest + ", " + propValue + ", " + expr + ");";
   }
   return "get_existing_or_lazy (this, lazy_" + type + ", " 
     + expr + ", " + dest + ", " + propValue + ")"
@@ -122,19 +121,22 @@ Unit.prototype.saveEnums = function (fname) {
 
 Unit.prototype.addEnum = function (fields, type_name) {
   var ls = []
+  ls.push ("jsval v;");
   ls.push ("switch (var) {");
   for each (var f in fields) {
     ls.push ("case " + f.name + ":");
-    ls.push ("  return get_enum_value (this, \"" + f.name + "\");")
+    ls.push ("  v = get_enum_value (this, \"" + f.name + "\");")
+    ls.push ("  break;")
     this.registerEnumValue (f.name, f.value)
   }
   ls.push ("default:")
-  ls.push ("  return JSVAL_NULL;")
+  ls.push ("  v = JSVAL_NULL;")
   ls.push ("}")
+  ls.push ("dehydra_defineProperty (this, parent, propname, v);")
   this.functions.push (
     new Function (true, "convert_" + type_name
-                  + " (struct Dehydra *this, enum " + type_name + " var)",
-                  ls.join ("\n  "), "jsval"));
+                  + " (struct Dehydra *this, struct JSObject *parent, const char *propname, enum " + type_name + " var)",
+                  ls.join ("\n  ")));
 }
 
 function callUnion (type, name, unionResolver) {
