@@ -235,13 +235,16 @@ function getUnionTag (attributes) {
   }
 }
 
-const descRegexp = /desc\s*\("(.*)"\)/
-function getUnionResolver(attributes) {
+const percentH_Regexp = /%h/
+const percent1_Regexp = /%1/
+const descRegexp = /desc\s*\("(.*)"\)/;
+function getUnionResolver(attributes, fieldName) {
   for each (var a in attributes) {
     if (a.name != "user")
       continue;
     var m = descRegexp.exec(a.value)
-    if (m) return m[1].replace(/%1/, "(*var)")
+    // took a guess about %h in this context
+    if (m) return m[1].replace(percent1_Regexp, "(*var)").replace(percentH_Regexp,"var->"+fieldName)
   }
 }
 
@@ -251,7 +254,7 @@ function getLengthExpr (attributes) {
     if (a.name != "user")
       continue;
     var m = lengthRegexp.exec (a.value);
-    if (m) return m[1].replace(/%h/, "(*var)") 
+    if (m) return m[1].replace(percentH_Regexp, "(*var)") 
   }  
 }
 
@@ -308,6 +311,7 @@ function convert (unit, aggr, unionTopLevel) {
 
   var oldloc = this._loc
   for each (var m in aggr_ls) {
+    var name = stripPrefixRegexp.exec(m.name)[1]
     var type = skipTypeWrappers (m.type)
     var type_name = stripPrefixRegexp.exec(type.name)[1]
     var isAddrOf = false
@@ -330,12 +334,16 @@ function convert (unit, aggr, unionTopLevel) {
     if (m.name == "emit_status::x_regno_reg_rtx") {
       print ("Skipping m.name because it causes issues I don't feel like dealing with")
       continue;
+    } else if (isSkip(m.attributes) || m.name == "ssa_use_operand_d::use") {
+      print ("Skipping " + m.name + ". ");
+      continue;
     }
 
     var isPrimitive = false
     if (type_kind == "struct"
         || type.name == "tree_node"
-        || type.name == "basic_block_def::basic_block_il_dependent") {
+        || type.name == "basic_block_def::basic_block_il_dependent"
+        || type.name == "lang_type::lang_type_u") {
       isAddrOf = !isPointer(m.type)
       if (type.isIncomplete) {
         print (m.name + "' type is incomplete. Skipping.");
@@ -351,7 +359,7 @@ function convert (unit, aggr, unionTopLevel) {
       } else {
         lengthExpr = getLengthExpr (m.attributes)
         if (type.name != "tree_node")
-          unionResolver = getUnionResolver (m.type.attributes)
+          unionResolver = getUnionResolver (m.type.attributes, name)
       }
     } else if (type_kind == "enum") {
       isPrimitive = true
@@ -382,11 +390,7 @@ function convert (unit, aggr, unionTopLevel) {
         print (m.name + " is special. Skipping...")
         continue
       }
-    } else if (m.name == "ssa_use_operand_d::use") {
-      print ("Skipping " + m.name + ". For some reason can't see GTY(skip) for it")
-      continue;
-    }
-    var name = stripPrefixRegexp.exec(m.name)[1]
+    } 
     ls.push (new Field (type_name,
                         name,
                         tag,
