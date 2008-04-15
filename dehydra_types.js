@@ -31,11 +31,7 @@ function dehydra_convert2(type, obj) {
       obj.name = decl_as_string(type_decl);
       obj.typedef = dehydra_convert(original_type);
       dehydra_setLoc(obj, type_decl);
-      let attributes = DECL_ATTRIBUTES(type_decl);
-      if (attributes) {
-        let tmp = obj.attributes = [];
-        attach_attributes(tmp, attributes);
-      }
+      attach_attributes(DECL_ATTRIBUTES(type_decl, obj));
       return obj;
     }
   }
@@ -136,12 +132,7 @@ function dehydra_attachTypeAttributes(obj, type) {
     dehydra_addAttributes (this, destArray, attributes);
   }
 */
-//  let attributes = TYPE_ATTRIBUTES(type);
-//  dehydra_addAttributes (destArray, attributes);
-  /* drop the attributes array if there are none */
-//  if (destArray.length != 0) {
-//    obj.attributes = destArray;
-//  }
+  attach_attributes(TYPE_ATTRIBUTES(type), obj);
 }
 
 /* Note that this handles class|struct|union nodes */
@@ -173,6 +164,9 @@ function dehydra_attachClassStuff(objClass, record_type) {
   destArray = objClass.members = [];
   /* Output all the method declarations in the class.  */
   for (let func = TYPE_METHODS (record_type) ; func ; func = TREE_CHAIN (func)) {
+    // TODO not sure why, but we get zeroed objects here. 
+    if (func.base.code == null) break;
+
     if (DECL_ARTIFICIAL(func)) continue;
     /* Don't output the cloned functions.  */
     if (DECL_CLONED_FUNCTION_P (func)) continue;
@@ -256,6 +250,8 @@ function dehydra_addVar(v, parentArray) {
   parentArray.push(obj);
   if (!v) return obj;
 
+  if (TREE_CODE(v) == null) return obj;
+
   if (DECL_P(v)) {
     /* Common case */
     obj.name = decl_as_string(v);
@@ -272,11 +268,7 @@ function dehydra_addVar(v, parentArray) {
         obj.isVirtual = true;
     }
     obj.type = dehydra_convert(typ);
-    let attributes = DECL_ATTRIBUTES (v);
-    if (attributes) {
-      let tmp = obj.attributes = [];
-      dehydra_addAttributes (tmp, attributes);
-    }
+    attach_attributes(DECL_ATTRIBUTES(v), obj);
     if (TREE_STATIC (v)) obj.isStatic = true;
   } else if (TREE_CODE(v) == CONSTRUCTOR) {
     /* Special case for this node type */
@@ -293,9 +285,8 @@ function dehydra_addVar(v, parentArray) {
   return obj;
 }
 
-function attach_attributes(tree, typeobj)
+function attach_attributes(a, typeobj)
 {
-  let a = TYPE_ATTRIBUTES (tree);
   if (a) {
     let attrs = [];
 
