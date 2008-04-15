@@ -171,31 +171,30 @@ jsval get_enum_value (struct Dehydra *this, const char *name) {
   return val;
 }
 
-jsval convert_char_star (struct Dehydra *this, const char *str) {
-  return STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, str));
+void convert_char_star (struct Dehydra *this, struct JSObject *parent, 
+                        const char *propname, const char *str) {
+  jsval v = STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, str));
+  dehydra_defineProperty (this, parent, propname, v);
 }
 
-jsval convert_int (struct Dehydra *this, int i) {
-  return INT_TO_JSVAL (i);
+void convert_int (struct Dehydra *this, struct JSObject *parent,
+                  const char *propname, int i) {
+  jsval v = INT_TO_JSVAL (i);
+  dehydra_defineProperty (this, parent, propname, v);
 }
 
-jsval convert_location_t (struct Dehydra *this, location_t loc) {
-  if (loc == UNKNOWN_LOCATION) return JSVAL_VOID;
+void convert_location_t (struct Dehydra *this, struct JSObject *parent,
+                         const char *propname, location_t loc) {
+  if (loc == UNKNOWN_LOCATION) {
+    dehydra_defineProperty (this, parent, propname, JSVAL_VOID);
+    return;
+  }
   expanded_location eloc = expand_location(loc);
-
-  JSObject *obj = JS_NewObject(this->cx, NULL, 0, 0);
-  if (!obj) error("Treehydra internal error: Failed to create location object");
-  jsval retval = OBJECT_TO_JSVAL(obj);
-  // Need to root here while we convert the fields
-  JS_AddRoot(this->cx, &retval);
   
-  dehydra_defineStringProperty(this, obj, "file", eloc.file);
-  JS_DefineProperty(this->cx, obj, "line", INT_TO_JSVAL(eloc.line),
-                    NULL, NULL, JSPROP_ENUMERATE);
-  JS_DefineProperty(this->cx, obj, "column", INT_TO_JSVAL(eloc.column),
-                    NULL, NULL, JSPROP_ENUMERATE);
-  JS_RemoveRoot(this->cx, &retval);
-  return retval;
+  JSObject *obj = dehydra_defineObjectProperty (this, parent, propname);
+  dehydra_defineStringProperty (this, obj, "file", eloc.file);
+  dehydra_defineProperty (this, obj, "line", INT_TO_JSVAL(eloc.line));
+  dehydra_defineProperty (this, obj, "column", INT_TO_JSVAL(eloc.column));
 }
 /* END Functions for treehydra_generated */
 
@@ -249,7 +248,7 @@ JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
   /* remove last \n */
   if (gstr->length)
     gstr->str[gstr->length - 1] = 0;
-  *rval = convert_char_star (this, gstr->str);
+  *rval = STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, gstr->str));
   free(gstr);
   return JS_TRUE;
 }
