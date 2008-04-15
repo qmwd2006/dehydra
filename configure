@@ -32,7 +32,7 @@ def get_gcc_srcdir(build_dir):
                 src_dir = arr[1].rstrip()
                 if not os.path.isabs(src_dir):
                     src_dir = os.path.join(build_dir, src_dir)
-                return os.path.normpath(src_dir)
+                return os.path.realpath(src_dir)
         raise "Couldn't find srcdir in gcc Makefile: " + makefile
     except:
         error("Invalid gcc build dir " + build_dir)
@@ -100,6 +100,7 @@ if __name__ == "__main__":
             exit(0)
         else:
             error("unhandled option " +  o)
+    gcc_build = os.path.realpath(gcc_build)
     if gcc_src == None:
         gcc_src = get_gcc_srcdir (gcc_build)
     checkdir(gcc_src, "gcc-src")
