@@ -34,5 +34,10 @@ useful_arrays.js: useful_arrays.ii
 
 treehydra.o: treehydra.c treehydra.h
 
+treehydra: gcc_treehydra.so
+
+check check_dehydra check_treehydra check_both:
+	$(MAKE) -C test $@
+
 clean:
 	rm -f *.o *.so *~ *.ii *_generated.c
