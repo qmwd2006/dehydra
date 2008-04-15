@@ -279,5 +279,6 @@ int treehydra_startup (Dehydra *this, const char *script) {
 
   xassert (JS_InitClass(this->cx, this->globalObj, NULL
                         ,&js_tree_class , NULL, 0, NULL, NULL, NULL, NULL));
+  xassert (!dehydra_includeScript (this, "treehydra.js"));
   return dehydra_includeScript (this, script);  
 }
