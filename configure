@@ -1,0 +1,136 @@
+#!/usr/bin/env python
+# Author: Taras Glek
+# OSX support by Vlad Sukhoy
+import getopt, sys, os.path, os, platform
+
+def usage():
+    print """
+Usage: ./configure ...
+--js-name= part between lib and .so in libjs.so on your system (Usually js, mozjs on Ubuntu)
+--js-libs= Location of libjs.so
+--js-headers= SpiderMonkey headers, location of jsapi.h. Might get autodetected correctly from --js-libs.
+--gcc-build= GCC build directory. Defaults to ../gcc-build
+--gcc-src= GCC source directory. Autodetected from build dir""".lstrip()
+    pass
+
+def error(msg):
+    print >> sys.stderr, "Error: " + msg
+    sys.exit(1)
+
+def checkdir(path,opt):
+    print "Checking " + opt + ": " + path
+    if not os.path.isdir (path):
+        error("directory '"+path+"' doesn't exist, specify corect directory with --" + opt)
+
+def get_gcc_srcdir(build_dir):
+    checkdir(gcc_build, "gcc-build")
+    makefile = os.path.join(build_dir, "Makefile")
+    try:
+        for line in open (makefile).readlines():
+            arr = line.split(" = ")
+            if len(arr) and arr[0] == "srcdir":
+                src_dir = arr[1].rstrip()
+                if not os.path.isabs(src_dir):
+                    src_dir = os.path.join(build_dir, src_dir)
+                return os.path.normpath(src_dir)
+        raise "Couldn't find srcdir in gcc Makefile: " + makefile
+    except:
+        error("Invalid gcc build dir " + build_dir)
+
+def check_gcc_srcdir(gcc_src):
+    print "Checking if GCC plugin patch is applied"
+    if not os.path.isfile (os.path.join (gcc_src, "gcc/tree-plugin-pass.c")):
+        error("GCC sources in "  + gcc_src + " do not have plugin patch applied")
+
+if platform.system() != 'Darwin':
+    so_suffix = '.so'
+    shared_link_flags = '-shared'
+else:
+    so_suffix = '.dylib'
+    shared_link_flags = '-bundle -bundle_loader $(GCCBUILDDIR)/gcc/cc1plus'
+
+def getjsdirs(jsname, jslibs, jsheaders):
+    if jslibs == None:
+        libjs = "/usr/lib/lib" + jsname + so_suffix
+        if (os.path.isfile (libjs)):
+            jslibs = os.path.dirname(libjs)
+            print "Detected JavaScript library: " + libjs
+    else:
+        checkdir (jslibs, "js-libs")
+
+    if jsheaders != None:
+        checkdir (jsheaders, "js-headers")
+    elif jslibs != None:
+        jsapi = os.path.dirname(os.path.normpath(jslibs)) + "/include/" + jsname + "/jsapi.h"
+        if (os.path.isfile (jsapi)):
+            jsheaders = os.path.dirname(jsapi)
+            print "Detected JavaScript headers: " + jsheaders
+
+    return (jslibs, jsheaders)
+
+if __name__ == "__main__":
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "h",
+                                   ["js-name=", "js-libs=", "js-headers=","gcc-build="])
+    except getopt.GetoptError, err:
+        # print help information and exit:
+        print str(err) # will print something like "option -a not recognized"
+        usage()
+        sys.exit(2)
+    jsname = "js"
+    jsnamels = [jsname, "mozjs"]
+    jslibs = None
+    jsheaders = None
+    gcc_build = "../gcc-build"
+    gcc_src = None
+    for o, val in opts:
+        if o == "--js-name":
+            jsname = val
+            jsnamels = [jsname]
+        elif o == "--js-libs":
+            jslibs = os.path.expanduser(val)
+        elif o == "--js-headers":
+            jsheaders = os.path.expanduser(val)
+        elif o == "--gcc-build":
+            gcc_build = os.path.expanduser(val)
+        elif o == "--gcc-src":
+            gcc_src = os.path.expanduser(val)
+        elif o in ("-h", "--help"):
+            usage()
+            exit(0)
+        else:
+            error("unhandled option " +  o)
+    if gcc_src == None:
+        gcc_src = get_gcc_srcdir (gcc_build)
+    checkdir(gcc_src, "gcc-src")
+    #Detect js stuff
+    for loop_jsname in jsnamels:
+        before = [jslibs, jsheaders]
+        jslibs, jsheaders = getjsdirs(loop_jsname, jslibs, jsheaders)
+        jsname = loop_jsname
+        if (jslibs != None and jsheaders != None) or [jslibs, jsheaders] != before:
+            break
+    if jslibs == None:
+        error("Must indicate javascript library directory with --js-libs=")
+    if jsheaders == None:
+        error("Must indicate javascript header directory with --js-headers=")
+    check_gcc_srcdir(gcc_src)
+    
+    cflags = ""
+    if os.environ.has_key("CFLAGS"):
+        cflags = os.environ["CFLAGS"]
+    f = open("config.mk", "w")
+    f.write("""GCCDIR=%s
+GCCBUILDDIR=%s
+SM_NAME=%s
+SM_SUFFIX=%s
+SM_INCLUDE=%s
+SM_LIBDIR=%s
+SHARED_LINK_FLAGS=%s
+CONFIGURE_CFLAGS=%s""" % (gcc_src, gcc_build, jsname, so_suffix, jsheaders,
+                          jslibs, shared_link_flags, cflags))
+    f.close()
+    if os.path.exists("Makefile"):
+        os.unlink("Makefile")
+    os.symlink ("Makefile.in", "Makefile")
+    
