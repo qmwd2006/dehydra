@@ -3,10 +3,13 @@ include('dtimport.js');
 
 // dehydra_types.c port
 
+let TRACE = 1;
+
 let typeMap = new Map();
 
 // Return a Dehydra type object corresponding to the given GCC type.
 function dehydra_convert(type) {
+  if (TRACE) print("dehydra_convert " + type_as_string(type));
   let v = typeMap.get(type);
   if (v) {
     // For now, Treehydra should never produce incomplete types, so
@@ -23,6 +26,7 @@ function dehydra_convert(type) {
 // attributes to 'obj'.
 // Users should call dehydra_convert.
 function dehydra_convert2(type, obj) {
+  if (TRACE) print("dehydra_convert2 " + type_as_string(type));
   let next_type;
   let type_decl = TYPE_NAME(type);
   if (type_decl != undefined) {
@@ -137,6 +141,7 @@ function dehydra_attachTypeAttributes(obj, type) {
 
 /* Note that this handles class|struct|union nodes */
 function dehydra_attachClassStuff(objClass, record_type) {
+  if (TRACE) print("dehydra_attachClassStuff " + type_as_string(record_type));
   let destArray = [];
 /*
   let binfo = TYPE_BINFO(record_type);
@@ -187,6 +192,7 @@ function dehydra_attachClassStuff(objClass, record_type) {
 }
 
 function dehydra_attachTemplateStuff(parent, type) {
+  if (TRACE) print("dehydra_attachTemplateStuff " + type_as_string(type));
   let type_name = TYPE_NAME (type);
   let decl_artificial = type_name ? DECL_ARTIFICIAL (type_name) : false;
   if (!(decl_artificial && TREE_CODE (type) != ENUMERAL_TYPE
@@ -227,6 +233,7 @@ function convert_template_arg(arg) {
 }
 
 function dehydra_convertAttachFunctionType(obj, type) {
+  if (TRACE) print("dehydra_convertAttachFunctionType " + type_as_string(type));
   let arg_type = TYPE_ARG_TYPES(type);
   /* Skip "this" argument.  */
   // Original dehydra -- this shouldn't work.
@@ -250,7 +257,7 @@ function dehydra_addVar(v, parentArray) {
   parentArray.push(obj);
   if (!v) return obj;
 
-  if (TREE_CODE(v) == null) return obj;
+  if (TRACE) print("dehydra_addVar " + decl_as_string(v));
 
   if (DECL_P(v)) {
     /* Common case */

@@ -74,8 +74,11 @@ function type_string(type) {
     return type_string(TREE_TYPE(type)) + '&';
   } else if (code == FUNCTION_TYPE) {
     return type_string(TREE_TYPE(type)) + ' (*)(' +
-      [ type_string(TREE_VALUE(t)) for (t in flatten_chain(TYPE_ARG_TYPES(type))) ].join(', ');
+      [ type_string(TREE_VALUE(t)) for (t in flatten_chain(TYPE_ARG_TYPES(type))) ].join(', ') + ')';
       
+  } else if (code == METHOD_TYPE) {
+    return type_string(TREE_TYPE(type)) + ' (*::)(' +
+      [ type_string(TREE_VALUE(t)) for (t in flatten_chain(TYPE_ARG_TYPES(type))) ].join(', ') + ')';
   }
 
   print(TREE_CODE(type).name);
