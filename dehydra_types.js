@@ -3,7 +3,7 @@ include('dtimport.js');
 
 // dehydra_types.c port
 
-let TRACE = 1;
+let TRACE = 0;
 
 let typeMap = new Map();
 
