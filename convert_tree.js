@@ -130,7 +130,8 @@ Unit.prototype.addEnum = function (fields, type_name) {
     this.registerEnumValue (f.name, f.value)
   }
   ls.push ("default:")
-  ls.push ("  v = JSVAL_NULL;")
+  ls.push ('  fprintf(stderr, "Treehydra Implementation Warning: generating dummy tree code object for unimplemented tree_code %s\\n", tree_code_name[var]);');
+  ls.push ("  v = get_enum_value (this, \"LAST_AND_UNUSED_TREE_CODE\");")
   ls.push ("}")
   ls.push ("dehydra_defineProperty (this, parent, propname, v);")
   this.functions.push (
