@@ -18,8 +18,10 @@ EnumValue.prototype.toString = function () {
   return this.name
 }
 
-include ("enums.js")
-include ("useful_arrays.js")
+if (TREE_CODE) {
+  include('enums.js')
+  include('useful_arrays.js')
+}
 
 // Class that the lazyness builds itself around of
 function GCCNode () {

@@ -13,9 +13,9 @@ RequireTestCase.prototype.testBadKey = function() {
 }
 
 RequireTestCase.prototype.testVersion = function() {
-  let opts = require({ version: '1.8' });
+  let opts = require({ version: '1.7' });
   let r = [ 'a' for (i in [ 1, 2, 3 ]) ];
-  this.assertEquals(opts.version, '1.8');
+  this.assertEquals(opts.version, '1.7');
 }
 
 RequireTestCase.prototype.testEmpty = function() {
