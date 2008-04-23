@@ -52,12 +52,15 @@ GCCNode.prototype.operands = function () {
   else if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (this.tree_code())))
   {
     return this.exp.operands
+  } else {
+    throw new Error("no operands in this object");
   }
 }
 
 GCCNode.prototype.toCString = function () {
   if (DECL_P (this))
     return decl_name(this)
+  throw new Error("not implemented; only DECLs are supported");
 }
 
 function TREE_CODE (tree) {
@@ -270,8 +273,8 @@ var BINFO_TYPE = TREE_TYPE
  because it merely returns the vector array and lets
 the client for each it*/
 function VEC_iterate (vec_node) {
-  if (vec_node)
-    return vec_node.base.vec
+  // undefined is used for empty vectors, so support it nicely here.
+  return vec_node ? vec_node.base.vec : [];
 }
 
 function tree_stmt_iterator (ptr, container) {
@@ -469,6 +472,7 @@ function walk_hierarchy (f, record_type) {
     if (ret)
       return ret
   }
+  return undefined;
 }
 
 function get_user_attribute (attributes) {
@@ -483,4 +487,5 @@ function get_user_attribute (attributes) {
       return TREE_STRING_POINTER(TREE_VALUE(args))
     }
   }
+  return undefined;
 }
