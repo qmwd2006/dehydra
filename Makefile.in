@@ -36,6 +36,8 @@ treehydra.o: treehydra.c treehydra.h
 
 treehydra: gcc_treehydra.so
 
+.PHONY: treehydra
+
 check check_dehydra check_treehydra check_both:
 	$(MAKE) -C test $@
 

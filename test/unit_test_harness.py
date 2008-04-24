@@ -27,8 +27,7 @@ class PluginTestCase(TestCase):
 
     def runTest(self):
         cmd = self.getCommand()
-        cmd_list = cmd.split()
-        sub = Popen(cmd_list, stdout=PIPE, stderr=PIPE)
+        sub = Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True)
         out, err = sub.communicate()
         self.checker(self, 0, out, err)
 
@@ -138,6 +137,11 @@ tests = []
 for plugin in ("dehydra", "treehydra"):
     tests.append(PluginTestCase(plugin, 'nofile.js', 'empty.cc',
                                 stderr_has('Cannot find include file'), ''))
+# Tests for the argument
+for plugin in ("dehydra", "treehydra"):
+    tests.append(PluginTestCase(plugin, '"test_arg.js hello  goodbye"', 'empty.cc',
+                                unit_test, 'unit_test'))
+
 for f in glob('*.js'):
     try:
         tests += extractTests(f)
