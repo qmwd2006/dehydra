@@ -121,9 +121,8 @@ void dehydra_init(Dehydra *this, const char *file) {
                               "hashcode", obj_hashcode, 0, 0));
 }
 
-int dehydra_startup (Dehydra *this, const char *script) {
-  if (dehydra_includeScript (this, "system.js")) return 1;
-  return dehydra_includeScript (this, script);
+int dehydra_startup (Dehydra *this) {
+  return dehydra_includeScript (this, "system.js");
 }
 
 int dehydra_includeScript (Dehydra *this, const char *script) {
