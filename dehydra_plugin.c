@@ -178,10 +178,16 @@ int gcc_plugin_init(const char *file, const char* arg, char **pass) {
   pset = pointer_set_create ();
   type_pset = pointer_set_create ();
   dehydra_init (&dehydra, file);
-  int ret = dehydra_startup (&dehydra, arg);
+  int ret = dehydra_startup (&dehydra);
   if (ret) return ret;
 #ifdef TREEHYDRA_PLUGIN
-  ret = treehydra_startup (&dehydra, arg);
+  ret = treehydra_startup (&dehydra);
+  if (ret) return ret;
+#endif
+  ret = dehydra_includeScript (&dehydra, arg);
+#ifdef TREEHYDRA_PLUGIN
+  /* This has to come after including the user's script, because once
+   * init_finished is set, the user can't set the gcc pass. */
   init_finished = 1;
   if (after_gcc_pass)
     *pass = after_gcc_pass;

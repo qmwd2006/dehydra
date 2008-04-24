@@ -270,7 +270,7 @@ void treehydra_plugin_pass (Dehydra *this) {
   jsobjMap = NULL;
 }
 
-int treehydra_startup (Dehydra *this, const char *script) {
+int treehydra_startup (Dehydra *this) {
   /* Check conditions that should hold for treehydra_generated.h */
   xassert (NULL == JSVAL_NULL && sizeof (void*) == sizeof (jsval));
   xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree", 
@@ -279,5 +279,5 @@ int treehydra_startup (Dehydra *this, const char *script) {
   xassert (JS_InitClass(this->cx, this->globalObj, NULL
                         ,&js_tree_class , NULL, 0, NULL, NULL, NULL, NULL));
   xassert (!dehydra_includeScript (this, "treehydra.js"));
-  return dehydra_includeScript (this, script);  
+  return 0;
 }

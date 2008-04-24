@@ -2,7 +2,7 @@
 #ifndef TREEHYDRA_H
 #define TREEHYDRA_H
 
-int treehydra_startup (struct Dehydra *this, const char *script);
+int treehydra_startup (struct Dehydra *this);
 void treehydra_plugin_pass (struct Dehydra *this);
 int set_after_gcc_pass(const char *pass);
 

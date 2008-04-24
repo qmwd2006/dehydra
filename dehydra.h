@@ -50,7 +50,7 @@ JSObject *dehydra_defineArrayProperty (Dehydra *this, JSObject *obj,
 JSObject *dehydra_defineObjectProperty (Dehydra *this, JSObject *obj,
                                         char const *name);
 void dehydra_init(Dehydra *this, const char *file);
-int dehydra_startup (Dehydra *this, const char *script);
+int dehydra_startup (Dehydra *this);
 int dehydra_visitType(Dehydra *this, tree c);
 void dehydra_visitDecl (Dehydra *this, tree f);
 JSObject* dehydra_addVar(Dehydra *this, tree v, JSObject *parentArray);
