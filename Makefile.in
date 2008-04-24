@@ -41,3 +41,4 @@ check check_dehydra check_treehydra check_both:
 
 clean:
 	rm -f *.o *.so *~ *.ii *_generated.c enums.js useful_arrays.js
+	$(MAKE) -C test clean
