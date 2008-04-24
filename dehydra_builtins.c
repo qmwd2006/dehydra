@@ -343,93 +343,75 @@ FILE *findFile(const char *filename, const char *dir, char **realname) {
   return NULL;
 }
 
-static int dehydra_loadScript (Dehydra *this, const char *filename) {
+/* Load and run the named script. The last argument is the object to use
+   as "this" when evaluating the script, which is effectively a namespace
+   for the script. */
+static JSBool dehydra_loadScript (Dehydra *this, const char *filename, 
+                               JSObject *namespace) {
   /* Read the file. There's a JS function for reading scripts, but Dehydra
      wants to search for the file in different dirs. */
   long size = 0;
   char *realname;
-  FILE *f = findFile(filename, this->dir, &realname);
+  FILE *f = dehydra_searchPath(this, filename, &realname);
+  //FILE *f = findFile(filename, 0, &realname); // TODO this->dir, &realname);
   if (!f) {
     REPORT_ERROR_1(this->cx, "Cannot find include file '%s'", filename);
-    return 1;
+    return JS_FALSE;
   }
   char *content = readEntireFile(f, &size);
   if (!content) {
     REPORT_ERROR_1(this->cx, "Cannot read include file '%s'", realname);
     free(realname);
-    return 1;
+    return JS_FALSE;
   }
 
-  JSScript *script = JS_CompileScript(this->cx, this->globalObj,
+  JSScript *script = JS_CompileScript(this->cx, namespace,
                                       content, size, realname, 1);
   free(realname);
   if (script == NULL) {
     xassert(JS_IsExceptionPending(this->cx));
-    return 1;
+    return JS_FALSE;
   }
 
   JSObject *sobj = JS_NewScriptObject(this->cx, script);
   JS_AddNamedRoot(this->cx, &sobj, filename);
   jsval rval;
-  JSBool rv = JS_ExecuteScript(this->cx, this->globalObj, script, &rval);
+  JSBool rv = JS_ExecuteScript(this->cx, namespace, script, &rval);
   if (!rv) {
     xassert(JS_IsExceptionPending(this->cx));
-    return 1;
+    return JS_FALSE;
   }
 
   JS_RemoveRoot(this->cx, &sobj);
-  return 0;
+  return JS_TRUE;
 }
 
 /* should use this function to load all objects to avoid possibity of objects including themselves */
 JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
                jsval *argv, jsval *rval) {
-  if (!argc) return JS_FALSE;
+  Dehydra *this = JS_GetContextPrivate(cx);
   char *filename;
-  // first arg is string filename..second arg is optional namespace
-  JSBool rv = JS_ConvertArguments(cx, argc, argv, "s", &filename);
-  if (!rv) return JS_FALSE;
-
-  Dehydra *this = JS_GetContextPrivate (cx);
-  JSObject *namespaceObject = this->globalObj;
-  if (argc > 1) {
-    if (!JS_ConvertArguments(cx, argc  - 1, argv + 1, "o", &this->globalObj)) {
-      goto err_out;
-    }
-  }
+  JSObject *namespace = this->globalObj;
+  if (!JS_ConvertArguments(cx, argc, argv, "s/o", &filename, &namespace))
+    return JS_FALSE;
 
   JSObject *includedArray = NULL;
-  do {
-    jsval val;
-    JS_GetProperty(cx, this->globalObj, "_includedArray", &val);
-    if (!JSVAL_IS_OBJECT (val)) {
-      includedArray = JS_NewArrayObject (this->cx, 0, NULL);
-      dehydra_defineProperty (this, this->globalObj, "_includedArray",
-                              OBJECT_TO_JSVAL (includedArray));
-      break;
-    }
+  jsval val;
+  JS_GetProperty(cx, namespace, "_includedArray", &val);
+  if (!JSVAL_IS_OBJECT (val)) {
+    includedArray = JS_NewArrayObject (this->cx, 0, NULL);
+    dehydra_defineProperty (this, namespace, "_includedArray",
+                            OBJECT_TO_JSVAL (includedArray));
+  } else {
     includedArray = JSVAL_TO_OBJECT (val);
     xassert (JS_CallFunctionName (this->cx, includedArray, "lastIndexOf",
-                                   1, argv, &val));
-    // file has already been included
-    if (JSVAL_TO_INT (val) != -1) {
-      goto out;
-    }
-  } while (false);
-
-  // push the included file
-  JS_CallFunctionName (this->cx, includedArray, "push",
-                              1, argv, rval);
-  if (dehydra_loadScript (this, filename)) {
-    goto err_out;
+                                  1, argv, &val));
+    /* Return if file was already included in this namespace. */
+    if (JSVAL_TO_INT (val) != -1) return JS_TRUE;
   }
 
- out:
-  this->globalObj = namespaceObject;
-  return JS_TRUE;
- err_out:
-  this->globalObj = namespaceObject;
-  return JS_FALSE;
+  JS_CallFunctionName (this->cx, includedArray, "push", 1, argv, rval);
+  return dehydra_loadScript (this, filename, namespace);
 }
 
 /* author: tglek

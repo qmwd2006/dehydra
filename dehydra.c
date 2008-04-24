@@ -2,6 +2,7 @@
 #include <jsapi.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <libgen.h>
 
 #include <config.h>
 #include <system.h>
@@ -42,6 +43,9 @@ const char *METHOD_OF = "methodOf";
 static const char *STATIC = "isStatic";
 static const char *VIRTUAL = "isVirtual";
 
+static const char *SYS = "sys";
+static const char *INCLUDE_PATH = "include_path";
+
 #ifdef JS_GC_ZEAL
 static JSBool
 GCZeal(JSContext *cx, uintN argc, jsval *vp)
@@ -79,15 +83,6 @@ void dehydra_init(Dehydra *this, const char *file) {
     {0}
   };
 
-  char *c = strrchr(file, '/');
-  if (c) {
-    // include / in the copy
-    int len = c - file + 1;
-    this->dir = xmalloc(len + 1);
-    strncpy(this->dir, file, len);
-    this->dir[len] = 0;
-  }
-
   this->fndeclMap = pointer_map_create ();
   this->rt = JS_NewRuntime (0x9000000L);
   this->cx = JS_NewContext (this->rt, 8192);
@@ -112,6 +107,15 @@ void dehydra_init(Dehydra *this, const char *file) {
                     OBJECT_TO_JSVAL (this->rootedFreeArray),
                     NULL, NULL, JSPROP_ENUMERATE);
   JS_SetVersion (this->cx, (JSVersion) 170);
+
+
+  /* Initialize namespace for plugin system stuff. */
+  JSObject *sys = dehydra_defineObjectProperty(this, this->globalObj, SYS);
+  /* Initialize include path. */
+  dehydra_defineArrayProperty(this, sys, INCLUDE_PATH, 0);
+  /* Add plugin dir to path */
+  dehydra_appendDirnameToPath(this, file);
+
   if (aux_base_name) {
     jsval strval = STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, 
                                                        dump_base_name));
@@ -133,6 +137,73 @@ int dehydra_includeScript (Dehydra *this, const char *script) {
   int ret = !Include (this->cx, this->globalObj, 1, &strval, &rval);
   dehydra_unrootObject (this, key);
   return ret;
+}
+
+JSObject *dehydra_getIncludePath (Dehydra *this)
+{
+  jsval sys_val, path_val;
+  JS_GetProperty(this->cx, this->globalObj, SYS, &sys_val);
+  JS_GetProperty(this->cx, JSVAL_TO_OBJECT(sys_val), INCLUDE_PATH, &path_val);
+  return JSVAL_TO_OBJECT(path_val);
+}
+
+/* Append a directory name to the script include path. */
+void dehydra_appendToPath (Dehydra *this, const char *dir) 
+{
+  JSObject *path = dehydra_getIncludePath(this);
+  unsigned int length = dehydra_getArrayLength(this, path);
+  JSString *dir_str = JS_NewStringCopyZ(this->cx, dir);
+  jsval dir_val = STRING_TO_JSVAL(dir_str);
+  JS_DefineElement(this->cx, path, length, dir_val, NULL, NULL,
+                   JSPROP_ENUMERATE);
+}
+
+/* Append the dirname of the given file to the script include path. */
+void dehydra_appendDirnameToPath (Dehydra *this, const char *filename) 
+{
+  char *filename_copy = xstrdup(filename);
+  char *dir = dirname(filename_copy);
+  dehydra_appendToPath(this, dir);
+  free(filename_copy);
+}
+
+/* Search the include path for a file matching the given name. The current
+ * directory will be searched last. */
+FILE *dehydra_searchPath (Dehydra *this, const char *filename, char **realname)
+{
+  if (filename && filename[0] != '/') {
+    JSObject *path = dehydra_getIncludePath(this);
+    int length = dehydra_getArrayLength(this, path);
+    int i;
+    for (i = 0; i < length; ++i) {
+      jsval val;
+      JS_GetElement(this->cx, path, i, &val);
+
+      JSString *dir_str = JS_ValueToString(this->cx, val);
+      if (!dir_str) continue;
+      char *dir = JS_GetStringBytes(dir_str);
+
+      char *buf = xmalloc(strlen(dir) + strlen(filename) + 2);
+      /* Doing a little extra work here to get rid of unneeded '/'. */
+      char *sep = dir[strlen(dir)-1] == '/' ? "" : "/";
+      sprintf(buf, "%s%s%s", dir, sep, filename);
+      FILE *f = fopen(buf, "r");
+      if (f) {
+        *realname = buf;
+        return f;
+      } else {
+        free(buf);
+      }
+    }
+  }
+  
+  FILE *f = fopen(filename, "r");
+  if (f) {
+    *realname = xstrdup(filename);
+    return f;
+  }
+
+  return NULL;
 }
 
 jsuint dehydra_getArrayLength (Dehydra *this, JSObject *array) {

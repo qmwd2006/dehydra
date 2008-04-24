@@ -3,7 +3,6 @@
 #define DEHYDRA_H
 
 struct Dehydra {
-  char* dir;
   JSRuntime *rt;
   JSContext *cx;
   JSObject *globalObj;
@@ -63,5 +62,9 @@ int dehydra_rootObject (Dehydra *this, jsval val);
 void dehydra_unrootObject (Dehydra *this, int pos);
 jsval dehydra_getRootedObject (Dehydra *this, int pos);
 void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t);
+
 int dehydra_includeScript(Dehydra *this, const char *filename);
+void dehydra_appendToPath (Dehydra *this, const char *dir);
+void dehydra_appendDirnameToPath (Dehydra *this, const char *filename);
+FILE *dehydra_searchPath (Dehydra *this, const char *filename, char **realname);
 #endif

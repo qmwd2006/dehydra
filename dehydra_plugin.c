@@ -198,6 +198,7 @@ int gcc_plugin_init(const char *file, const char* arg, char **pass) {
   }
 
   dehydra_defineStringProperty(&dehydra, dehydra.globalObj, "_arguments", rest);
+  dehydra_appendDirnameToPath (&dehydra, arg);
   ret = dehydra_includeScript (&dehydra, script);
 
   free(script);
