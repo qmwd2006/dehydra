@@ -171,6 +171,8 @@ static void process (tree t) {
 }
 
 int gcc_plugin_init(const char *file, const char* arg, char **pass) {
+  char *script, *rest;
+
   if (!arg) {
     error ("Use -fplugin-arg=<scriptname> to specify the dehydra script to run");
     return 1;
@@ -184,7 +186,22 @@ int gcc_plugin_init(const char *file, const char* arg, char **pass) {
   ret = treehydra_startup (&dehydra);
   if (ret) return ret;
 #endif
-  ret = dehydra_includeScript (&dehydra, arg);
+
+  script = xstrdup(arg);
+  rest = strchr(script, ' ');
+  if (rest) {
+    *rest = '\0';
+    ++rest;
+  }
+  else {
+    rest = "";
+  }
+
+  dehydra_defineStringProperty(&dehydra, dehydra.globalObj, "_arguments", rest);
+  ret = dehydra_includeScript (&dehydra, script);
+
+  free(script);
+
 #ifdef TREEHYDRA_PLUGIN
   /* This has to come after including the user's script, because once
    * init_finished is set, the user can't set the gcc pass. */
