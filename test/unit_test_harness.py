@@ -142,6 +142,13 @@ for plugin in ("dehydra", "treehydra"):
     tests.append(PluginTestCase(plugin, '"test_arg.js hello  goodbye"', 'empty.cc',
                                 unit_test, 'unit_test'))
 
+# For now, we'll put this here, but if more are created, we should make
+# the test harness search dirs.
+for plugin in ("dehydra", "treehydra"):
+    tests.append(PluginTestCase(plugin, 'subdir/main.js', 'empty.cc',
+                                unit_test, ''))
+
+
 for f in glob('*.js'):
     try:
         tests += extractTests(f)
