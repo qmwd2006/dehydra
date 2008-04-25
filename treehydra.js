@@ -269,6 +269,53 @@ function BINFO_BASE_BINFOS (node) {
   return node.binfo.base_binfos
 }
 
+function TYPE_LANG_SPECIFIC (node) {
+  return node.type.lang_specific
+}
+
+function LANG_TYPE_CLASS_CHECK (node) {
+  var lang_type = TYPE_LANG_SPECIFIC (node)
+  if (!lang_type.u.h.is_lang_type_class)
+    throw new Error ("Not a class!")
+  return lang_type.u.c
+}
+
+function CLASSTYPE_TEMPLATE_INFO (node) {
+  return LANG_TYPE_CLASS_CHECK(node).template_info
+}
+
+const TI_TEMPLATE = TREE_PURPOSE
+
+function CLASSTYPE_TI_TEMPLATE (node) {
+  return TI_TEMPLATE (CLASSTYPE_TEMPLATE_INFO (node))
+}
+
+function DECL_LANG_SPECIFIC (node) {
+  return node.decl_common.lang_specific
+}
+
+function DECL_TEMPLATE_INFO (node) {
+  return DECL_LANG_SPECIFIC (node).decl_flags.u.template_info
+}
+
+function TYPE_TEMPLATE_INFO(node) {
+  if (TREE_CODE (node) == ENUMERAL_TYPE )
+    return ENUM_TEMPLATE_INFO (node) 
+  else if (TREE_CODE (node) == BOUND_TEMPLATE_TEMPLATE_PARM)
+    return TEMPLATE_TEMPLATE_PARM_TEMPLATE_INFO (node) 
+  else if (TYPE_LANG_SPECIFIC (node))
+    return CLASSTYPE_TEMPLATE_INFO (node)
+}
+
+const TI_ARGS = TREE_VALUE
+
+function TMPL_ARGS_HAVE_MULTIPLE_LEVELS (node) {
+  if (!node) return
+
+  const elt = TREE_VEC_ELT (node, 0) 
+  return elt && TREE_CODE (elt) == TREE_VEC_ELT
+}
+
 var BINFO_TYPE = TREE_TYPE
 
 /* This is so much simpler than the C version 
