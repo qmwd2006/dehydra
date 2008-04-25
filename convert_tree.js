@@ -20,6 +20,11 @@ function skipTypeWrappers (type) {
   return type
 }
 
+/* Used to toggle names, name depends on whether it's a toplevel scope or nested deeper */
+function getVarName(isTopmost) {
+  return isTopmost ? "topmost" : "var"
+}
+
 function Field (type, name, tag, isAddrOf, arrayLengthExpr, cast, isPrimitive, unionResolver) {
   this.type = type
   this.name = name
@@ -35,16 +40,32 @@ Field.prototype.toString = function () {
   return this.type + " " + this.name + " = " + this.tag
 }
 
-function Function (isStatic, name, body) {
+function Function (isStatic, name, bodyFunc, subFunctions) {
   this.name = name
-  this.body = body
+  this.bodyFunc = bodyFunc
   this.comment = ""
   this.type = "void"
   this.prefix = isStatic ? "static " : ""
+  this.subFunctions = subFunctions
 }
 
 Function.prototype.addComment = function (comment) {
   this.comment += " " + comment
+}
+
+Function.prototype.toString = function (indent, outerindent) {
+  if (!indent)
+    indent = "  "
+  if (!outerindent)
+    outerindent = ""
+  var str = outerindent + "// " + this.comment + "\n"
+    + outerindent + this.prefix + this.type + " " + this.name + " {\n";
+  var extra = ""
+  if (this.subFunctions)
+    extra = this.subFunctions.map (function(x) {return x.toString(indent+"  ", indent)}).join("\n")
+  str += indent + this.bodyFunc(extra, indent) 
+    + "\n"+ outerindent + "}\n";
+  return str
 }
 
 function Unit () {
@@ -53,22 +74,21 @@ function Unit () {
   this.enumValues = {}
 }
 
-Unit.prototype.toString = function () {
+Unit.prototype.toString = function (indent) {
+  if (!indent)
+    indent = "  "
   var forwards = this.functions.map (function (x) { return x.prefix + x.type + " " + x.name })
   forwards.push("")
   var str = forwards.join (";\n");
-  var bodies = this.functions.map (function (x) { 
-    return "// " + x.comment + "\n"
-      + x.prefix + x.type + " " + x.name + " {\n  " + x.body + "\n}\n";
-  })
   return ["#define GENERATED_C2JS 1",
           "#include \"treehydra_generated.h\"",
-          str, bodies.join ("\n")].join("\n")
+          str, this.functions.join ("\n")].join("\n")
 }
 
-function callGetExistingOrLazy (type, name, isAddrOf, cast, isPrimitive, isArrayItem) {
+function callGetExistingOrLazy (type, name, isAddrOf, cast, isPrimitive, isArrayItem, isTopmost) {
+  const varDeref = getVarName(isTopmost) + "->"
   if (isAddrOf && !isArrayItem) {
-    var expr = "&var->" + name 
+    var expr = "&" + varDeref + name 
     var func = "get_lazy";
     return func + " (this, lazy_" + type + ", " 
       + expr + ", obj, \"" + name + "\")"
@@ -79,7 +99,7 @@ function callGetExistingOrLazy (type, name, isAddrOf, cast, isPrimitive, isArray
   var propValue = !isArrayItem ? '"' + name + '"' : "buf";
   if (!cast) cast = ""
   else cast = "(" + cast + ") "
-  var expr = cast + deref + "var->" + name + index
+  var expr = cast + deref + varDeref + name + index
   if (isPrimitive) {
       return "convert_" + type + "(this, " +  dest + ", " + propValue + ", " + expr + ");";
   }
@@ -87,22 +107,41 @@ function callGetExistingOrLazy (type, name, isAddrOf, cast, isPrimitive, isArray
     + expr + ", " + dest + ", " + propValue + ")"
 }
 
-Unit.prototype.addUnion = function (fields, type_name, type_code_name) {
+Unit.prototype.addFunction = function (f) {
+  this.functions.push (f)
+}
+
+function makeUnionBody (fields, isTopmost, indent) {
+  var noTagLs = []
   var ls = []
   ls.push ("switch (code) {");
   for each (var f in fields) {
+    if (!f.tag) {
+      noTagLs.push(f)
+      continue
+    }
     ls.push ("case " + f.tag + ":");
-    ls.push ("  " + callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive) + ";")
+    ls.push ("  " + callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive, false, isTopmost) + ";")
     ls.push ("  break;")
   }
   ls.push ("default:")
   ls.push ("  break;")
   ls.push ("}")
-  this.functions.push (
-    new Function (false, "convert_" + type_name
-                  + "_union (struct Dehydra *this, " + type_code_name
-                  + " code, union " + type_name + " *var, struct JSObject *obj)",
-                  ls.join ("\n  ")));
+  for each (var f in noTagLs) {
+    ls.push (callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive, false, isTopmost) + ";")
+  }
+  return ls.join("\n" + indent)
+}
+
+function makeUnion (fields, type_name, type_code_name, subFunctions, isTopmost) {
+  function bodyFunc (extra, indent) {
+    return extra + "\n" + indent + makeUnionBody (fields, isTopmost, indent)
+  }
+  const fname = "convert_" + type_name + "_union (struct Dehydra *this, "
+    + type_code_name + " code, union " + type_name + " *"
+    + getVarName (isTopmost) + ", struct JSObject *obj)"
+  return new Function (false, fname,
+                       bodyFunc, subFunctions)
 }
 
 Unit.prototype.registerEnumValue = function (name, value) {
@@ -119,7 +158,7 @@ Unit.prototype.saveEnums = function (fname) {
   print ("Generated " + fname)
 }
 
-Unit.prototype.addEnum = function (fields, type_name) {
+function makeEnum (unit, fields, type_name, enum_inherit, isStatic) {
   var ls = []
   ls.push ("jsval v;");
   ls.push ("switch (var) {");
@@ -127,59 +166,79 @@ Unit.prototype.addEnum = function (fields, type_name) {
     ls.push ("case " + f.name + ":");
     ls.push ("  v = get_enum_value (this, \"" + f.name + "\");")
     ls.push ("  break;")
-    this.registerEnumValue (f.name, f.value)
+    unit.registerEnumValue (f.name, f.value)
   }
   ls.push ("default:")
-  ls.push ('  fprintf(stderr, "Treehydra Implementation Warning: generating dummy tree code object for unimplemented tree_code %s\\n", tree_code_name[var]);');
-  ls.push ("  v = get_enum_value (this, \"LAST_AND_UNUSED_TREE_CODE\");")
+  if (enum_inherit) {
+    ls.push ("  convert_" + enum_inherit + " (this, parent, propname, (enum "
+             + enum_inherit +") var);");
+    ls.push ("  return;");
+  } else {
+    ls.push ('  error( "Treehydra Implementation: generating dummy tree code object for unimplemented tree_code %s\\n", tree_code_name[var]);');
+    ls.push ("  v = get_enum_value (this, \"LAST_AND_UNUSED_TREE_CODE\");")
+  }
   ls.push ("}")
   ls.push ("dehydra_defineProperty (this, parent, propname, v);")
-  this.functions.push (
-    new Function (true, "convert_" + type_name
-                  + " (struct Dehydra *this, struct JSObject *parent, const char *propname, enum " + type_name + " var)",
-                  ls.join ("\n  ")));
+  function bodyFunc (extra, indent) {
+    return extra + "\n" + indent + ls.join ("\n" + indent)
+  }
+  return new Function (isStatic, "convert_" + type_name
+                       + " (struct Dehydra *this, struct JSObject *parent, const char *propname, enum " + type_name + " var)",
+                       bodyFunc);
+  
 }
 
-function callUnion (type, name, unionResolver) {
-  var obj = "obj_" + name
-  var p1 = "struct JSObject *" + obj + " = dehydra_defineObjectProperty (this, obj, \"" + name + "\");"
-  return p1 + "\nconvert_" + type + "_union (this, " + unionResolver + ", &var->" + name 
+/* F is a Field */
+function callUnion (type, name, unionResolver, isTopmost, indent) {
+  const obj = "obj_" + name
+  var str = "struct JSObject *" + obj
+    + " = dehydra_defineObjectProperty (this, obj, \"" + name + "\");\n"
+  str += indent + "convert_" + type + "_union (this, " 
+    + unionResolver + ", " + "&" + getVarName(isTopmost) + "->" + name 
     + ", " + obj + ")";
+  return str
 }
 
-Unit.prototype.addStruct = function (fields, type_name, prefix, isGTY) {
+function makeStructBody (fields, indent, isTopmost) {
   var ls = []
-  var type = prefix + " " + type_name
-  ls.push (type + " *var = ("+ type + "*) void_var")
-  ls.push ("if (!var) return")
-  ls.push ("dehydra_defineStringProperty (this, obj, \"_struct_name\", \"" + type_name + "\")")
   for (var i in fields) {
     var f = fields[i]
     if (f.unionResolver) {
-      ls.push (callUnion (f.type, f.name, f.unionResolver))
+      ls.push (callUnion (f.type, f.name, f.unionResolver, isTopmost, indent))
     } else if (!f.arrayLengthExpr) {
       // Only structs need their addresses to be taken
       // Assume that that also means they are unique to the structure
       // containing them
-      ls.push (callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive))
+      ls.push (callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive, false, isTopmost))
     } else {
-      var lls = ["  {", "size_t i;"]
+      var lls = ["{", "size_t i;"]
       lls.push ("char buf[128];")
       lls.push ("const size_t len = " + f.arrayLengthExpr + ";")
       lls.push ("struct JSObject *destArray =  dehydra_defineArrayProperty (this, obj, \"" 
                 + f.name + "\", len);")
       lls.push ("for (i = 0; i < len; i++) {");
       lls.push ("  sprintf (buf, \"%d\", i);")
-      lls.push ("  " + callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive, true) + ";")
+      lls.push ("  " + callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive, true, isTopmost) + ";")
       lls.push ("}")
-      lls.push ("}")
-      ls.push (lls.join("\n    "))
+      ls.push (lls.join("\n" + indent + "  ") + "\n" + indent+ "}")
     }
   }
-  var f = new Function (true,
+  return ls.join (";\n" + indent) + ";"
+}
+
+function makeStruct (fields, type_name, prefix, subFunctions, isTopmost) {
+  function printer (extra, indent) {
+    var type = prefix + " " + type_name
+    const varName = getVarName (isTopmost)
+    var body = "if (!void_var) return;\n"
+      body += indent + type + " *" + varName + " = ("+ type + "*) void_var;\n";
+    body += extra + "\n"
+    body += indent + "dehydra_defineStringProperty (this, obj, \"_struct_name\", \"" + type_name + "\");\n"
+    return body + indent + makeStructBody (fields, indent, isTopmost)
+  }
+  var f = new Function (isTopmost,
     "lazy_" + type_name + " (struct Dehydra *this, void* void_var, struct JSObject *obj)",
-    ls.join (";\n  ") + ";")
-  this.functions.push (f)
+    printer, subFunctions)
   return f
 }
 
@@ -190,6 +249,8 @@ Unit.prototype.guard = function (key) {
 }
 
 function getPrefix (aggr) {
+  if (aggr.kind != "struct")
+    return aggr.kind + " "
   var aloc = aggr.loc.split(":")
   var file = aloc[0]
   var line = aloc[1]*1
@@ -238,26 +299,34 @@ function getUnionTag (attributes) {
   }
 }
 
-const percentH_Regexp = /%h/
-const percent1_Regexp = /%1/
+const percentH_Regexp = /%h/g
+const percent0_Regexp = /%0/g
+const percent1_Regexp = /%1/g
 const descRegexp = /desc\s*\("(.*)"\)/;
-function getUnionResolver(attributes, fieldName) {
+
+function getUnionResolver(attributes, fieldName, isTopmost) {
   for each (var a in attributes) {
     if (a.name != "user")
       continue;
     var m = descRegexp.exec(a.value)
     // took a guess about %h in this context
-    if (m) return m[1].replace(percent1_Regexp, "(*var)").replace(percentH_Regexp,"var->"+fieldName)
+    if (m) {
+      const varName = getVarName(isTopmost)
+      var str = m[1].replace(percent0_Regexp, "(*topmost)")
+      str = str.replace(percent1_Regexp, "(*" + varName + ")")
+      str = str.replace(percentH_Regexp, varName + "->" + fieldName)
+      return str
+    }
   }
 }
 
-const lengthRegexp = /length\s*\(\s*"(.+)"\s*\)/
-function getLengthExpr (attributes) {
+const lengthRegexp = /length\s*\(\s*"(.+)"\s*\)/;
+function getLengthExpr (attributes, isTopmost) {
   for each (var a in attributes) {
     if (a.name != "user")
       continue;
     var m = lengthRegexp.exec (a.value);
-    if (m) return m[1].replace(percentH_Regexp, "(*var)") 
+    if (m) return m[1].replace(percentH_Regexp, "(*" + getVarName(isTopmost) + ")") 
   }  
 }
 
@@ -300,14 +369,24 @@ function isUnsignedOrInt (type) {
 
 const stripPrefixRegexp = /([^:]+)$/;
 const arraySizeRegexp = /^(\d)u$/;
-// meaty part of the script
-function convert (unit, aggr, unionTopLevel) {
+
+/* meaty part of the script
+* Unit is what holds the result
+* Aggr is the data type to convert
+* zeroTh(%0), is the outermost aggr type
+* first(%1) is the parent of current type
+*/
+function convert (unit, aggr) {
   if (!aggr || unit.guard(aggr)) {
     return
   }
   var ls = []
-  var isUnion = aggr.kind == "union"
-  var isEnum = aggr.kind == "enum"
+  const isUnion = aggr.kind == "union"
+  const isEnum = aggr.kind == "enum"
+  const isToplevelType = aggr.name.indexOf(":") == -1
+  const aggr_name = stripPrefixRegexp.exec(aggr.name)[1]
+  // Keep nested structs/unions here
+  var subFunctions = []
   var aggr_ls = undefined
   if (!isEnum)
     aggr_ls = aggr.members
@@ -324,49 +403,59 @@ function convert (unit, aggr, unionTopLevel) {
     /* Extract size if type is an array */
     var lengthResults = arraySizeRegexp.exec (m.type.size);
     var unionResolver = undefined
+    var subf = undefined
     /* arrays of size 1 are actually funky var length arrays */
     if (lengthResults && lengthResults[1] != "u")
       lengthExpr = lengthResults[1]*1 + 1
     var cast = undefined
     if (m.name == "tree_base::code") {
       type_kind = "enum"
-      type = this.tree_code_type
+      type = this.tree_code
       type_name = type.name
     }
     this._loc = m.loc
-    if (m.name == "emit_status::x_regno_reg_rtx") {
-      print ("Skipping m.name because it causes issues I don't feel like dealing with")
+    switch (m.name) {
+    case "tree_type::symtab":
+    case "emit_status::x_regno_reg_rtx":
+    case "ssa_use_operand_d::use":
+      print ("Skipping " + m.name + "because it causes issues I don't feel like dealing with")
       continue;
-    } else if (isSkip(m.attributes) || m.name == "ssa_use_operand_d::use") {
-      print ("Skipping " + m.name + ". ");
-      continue;
+    default:
+      if (m.name != "lang_type::lang_type_u::h"
+          && (isSkip(m.attributes) || isSkip(m.type.attributes))) {
+          print ("Skipping " + m.name + ". ");
+          continue;
+      }
     }
-
     var isPrimitive = false
-    if (type_kind == "struct"
-        || type.name == "tree_node"
-        || type.name == "basic_block_def::basic_block_il_dependent"
-        || type.name == "lang_type::lang_type_u") {
+    if (isUnion) {
+      // GTY tags help figure out which field of a union to use
+      tag = getUnionTag (m.attributes);
+      if (!tag)
+        tag = getUnionTag (m.type.attributes)
+      /*if (!tag) {
+        print (m.name + " isn't tagged. Skipping.")
+        continue
+      }*/
+    } 
+    
+    if (type_kind == "struct" || type.name == "tree_node"
+        || (type_kind == "union" && type.name.indexOf("::") != -1)) {
       isAddrOf = !isPointer(m.type)
       if (type.isIncomplete) {
         print (m.name + "' type is incomplete. Skipping.");
         continue;
       }
-      var subf  = convert (unit, type, isUnion)
-      if (subf)
-        subf.addComment("Used in " + m.loc + ";")
-
-      if (isUnion) {
-        // GTY tags help figure out which field of a union to use
-        tag = getUnionTag(m.attributes);
-      } else {
-        lengthExpr = getLengthExpr (m.attributes)
-        if (type.name != "tree_node")
-          unionResolver = getUnionResolver (m.type.attributes, name)
+      subf = convert (unit, type, isUnion)
+      
+      if (!isUnion) {
+        lengthExpr = getLengthExpr (m.attributes, isToplevelType)
+        if (type.name != "tree_node") 
+          unionResolver = getUnionResolver (m.type.attributes, name, isToplevelType)
       }
     } else if (type_kind == "enum") {
       isPrimitive = true
-      convert (unit, type)
+      subf = convert (unit, type)
     } else if (isCharStar (m.type)) {
       type_name = "char_star"
       cast = "char *"
@@ -388,7 +477,7 @@ function convert (unit, aggr, unionTopLevel) {
     }
     if (isSpecial (m.attributes)) {
       if (m.name == "tree_exp::operands")
-        lengthExpr = "TREE_OPERAND_LENGTH ((tree) &(*var))";
+        lengthExpr = "TREE_OPERAND_LENGTH ((tree) &(*topmost))";
       else {
         print (m.name + " is special. Skipping...")
         continue
@@ -400,22 +489,34 @@ function convert (unit, aggr, unionTopLevel) {
                         isAddrOf,
                         lengthExpr,
                         cast, isPrimitive, unionResolver))
+    if (subf)
+      subFunctions.push(subf)
   }
   this._loc = oldloc
   var ret = undefined
-  var isGTY = !unionTopLevel && aggr.attributes && aggr.attributes.length
   if (isUnion) {
-    ret = unit.addUnion (ls, stripPrefixRegexp.exec(aggr.name)[1],
-                         (aggr.name == "tree_node" ? "enum tree_node_structure_enum" : "unsigned int"),
-                         isGTY)
+    ret = makeUnion (ls, aggr_name,
+                         (aggr_name == "tree_node" 
+                          ? "enum tree_node_structure_enum" 
+                          : "unsigned int"), subFunctions, isToplevelType)
   } else if (aggr.kind == "struct") {
-    ret = unit.addStruct (ls, aggr.name, getPrefix(aggr), isGTY)
+    ret = makeStruct (ls, aggr_name, getPrefix(aggr), subFunctions, isToplevelType)
   } else if (isEnum) {
-    ret = unit.addEnum (aggr.members.map (function (x) {
-      return {name : x.name, value: x.value}
-    }), stripPrefixRegexp.exec(aggr.name)[1])
+    var enum_inherit = undefined
+    if (aggr_name == "tree_code") {
+      // do inheritance stuff
+      convert (unit, this.cplus_tree_code)
+      enum_inherit = this.cplus_tree_code.name
+    }
+    ret = makeEnum (unit, aggr.members, aggr_name, enum_inherit, isToplevelType)
   } 
-  return ret
+  if (ret) {
+    ret.addComment (aggr.loc)
+    if (!isToplevelType)
+      return ret
+    // don't add nested functions to toplevel
+    unit.addFunction (ret);
+  }
 }
 
 var unit = new Unit();
@@ -424,7 +525,7 @@ function process_type(type) {
   if (type.name == "tree_code") {
     // needed because doing enumType foo:1
     // makes gcc loose enum info in the bitfield
-    this.tree_code_type = type
+    this.tree_code = type
   } else if (type.name == "tree_node") {
     if (!type.attributes) {
       throw new Error (type.name + " doesn't have attributes defined. GTY as attribute stuff must be busted.")
@@ -433,9 +534,12 @@ function process_type(type) {
   } else if (type.name == "tree_code_class") {
     this.tree_code_class = type
     // this enum occurs last, so do the generation here
+  } else if (type.name == "cplus_tree_code") {
+    this.cplus_tree_code = type
   }
   // got all the ingradients, time to cook
-  if (this.tree_code_class && this.tree_code_type && this.tree_node) {
+  if (this.tree_code_class && this.tree_code
+      && this.tree_node && this.cplus_tree_code) {
     for each (var m in this.tree_code_class.members) {
       unit.registerEnumValue (m.name, m.value)
     }
@@ -447,7 +551,7 @@ function process_type(type) {
     unit.saveEnums ("enums.js")
     delete this.tree_code_class
     delete this.tree_node
-    delete this.tree_code_type
+    delete this.tree_code
   }
 }
 
