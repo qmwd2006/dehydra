@@ -46,20 +46,6 @@ static const char *VIRTUAL = "isVirtual";
 static const char *SYS = "sys";
 static const char *INCLUDE_PATH = "include_path";
 
-#ifdef JS_GC_ZEAL
-static JSBool
-GCZeal(JSContext *cx, uintN argc, jsval *vp)
-{
-    uintN zeal;
-
-    if (!JS_ValueToECMAUint32(cx, vp[2], &zeal))
-        return JS_FALSE;
-    JS_SetGCZeal(cx, zeal);
-    *vp = JSVAL_VOID;
-    return JS_TRUE;
-}
-#endif /* JS_GC_ZEAL */
-
 void dehydra_init(Dehydra *this, const char *file) {
   static JSClass global_class = {
     "global", JSCLASS_NEW_RESOLVE,
@@ -77,9 +63,6 @@ void dehydra_init(Dehydra *this, const char *file) {
     {"error",           Error,          0},
     {"warning",         Warning,        0},
     {"require",         Require,        1},
-#ifdef JS_GC_ZEAL
-    JS_FN("gczeal",     GCZeal,     1,1,0),
-#endif
     {0}
   };
 
