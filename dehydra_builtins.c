@@ -72,6 +72,21 @@ JSBool dispatch_require(JSContext *cx, const char *prop_name, jsval prop_val) {
     return require_option(cx, prop_val, JSOPTION_STRICT);
   } else if (strcmp(prop_name, "werror") == 0) {
     return require_option(cx, prop_val, JSOPTION_WERROR);
+  } else if (strcmp(prop_name, "gczeal") == 0) {
+#ifdef JS_GC_ZEAL
+    uintN zeal;
+    if (!JS_ValueToECMAUint32(cx, prop_val, &zeal))
+        return JS_FALSE;
+    JS_SetGCZeal(cx, zeal);
+#else
+#ifdef DEBUG
+    JS_ReportWarning(cx, "gczeal not available: xhydra built with a SpiderMonkey version lacking
+JS_SetGCZeal");
+#else
+    JS_ReportWarning(cx, "gczeal not available: xhydra built without -DDEBUG")
+#endif //DEBUG
+#endif //JS_GC_ZEAL
+    return JS_TRUE;
 #ifdef TREEHYDRA_PLUGIN
   } else if (strcmp(prop_name, "after_gcc_pass") == 0) {
     return require_pass(cx, prop_val);
