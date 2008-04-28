@@ -10,7 +10,6 @@ SysTest.prototype.runTest = function()
 {
   this.assertEquals(sys.aux_base_name, "empty");
   this.assertTrue(/\d+\.\d+\.\d+/(sys.gcc_version))
-  this.assertTrue(sys.gcc_pkgversion != undefined)
 }
 
 var r = new TestResults()

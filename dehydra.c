@@ -46,7 +46,6 @@ static const char *VIRTUAL = "isVirtual";
 static const char *SYS = "sys";
 static const char *INCLUDE_PATH = "include_path";
 static const char *VERSION_STRING = "gcc_version";
-static const char *PKGVERSION_STRING = "gcc_pkgversion";
 
 void dehydra_init(Dehydra *this, const char *file) {
   static JSClass global_class = {
@@ -98,7 +97,6 @@ void dehydra_init(Dehydra *this, const char *file) {
   JSObject *sys = dehydra_defineObjectProperty (this, this->globalObj, SYS);
   /* Set version info */
   dehydra_defineStringProperty (this, sys, VERSION_STRING, version_string);
-  dehydra_defineStringProperty (this, sys, PKGVERSION_STRING, pkgversion_string); 
   /* Initialize include path. */
   dehydra_defineArrayProperty (this, sys, INCLUDE_PATH, 0);
   /* Add plugin dir to path */
