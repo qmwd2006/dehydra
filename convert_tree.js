@@ -160,13 +160,18 @@ Unit.prototype.saveEnums = function (fname) {
 
 function makeEnum (unit, fields, type_name, enum_inherit, isStatic) {
   var ls = []
+  const enumNames = {}
   ls.push ("jsval v;");
   ls.push ("switch (var) {");
   for each (var f in fields) {
+    unit.registerEnumValue (f.name, f.value)
+    if (enumNames[f.value])
+      continue;
+    enumNames[f.value] = f.name
+
     ls.push ("case " + f.name + ":");
     ls.push ("  v = get_enum_value (this, \"" + f.name + "\");")
     ls.push ("  break;")
-    unit.registerEnumValue (f.name, f.value)
   }
   ls.push ("default:")
   if (enum_inherit) {
