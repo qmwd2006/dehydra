@@ -71,7 +71,7 @@ def getjsdirs(jsname, jslibs, jsheaders):
 if __name__ == "__main__":
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h",
-                                   ["js-name=", "js-libs=", "js-headers=","gcc-build="])
+                                   ["js-name=", "js-libs=", "js-headers=", "gcc-src=", "gcc-build="])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
