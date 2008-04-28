@@ -392,12 +392,11 @@ static JSBool dehydra_loadScript (Dehydra *this, const char *filename,
   JS_AddNamedRoot(this->cx, &sobj, filename);
   jsval rval;
   JSBool rv = JS_ExecuteScript(this->cx, namespace, script, &rval);
+  JS_RemoveRoot(this->cx, &sobj);
   if (!rv) {
     xassert(JS_IsExceptionPending(this->cx));
     return JS_FALSE;
   }
-
-  JS_RemoveRoot(this->cx, &sobj);
   return JS_TRUE;
 }
 
