@@ -2,7 +2,6 @@
 #include <jsapi.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <libgen.h>
 
 #include <config.h>
 #include <system.h>
@@ -142,11 +141,28 @@ void dehydra_appendToPath (Dehydra *this, const char *dir)
                    JSPROP_ENUMERATE);
 }
 
+/* Avoiding bug 431100. Spec from man 2 dirname */
+static char *my_dirname (char *path) {
+  char *r = strrchr(path, '/');
+  if (!r) {
+    strcpy (path, ".");
+    return path;
+  } else if (r == path && r[1] == 0) {
+    return path; // '/'
+  } else if (r[1] == 0) {
+    // /foo/ foo/ cases
+    *r = 0;
+    return my_dirname (path);
+  }
+  *r = 0;
+  return path;
+}
+
 /* Append the dirname of the given file to the script include path. */
 void dehydra_appendDirnameToPath (Dehydra *this, const char *filename) 
 {
   char *filename_copy = xstrdup(filename);
-  char *dir = dirname(filename_copy);
+  char *dir = my_dirname(filename_copy);
   dehydra_appendToPath(this, dir);
   free(filename_copy);
 }
