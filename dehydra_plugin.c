@@ -164,7 +164,10 @@ static void process (tree t) {
     return process_field_decl (t);
   case TEMPLATE_DECL:
     return process_template_decl (t);
+  case CONST_DECL:
+    return process_type (TREE_TYPE (t));
   default:
+    xassert(!DECL_P (t));
     /*error ( "unknown tree element: %s", tree_code_name[TREE_CODE(t)]);*/
     break;
   }
