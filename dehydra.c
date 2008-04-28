@@ -14,6 +14,7 @@
 #include <tree-iterator.h>
 #include <pointer-set.h>
 #include <toplev.h>
+#include <version.h>
 
 #include "xassert.h"
 #include "dehydra_builtins.h"
@@ -42,9 +43,10 @@ const char *BITFIELD = "bitfieldBits";
 const char *METHOD_OF = "methodOf";
 static const char *STATIC = "isStatic";
 static const char *VIRTUAL = "isVirtual";
-
 static const char *SYS = "sys";
 static const char *INCLUDE_PATH = "include_path";
+static const char *VERSION_STRING = "gcc_version";
+static const char *PKGVERSION_STRING = "gcc_pkgversion";
 
 void dehydra_init(Dehydra *this, const char *file) {
   static JSClass global_class = {
@@ -93,16 +95,17 @@ void dehydra_init(Dehydra *this, const char *file) {
 
 
   /* Initialize namespace for plugin system stuff. */
-  JSObject *sys = dehydra_defineObjectProperty(this, this->globalObj, SYS);
+  JSObject *sys = dehydra_defineObjectProperty (this, this->globalObj, SYS);
+  /* Set version info */
+  dehydra_defineStringProperty (this, sys, VERSION_STRING, version_string);
+  dehydra_defineStringProperty (this, sys, PKGVERSION_STRING, pkgversion_string); 
   /* Initialize include path. */
-  dehydra_defineArrayProperty(this, sys, INCLUDE_PATH, 0);
+  dehydra_defineArrayProperty (this, sys, INCLUDE_PATH, 0);
   /* Add plugin dir to path */
-  dehydra_appendDirnameToPath(this, file);
-
+  dehydra_appendDirnameToPath (this, file);
+  /* Output filename info */
   if (aux_base_name) {
-    jsval strval = STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, 
-                                                       dump_base_name));
-    dehydra_defineProperty (this, this->globalObj, "aux_base_name", strval);
+    dehydra_defineStringProperty (this, sys, "aux_base_name", aux_base_name);
   }
   xassert (JS_DefineFunction (this->cx, JS_GetPrototype(this->cx, this->globalObj),
                               "hashcode", obj_hashcode, 0, 0));
