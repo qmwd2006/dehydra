@@ -36,9 +36,8 @@ location_of (tree t)
 char const * loc_as_string (location_t loc) {
   if (loc_is_unknown(loc)) return NULL;
   expanded_location eloc = expand_location(loc);
-#ifdef expand_location
-  // if this is a macro, then most likely locations are not mapped, so
-  // the column number is unavailable
+#ifdef __APPLE__ 
+  // XXX remove once Apple GCC supports columns
   sprintf(locationbuf, "%s:%d", eloc.file, eloc.line);
 #else
   // a function, so locations are likely to be mapped, so we have columns

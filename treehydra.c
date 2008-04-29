@@ -8,7 +8,7 @@
 #include <coretypes.h>
 #include <tm.h>
 #include <tree.h>
-#include <cp-tree.h>
+#include "cp-tree-jsapi-workaround.h"
 #include <cxx-pretty-print.h>
 #include <tree-iterator.h>
 #include <pointer-set.h>
@@ -121,18 +121,17 @@ jsval get_lazy (Dehydra *this, treehydra_handler handler, void *v,
 /* This either returnes a cached object or creates a new lazy object */
 jsval get_existing_or_lazy (Dehydra *this, treehydra_handler handler, void *v,
                                    JSObject *parent, const char *propname) {
-  inline jsval assign_existing (jsval val) {
-    dehydra_defineProperty (this, parent, propname, val);
-    return val;
+  if (!v) {
+    dehydra_defineProperty (this, parent, propname, JSVAL_VOID);
+    return JSVAL_VOID;
   }
 
-  if (!v)
-    return assign_existing (JSVAL_VOID);
-
   void **ret = pointer_map_contains (jsobjMap, v);
-  if (ret)
-    return assign_existing ((jsval) *ret);
-  
+  if (ret) {
+    dehydra_defineProperty (this, parent, propname, (jsval) *ret);
+    return (jsval) *ret;
+  }
+
   const jsval jsret = get_lazy (this, handler, v, parent, propname);
  
   *pointer_map_insert (jsobjMap, v) = (void*) jsret;
@@ -147,10 +146,14 @@ void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
   enum tree_code code = TREE_CODE (t);
   i = tree_node_structure(t);
   /* special case knowledge of non-decl nodes */
+#ifndef __APPLE_CC__
+  // no TS_BASE in mac gcc 42 and no easy way to check too
   convert_tree_node_union (this, TS_BASE, t, obj);
-  if (!GIMPLE_TUPLE_P (t)) {
+  if (!GIMPLE_TUPLE_P (t)) 
+#endif
+    {
     convert_tree_node_union (this, TS_COMMON, t, obj);
-  }
+    }
   convert_tree_node_union (this, i, t, obj);
   /* stuff below is empty for non-decls */
   if (!DECL_P (t)) return;
@@ -185,7 +188,7 @@ void convert_int (struct Dehydra *this, struct JSObject *parent,
 
 void convert_location_t (struct Dehydra *this, struct JSObject *parent,
                          const char *propname, location_t loc) {
-  if (loc == UNKNOWN_LOCATION) {
+  if (loc_is_unknown(loc)) {
     dehydra_defineProperty (this, parent, propname, JSVAL_VOID);
     return;
   }
@@ -194,7 +197,10 @@ void convert_location_t (struct Dehydra *this, struct JSObject *parent,
   JSObject *obj = dehydra_defineObjectProperty (this, parent, propname);
   dehydra_defineStringProperty (this, obj, "file", eloc.file);
   dehydra_defineProperty (this, obj, "line", INT_TO_JSVAL(eloc.line));
+#ifndef __APPLE__
+  // XXX remove once Apple GCC supports columns
   dehydra_defineProperty (this, obj, "column", INT_TO_JSVAL(eloc.column));
+#endif
 }
 /* END Functions for treehydra_generated */
 

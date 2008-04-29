@@ -1,4 +1,5 @@
 include ("map.js")
+include ("platform.js")
 var files = {}
 
 function getLine(fname, line) {
@@ -382,6 +383,7 @@ const location_tRegexp = /location_t|source_locus/;
 * zeroTh(%0), is the outermost aggr type
 * first(%1) is the parent of current type
 */
+const tree_code_name = isGCCApple ? "tree_common::code" : "tree_base::code";
 function convert (unit, aggr) {
   if (!aggr || unit.guard(aggr)) {
     return
@@ -414,7 +416,7 @@ function convert (unit, aggr) {
     if (lengthResults && lengthResults[1] != "u")
       lengthExpr = lengthResults[1]*1 + 1
     var cast = undefined
-    if (m.name == "tree_base::code") {
+    if (m.name == tree_code_name) {
       type_kind = "enum"
       type = this.tree_code
       type_name = type.name
@@ -463,9 +465,10 @@ function convert (unit, aggr) {
       cast = "char *"
       isPrimitive = true
       lengthExpr = undefined
-    } else if (location_tRegexp(m.type)) {
+    } else if (!isGCCApple && location_tRegexp(m.type)) {
       // This must appear before isUnsignedOrInt because location_t is an
-      // int, but we want to convert it to a formatted location.
+      // int (if we are not using Apple GCC), but we want to convert it to a
+      // formatted location.
       type_name = 'location_t';
       cast = 'location_t';
       isPrimitive = true;

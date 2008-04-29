@@ -2,6 +2,7 @@
 #ifndef GCC_COMPAT_H
 #define GCC_COMPAT_H
 
+#ifndef TREEHYDRA_GENERATED
 #include <config.h>
 #include <system.h>
 #include <coretypes.h>
@@ -12,6 +13,7 @@
 #include <tree-iterator.h>
 #include <pointer-set.h>
 #include <toplev.h>
+#endif
 
 #ifndef cp_walk_tree_without_duplicates
 #define cp_walk_tree_without_duplicates walk_tree_without_duplicates

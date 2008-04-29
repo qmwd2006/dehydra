@@ -16,14 +16,14 @@
 #include <coretypes.h>
 #include <tm.h>
 #include <tree.h>
+
 #if defined(TREEHYDRA_CONVERT_JS) || defined(TREEHYDRA_GENERATED)
 /* this header conflicts with spidermonkey. sorry for above code */
 #include <basic-block.h>
 #include <tree-flow.h>
-#include <cp-tree.h>
-#else
-#include "cp-tree-jsapi-workaround.h"
 #endif
+
+#include "cp-tree-jsapi-workaround.h"
 #include <cxx-pretty-print.h>
 #include <tree-iterator.h>
 #include <pointer-set.h>

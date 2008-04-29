@@ -1,4 +1,5 @@
 include ("map.js")
+include ("platform.js")
 
 function unhandledLazyProperty (prop) {
     /* Special case: the interpreter will look for this property when
@@ -43,9 +44,9 @@ GCCNode.prototype.toString = function () {
   return "I am a " + this._struct_name
 }
 
-GCCNode.prototype.tree_code = function () {
-  return this.base.code
-}
+GCCNode.prototype.tree_code = isGCCApple ?
+  function () { return this.common.code; } :
+  function () { return this.base.code; }
 
 /* Convienient thing along the lines of GENERIC_TREE_OPERAND */
 GCCNode.prototype.operands = function () {
@@ -82,9 +83,9 @@ function IS_EXPR_CODE_CLASS (code_class) {
     && code_class.value <= tcc_expression.value
 }
 
-function IS_GIMPLE_STMT_CODE_CLASS (code_class) {
-  return code_class == tcc_gimple_stmt
-}
+var IS_GIMPLE_STMT_CODE_CLASS = isGCCApple ?
+  function (code_class) { return false; } :
+  function (code_class) { return code_class == tcc_gimple_stmt; }
 
 // comparable to CHECK_foo..except here foo is the second parameter
 function TREE_CHECK (tree_node, expected_code) {
@@ -134,9 +135,11 @@ function TREE_OPERAND_LENGTH (node)
     return TREE_CODE_LENGTH (TREE_CODE (node));
 }
 
-function GIMPLE_STMT_P(NODE) {
-  return TREE_CODE_CLASS (TREE_CODE ((NODE))) == tcc_gimple_stmt
-}
+var GIMPLE_STMT_P = isGCCApple ?
+  function (NODE) { return false; } :
+  function (NODE) {
+    return TREE_CODE_CLASS (TREE_CODE ((NODE))) == tcc_gimple_stmt
+  }
 
 function TREE_OPERAND (node, i) {
   return node.exp.operands[i]
@@ -321,10 +324,10 @@ var BINFO_TYPE = TREE_TYPE
 /* This is so much simpler than the C version 
  because it merely returns the vector array and lets
 the client for each it*/
-function VEC_iterate (vec_node) {
-  // undefined is used for empty vectors, so support it nicely here.
-  return vec_node ? vec_node.base.vec : [];
-}
+// undefined is used for empty vectors, so support it nicely here.
+var VEC_iterate = isGCCApple ?
+  function (vec_node) { return vec_node ? vec_node.vec : []; } :
+  function (vec_node) { return vec_node ? vec_node.base.vec : []; }
 
 function tree_stmt_iterator (ptr, container) {
   this.ptr = ptr
