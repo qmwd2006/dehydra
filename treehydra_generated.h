@@ -3,6 +3,7 @@
 #define TREEHYDRA_GENERATED
 /* This file isn't generated, but it's used by the generated one*/
 #include "gcc_cp_headers.h"
+#include "gcc_compat.h"
 // cleanup some gcc polution in GCC trunk as of Mar 5, 2008
 #ifdef in_function_try_handler
 #undef in_function_try_handler

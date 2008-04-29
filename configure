@@ -42,12 +42,10 @@ def check_gcc_srcdir(gcc_src):
     if not os.path.isfile (os.path.join (gcc_src, "gcc/tree-plugin-pass.c")):
         error("GCC sources in "  + gcc_src + " do not have plugin patch applied")
 
-if platform.system() != 'Darwin':
-    so_suffix = '.so'
-    shared_link_flags = '-shared'
-else:
-    so_suffix = '.dylib'
-    shared_link_flags = '-bundle -bundle_loader $(GCCBUILDDIR)/gcc/cc1plus'
+(dynamic_lib_suffix, shared_link_flags, nested_fn_enabler) = \
+('.so', '-shared', '') if platform.system() != 'Darwin' \
+else ('.dylib', '-bundle -flat_namespace -undefined suppress',
+      '-fnested-functions')
 
 def getjsdirs(jsname, jslibs, jsheaders):
     if jslibs == None:
@@ -128,8 +126,10 @@ SM_SUFFIX=%s
 SM_INCLUDE=%s
 SM_LIBDIR=%s
 SHARED_LINK_FLAGS=%s
-CONFIGURE_CFLAGS=%s""" % (gcc_src, gcc_build, jsname, so_suffix, jsheaders,
-                          jslibs, shared_link_flags, cflags))
+CONFIGURE_CFLAGS=%s
+NESTED_FN_ENABLER=%s""" % (gcc_src, gcc_build, jsname, dynamic_lib_suffix,
+                           jsheaders, jslibs, shared_link_flags, cflags,
+                           nested_fn_enabler))
     f.close()
     if os.path.exists("Makefile"):
         os.unlink("Makefile")

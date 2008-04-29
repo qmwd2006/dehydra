@@ -23,6 +23,9 @@ gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
 
 dehydra_ast.o: dehydra_ast.c dehydra_ast.h
 
+treehydra_generated.o: treehydra_generated.c
+	$(CC) $(NESTED_FN_ENABLER) -g3 $(CFLAGS) -c $<
+
 treehydra_generated.c: gcc_cp_headers.h convert_tree.js gcc_dehydra.so
 	$(CXX) -Wp,-C -save-temps -DTREEHYDRA_CONVERT_JS -fshow-column $(CFLAGS) -fplugin=./gcc_dehydra.so -fplugin-arg=convert_tree.js -fsyntax-only $<
 
