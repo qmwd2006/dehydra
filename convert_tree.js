@@ -374,6 +374,7 @@ function isUnsignedOrInt (type) {
 
 const stripPrefixRegexp = /([^:]+)$/;
 const arraySizeRegexp = /^(\d)u$/;
+const location_tRegexp = /location_t|source_locus/;
 
 /* meaty part of the script
 * Unit is what holds the result
@@ -438,11 +439,7 @@ function convert (unit, aggr) {
       tag = getUnionTag (m.attributes);
       if (!tag)
         tag = getUnionTag (m.type.attributes)
-      /*if (!tag) {
-        print (m.name + " isn't tagged. Skipping.")
-        continue
-      }*/
-    } 
+    }
     
     if (type_kind == "struct" || type.name == "tree_node"
         || (type_kind == "union" && type.name.indexOf("::") != -1)) {
@@ -466,7 +463,7 @@ function convert (unit, aggr) {
       cast = "char *"
       isPrimitive = true
       lengthExpr = undefined
-    } else if (m.type.name == 'location_t') {
+    } else if (location_tRegexp(m.type)) {
       // This must appear before isUnsignedOrInt because location_t is an
       // int, but we want to convert it to a formatted location.
       type_name = 'location_t';
