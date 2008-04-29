@@ -10,11 +10,6 @@ function unhandledLazyProperty (prop) {
     throw new Error("No " + prop + " in this lazy object")
 }
 
-function EnumValue (name, value) {
-  this.name = name
-  this.value = value
-}
-
 EnumValue.prototype.toString = function () {
   return this.name
 }
@@ -320,6 +315,10 @@ function TMPL_ARGS_HAVE_MULTIPLE_LEVELS (node) {
 }
 
 var BINFO_TYPE = TREE_TYPE
+
+function TYPE_METHODS(node) {
+  return node.type.maxval;
+}
 
 /* This is so much simpler than the C version 
  because it merely returns the vector array and lets

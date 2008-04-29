@@ -267,7 +267,7 @@ void treehydra_plugin_pass (Dehydra *this) {
    to cope with gcc mutating things */
   jsobjMap = pointer_map_create ();
   
-  jsval fnval  = get_existing_or_lazy (this, lazy_tree_node, current_function_decl, this->globalObj, "current_function_decl");
+  jsval fnval = get_existing_or_lazy (this, lazy_tree_node, current_function_decl, this->globalObj, "current_function_decl");
   jsval rval;
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
                                  1, &fnval, &rval));
