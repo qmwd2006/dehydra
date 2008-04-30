@@ -429,7 +429,7 @@ function TYPE_VOLATILE (node) {
 }
 
 function TYPE_RESTRICT (node) {
-  return node.base.restrict_flag;
+  return node.type.restrict_flag;
 }
 
 function CLASSTYPE_DECLARED_CLASS(node) {
