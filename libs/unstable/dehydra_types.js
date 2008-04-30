@@ -78,8 +78,7 @@ function dehydra_convert2(type, obj) {
   case REAL_TYPE:
   case FIXED_POINT_TYPE:
     if (!type_decl) {
-      obj.bitfieldBits = TYPE_PRECISION_TYPE;
-      dehydra_defineProperty(obj, BITFIELD, INT_TO_JSVAL (prec));
+      obj.bitfieldBits = TYPE_PRECISION(type);
       type_decl = TYPE_NAME(type);
     }
     obj.name = type_decl ? IDENTIFIER_POINTER(DECL_NAME(type_decl)) :
@@ -137,6 +136,12 @@ function dehydra_attachTypeAttributes(obj, type) {
   attach_attributes(TYPE_ATTRIBUTES(type), obj);
 }
 
+function dehydra_attachEnumStuff(objClass, enum_type) {
+  objClass.members = [{'name': IDENTIFIER_POINTER(TREE_PURPOSE(tv)),
+                       'value': TREE_INT_CST_LOW(TREE_VALUE(tv))}
+                      for (tv in flatten_chain(TYPE_VALUES(enum_type)))];
+}
+
 /* Note that this handles class|struct|union nodes */
 function dehydra_attachClassStuff(objClass, record_type) {
   if (TRACE) print("dehydra_attachClassStuff " + type_as_string(record_type));
@@ -171,6 +176,7 @@ function dehydra_attachClassStuff(objClass, record_type) {
     if (DECL_ARTIFICIAL(func)) continue;
     /* Don't output the cloned functions.  */
     if (DECL_CLONED_FUNCTION_P (func)) continue;
+    if (TREE_CODE(func) == TEMPLATE_DECL) continue;
     dehydra_addVar (func, destArray);
   }
 

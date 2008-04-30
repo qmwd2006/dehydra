@@ -198,6 +198,10 @@ function TYPE_NAME (node) {
   return node.type.name
 }
 
+function TYPE_PRECISION (node) {
+  return node.type.precision;
+}
+
 function TYPE_P (node) {
   return TREE_CODE_CLASS (TREE_CODE (node)) == tcc_type
 }
@@ -221,7 +225,7 @@ function CLASSTYPE_TEMPLATE_INFO (node) {
   return LANG_TYPE_CLASS_CHECK(node).template_info
 }
 
-const TI_TEMPLATE = TREE_PURPOSE
+const TI_TEMPLATE = TREE_PURPOSE;
 
 function CLASSTYPE_TI_TEMPLATE (node) {
   return TI_TEMPLATE (CLASSTYPE_TEMPLATE_INFO (node))
@@ -253,7 +257,7 @@ function TMPL_ARGS_HAVE_MULTIPLE_LEVELS (node) {
   return elt && TREE_CODE (elt) == TREE_VEC_ELT
 }
 
-var BINFO_TYPE = TREE_TYPE
+const BINFO_TYPE = TREE_TYPE;
 
 function TYPE_METHODS(node) {
   return node.type.maxval;
@@ -291,27 +295,23 @@ function DECL_ARGUMENTS(tree) {
   return tree.decl_non_common.arguments;
 }
 
-function OBJ_TYPE_REF_CHECK(tree) {
-  return TREE_CHECK(tree, OBJ_TYPE_REF);
-}
-
 function OBJ_TYPE_REF_EXPR(tree) {
-  return TREE_OPERAND(OBJ_TYPE_REF_CHECK(tree), 0);
+  return TREE_OPERAND(tree, 0);
 }
 
 function OBJ_TYPE_REF_OBJECT(tree) {
-  return TREE_OPERAND(OBJ_TYPE_REF_CHECK(tree), 1);
+  return TREE_OPERAND(tree, 1);
 }
 
 function OBJ_TYPE_REF_TOKEN(tree) {
-  return TREE_OPERAND(OBJ_TYPE_REF_CHECK(tree), 2);
+  return TREE_OPERAND(tree, 2);
 }
 
 function BINFO_VIRTUALS(tree) {
   return tree.binfo.virtuals;
 }
 
-let BV_FN = TREE_VALUE;
+const BV_FN = TREE_VALUE;
 
 function TYPE_ARG_TYPES(tree) {
   return tree.type.values;
@@ -418,6 +418,10 @@ function DECL_ORIGINAL_TYPE (node) {
 
 function TYPE_SIZE (node) {
   return node.type.size;
+}
+
+function TYPE_VALUES (node) {
+  return node.type.values;
 }
 
 function COMPLETE_TYPE_P (node) {
