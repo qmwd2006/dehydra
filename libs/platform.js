@@ -5,4 +5,3 @@ function EnumValue (name, value) {
   this.name = name
   this.value = value
 }
-

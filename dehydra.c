@@ -44,7 +44,10 @@ static const char *STATIC = "isStatic";
 static const char *VIRTUAL = "isVirtual";
 static const char *SYS = "sys";
 static const char *INCLUDE_PATH = "include_path";
+static const char *STD_INCLUDE = "libs";
 static const char *VERSION_STRING = "gcc_version";
+
+static char *my_dirname (char *path);
 
 void dehydra_init(Dehydra *this, const char *file) {
   static JSClass global_class = {
@@ -98,8 +101,16 @@ void dehydra_init(Dehydra *this, const char *file) {
   dehydra_defineStringProperty (this, sys, VERSION_STRING, version_string);
   /* Initialize include path. */
   dehydra_defineArrayProperty (this, sys, INCLUDE_PATH, 0);
-  /* Add plugin dir to path */
-  dehydra_appendDirnameToPath (this, file);
+
+  char *filename_copy = xstrdup(file);
+  char *dir = my_dirname(filename_copy);
+  dehydra_appendToPath(this, dir);
+  char *libdir = xmalloc(strlen(dir) + strlen(STD_INCLUDE) + 2);
+  sprintf(libdir, "%s/%s", dir, STD_INCLUDE);
+  dehydra_appendToPath(this, libdir);
+  free(libdir);
+  free(filename_copy);
+
   /* Output filename info */
   if (aux_base_name) {
     dehydra_defineStringProperty (this, sys, "aux_base_name", aux_base_name);
