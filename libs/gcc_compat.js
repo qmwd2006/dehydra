@@ -529,6 +529,24 @@ function CLASSTYPE_TI_ARGS(node) {
   return TI_ARGS(CLASSTYPE_TEMPLATE_INFO(node));
 }
 
+function PRIMARY_TEMPLATE_P(node) {
+  return DECL_PRIMARY_TEMPLATE(node) == node;
+}
+
+function DECL_PRIMARY_TEMPLATE(node) {
+  return TREE_TYPE(DECL_INNERMOST_TEMPLATE_PARMS(node));
+}
+
+function DECL_INNERMOST_TEMPLATE_PARMS(node) {
+  return INNERMOST_TEMPLATE_PARMS(DECL_TEMPLATE_PARMS(node));
+}
+
+function DECL_TEMPLATE_PARMS(node) {
+  return node.decl_non_common.arguments;
+}
+
+let INNERMOST_TEMPLATE_PARMS = TREE_VALUE;
+
 function class_key_or_enum_as_string(t)
 {
   if (TREE_CODE (t) == ENUMERAL_TYPE)
