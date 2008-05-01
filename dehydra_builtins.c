@@ -429,12 +429,21 @@ JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
 }
 
 /* author: tglek
+   Return the primitive if it's a primitive, otherwise compute a seq #
    The ES4 spec says that it shouldn't be a pointer(with good reason).
    A counter is morally wrong because in theory it could loop around and bite me,
    but I lack in moral values and don't enjoy abusing pointers any further */
-JSBool obj_hashcode(JSContext *cx, JSObject *obj, uintN argc,
+JSBool Hashcode(JSContext *cx, JSObject *obj_this, uintN argc,
                     jsval *argv, jsval *rval)
 {
+  if (!argc)
+    return JSVAL_FALSE;
+  jsval o = *argv;
+  if (!JSVAL_IS_OBJECT (o)) {
+    *rval = o;
+    return JSVAL_TRUE;
+  }
+  JSObject *obj = JSVAL_TO_OBJECT (*argv);
   JSBool has_prop;
   /* Need to check for property first to keep treehydra from getting angry */
 #if JS_VERSION < 180

@@ -66,6 +66,7 @@ void dehydra_init(Dehydra *this, const char *file) {
     {"error",           Error,          0},
     {"warning",         Warning,        0},
     {"require",         Require,        1},
+    {"hashcode",        Hashcode,       1},
     {0}
   };
 
@@ -115,8 +116,6 @@ void dehydra_init(Dehydra *this, const char *file) {
   if (aux_base_name) {
     dehydra_defineStringProperty (this, sys, "aux_base_name", aux_base_name);
   }
-  xassert (JS_DefineFunction (this->cx, JS_GetPrototype(this->cx, this->globalObj),
-                              "hashcode", obj_hashcode, 0, 0));
 }
 
 int dehydra_startup (Dehydra *this) {

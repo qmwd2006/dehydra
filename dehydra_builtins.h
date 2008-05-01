@@ -15,7 +15,7 @@ DH_JSNATIVE(Warning);
  
 DH_JSNATIVE(WriteFile);
 DH_JSNATIVE(ReadFile);
-DH_JSNATIVE(obj_hashcode);
+DH_JSNATIVE(Hashcode);
 
 void ErrorReporter(JSContext *cx, const char *message, JSErrorReport *report);
 
