@@ -99,9 +99,16 @@ function dehydra_convert2(type, obj) {
     obj.isArray = true;
     if (TYPE_DOMAIN (type)) {
       let dtype = TYPE_DOMAIN (type);
-      let max = TYPE_MAX_VALUE (dtype);
-      // TODO That's a lot to port
-      //obj.size = expr_as_string(max);
+      let min_t = TYPE_MIN_VALUE (dtype);
+      let max_t = TYPE_MAX_VALUE (dtype);
+      // This logic differs from Dehydra, which simple calls expr_as_string
+      // on max_t. But this version is better: for int[8], this code gives
+      // 8, while Dehydra gives "7u".
+      if (TREE_CODE(min_t) == INTEGER_CST && TREE_CODE(max_t) == INTEGER_CST) {
+        let min_i = TREE_INT_CST_LOW(min_t);
+        let max_i = TREE_INT_CST_LOW(max_t);
+        obj.size = max_i - min_i + 1;
+      }
     }
     next_type = TREE_TYPE(type);
     break;
@@ -122,18 +129,15 @@ function isAnonymousStruct(t) {
 }
 
 function dehydra_attachTypeAttributes(obj, type) {
-  let destArray = [];
-  /* first add attributes from template */
-  /* TODO
-  tree decl_template_info = TYPE_TEMPLATE_INFO (type);
+  let attrs = []
+  let decl_template_info = TYPE_TEMPLATE_INFO (type);
   if (decl_template_info) {
-    tree template_decl = TREE_PURPOSE (decl_template_info);
-    tree type = TREE_TYPE (template_decl);
-    tree attributes = TYPE_ATTRIBUTES (type);
-    dehydra_addAttributes (this, destArray, attributes);
+    let template_decl = TREE_PURPOSE (decl_template_info);
+    let type = TREE_TYPE (template_decl);
+    attrs = attrs.concat(translate_attributes(TYPE_ATTRIBUTES(type)));
   }
-*/
-  attach_attributes(TYPE_ATTRIBUTES(type), obj);
+  attrs = attrs.concat(translate_attributes(TYPE_ATTRIBUTES(type)));
+  if (attrs.length) obj.attributes = attrs;
 }
 
 function dehydra_attachEnumStuff(objClass, enum_type) {
@@ -145,39 +149,20 @@ function dehydra_attachEnumStuff(objClass, enum_type) {
 /* Note that this handles class|struct|union nodes */
 function dehydra_attachClassStuff(objClass, record_type) {
   if (TRACE) print("dehydra_attachClassStuff " + type_as_string(record_type));
-  let destArray = [];
-  // TODO
-/*
-  let binfo = TYPE_BINFO(record_type);
+
+  let bases = [ dehydra_convert(BINFO_TYPE(base_binfo))
+                for each (base_binfo in 
+                          VEC_iterate(BINFO_BASE_BINFOS(TYPE_BINFO(record_type)))) ];
+  if (bases.length) objClass.bases = bases;
   
-  int n_baselinks = binfo ? BINFO_N_BASE_BINFOS (binfo) : 0;
-  int i;
-  for (i = 0; i < n_baselinks; i++)
-    {
-      tree base_binfo;
-      jsval baseval;
-
-      if (!i)
-        dehydra_defineProperty (this, objClass, BASES, 
-                                OBJECT_TO_JSVAL(destArray));
-
-      base_binfo = BINFO_BASE_BINFO (binfo, i);
-      baseval = dehydra_convert(this, BINFO_TYPE(base_binfo));
-
-      JS_DefineElement (this->cx, destArray, i, 
-                        baseval,
-                        NULL, NULL, JSPROP_ENUMERATE);
-    }
-  */
-  
-  destArray = objClass.members = [];
+  objClass.members = [];
   /* Output all the method declarations in the class.  */
   for (let func = TYPE_METHODS (record_type) ; func ; func = TREE_CHAIN (func)) {
     if (DECL_ARTIFICIAL(func)) continue;
     /* Don't output the cloned functions.  */
     if (DECL_CLONED_FUNCTION_P (func)) continue;
     if (TREE_CODE(func) == TEMPLATE_DECL) continue;
-    dehydra_addVar (func, destArray);
+    dehydra_addVar (func, objClass.members);
   }
 
   for (let field = TYPE_FIELDS (record_type); field ; field = TREE_CHAIN (field)) {
@@ -187,7 +172,7 @@ function dehydra_attachClassStuff(objClass, record_type) {
     if (TREE_CODE (field) == TYPE_DECL 
         && TREE_TYPE (field) == record_type) continue;
     if (TREE_CODE (field) != FIELD_DECL) continue;
-    dehydra_addVar (field, destArray);
+    dehydra_addVar (field, objClass.members);
   }
   dehydra_attachTypeAttributes (objClass, record_type);
   objClass.size_of = TREE_INT_CST_LOW(TYPE_SIZE_UNIT(record_type));
@@ -306,31 +291,27 @@ function dehydra_addVar(v, parentArray) {
 function attach_attributes(a, typeobj)
 {
   if (a) {
-    let attrs = [];
-
-    for (; a; a = TREE_CHAIN (a)) {
-      let name = IDENTIFIER_POINTER (TREE_PURPOSE (a));
-      for (let v = TREE_VALUE(a); v; v = TREE_CHAIN (v)) {
-        let value = TREE_STRING_POINTER (TREE_VALUE (v));
-        attrs.push({'name': name,
-                    'value': value});
-      }
-    }
-
-    typeobj.attributes = attrs;
+    typeobj.attributes = translate_attributes(a);
   }
+}
+
+function translate_attributes(a) {
+  let attrs = [];
+  for (; a; a = TREE_CHAIN (a)) {
+    let name = IDENTIFIER_POINTER (TREE_PURPOSE (a));
+    for (let v = TREE_VALUE(a); v; v = TREE_CHAIN (v)) {
+      let value = TREE_STRING_POINTER (TREE_VALUE (v));
+      attrs.push({'name': name,
+                  'value': value});
+    }
+  }
+  return attrs;
 }
 
 function dehydra_setLoc(obj, t) {
   let loc = location_of(t);
   if (!loc) return;
   obj.loc = loc_as_string(loc);
-}
-
-function dehydra_typeString(t) {
-  let ans = type_string(t);
-  if (ans.substr(0, 6) == "const ") ans = ans.substr(6);
-  return ans;
 }
 
 function dehydra_typeString(t) {
