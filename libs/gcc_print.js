@@ -1,3 +1,4 @@
+include ("util.js")
 /* Functions for printing GCC objects as strings. */
 
 /** Return a string representation of the given TYPE. */
