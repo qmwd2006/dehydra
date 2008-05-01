@@ -62,7 +62,7 @@ function dehydra_convert2(type, obj) {
     obj.name = isAnonymousStruct(type) ? undefined : dehydra_typeString(type);
 
     if (!COMPLETE_TYPE_P (type)) {
-      obj.incomplete = true;
+      obj.isIncomplete = true;
     } else if (TREE_CODE (type) == ENUMERAL_TYPE) {
       dehydra_attachEnumStuff(obj, type);
     } else {
@@ -219,28 +219,30 @@ function tree_vec_iterate(t) {
 }
 
 function convert_template_arg(arg) {
-  if (CONSTANT_CLASS_P(arg)) {
-    return expr_as_string(arg);
-  } else if (TYPE_P(arg)) {
+  if (TYPE_P(arg))
     return dehydra_convert(arg);
-  } else {
-    throw new Error("assert");
-  }
+  if (TREE_CODE(arg) == INTEGER_CST)
+    return TREE_INT_CST_LOW(arg);
+
+  warning("Couldn't convert template parameter with tree code " + TREE_CODE(arg));
+  return "??";
 }
 
 function dehydra_convertAttachFunctionType(obj, type) {
   if (TRACE) print("dehydra_convertAttachFunctionType " + type_as_string(type));
   let arg_type = TYPE_ARG_TYPES(type);
+
   /* Skip "this" argument.  */
   // Original dehydra -- this shouldn't work.
   //if (DECL_NONSTATIC_MEMBER_FUNCTION_P (type))
-  if (TREE_CODE(type) == METHOD_TYPE)
-      arg_type = TREE_CHAIN (arg_type);
+  if (TREE_CODE(type) == METHOD_TYPE) {
+    obj.methodOf = dehydra_convert(TREE_TYPE(TREE_VALUE(arg_type)));
+    arg_type = TREE_CHAIN (arg_type);
+  }
 
   /* return type */
   obj.type = dehydra_convert(TREE_TYPE(type));
   let params = obj.parameters = [];
-  let i = 0;
   while (arg_type && TREE_CODE(TREE_VALUE(arg_type)) != VOID_TYPE) {
     params.push(dehydra_convert(TREE_VALUE(arg_type)));
     arg_type = TREE_CHAIN (arg_type);
