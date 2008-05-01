@@ -206,10 +206,6 @@ function TYPE_P (node) {
   return TREE_CODE_CLASS (TREE_CODE (node)) == tcc_type
 }
 
-function BINFO_BASE_BINFOS (node) {
-  return node.binfo.base_binfos
-}
-
 function TYPE_LANG_SPECIFIC (node) {
   return node.type.lang_specific
 }
@@ -237,6 +233,10 @@ function DECL_LANG_SPECIFIC (node) {
 
 function DECL_TEMPLATE_INFO (node) {
   return DECL_LANG_SPECIFIC (node).decl_flags.u.template_info
+}
+
+function DECL_TI_TEMPLATE(node) {
+  return TI_TEMPLATE (DECL_TEMPLATE_INFO (node));
 }
 
 function TYPE_TEMPLATE_INFO(node) {
