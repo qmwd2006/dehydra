@@ -311,6 +311,10 @@ function BINFO_VIRTUALS(tree) {
   return tree.binfo.virtuals;
 }
 
+function BINFO_BASE_BINFOS(tree) {
+  return tree.binfo.base_binfos;
+}
+
 const BV_FN = TREE_VALUE;
 
 function TYPE_ARG_TYPES(tree) {
@@ -519,6 +523,10 @@ function DECL_VIRTUAL_P(node) {
 
 function TYPE_DOMAIN(node) {
   return node.type.values;
+}
+
+function TYPE_MIN_VALUE(node) {
+  return node.type.minval;
 }
 
 function TYPE_MAX_VALUE(node) {
