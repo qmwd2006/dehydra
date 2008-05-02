@@ -408,7 +408,8 @@ JSBool Include(JSContext *cx, JSObject *obj, uintN argc,
   JSObject *namespace = this->globalObj;
   if (!JS_ConvertArguments(cx, argc, argv, "s/o", &filename, &namespace))
     return JS_FALSE;
-
+ 
+  *rval = OBJECT_TO_JSVAL (namespace);
   JSObject *includedArray = NULL;
   jsval val;
   JS_GetProperty(cx, namespace, "_includedArray", &val);
