@@ -40,6 +40,11 @@ const char *ATTRIBUTES = "attributes";
 const char *STATEMENTS = "statements";
 const char *BITFIELD = "bitfieldBits";
 const char *METHOD_OF = "methodOf";
+const char *UNSIGNED = "isUnsigned";
+const char *SIGNED = "isSigned";
+const char *MIN_VALUE = "min";
+const char *MAX_VALUE = "max";
+const char *PRECISION = "precision";
 static const char *STATIC = "isStatic";
 static const char *VIRTUAL = "isVirtual";
 static const char *SYS = "sys";
@@ -220,6 +225,36 @@ jsuint dehydra_getArrayLength (Dehydra *this, JSObject *array) {
   jsuint length = 0;
   xassert (JS_GetArrayLength (this->cx, array, &length));
   return length;
+}
+
+/* Convert an INTEGER_CST to a string representation. This is used
+ * because GCC expr_as_string is broken for unsigned ints. */
+const char *dehydra_intCstToString(tree int_cst) 
+{
+  static char buf[32];  // holds repr of up to 64-bit ints
+  xassert(TREE_CODE(int_cst) == INTEGER_CST);
+  int high = TREE_INT_CST_HIGH(int_cst);
+  int low  = TREE_INT_CST_LOW(int_cst);
+  tree type = TREE_TYPE(int_cst);
+  int is_unsigned = TYPE_UNSIGNED(type);
+  if (high == 0 || (high == -1 && !is_unsigned)) {
+    /* GCC prints negative signed numbers in hex, we print using %d.
+       GCC prints unsigned numbers as if signed, we really do unsigned. */
+    sprintf(buf, is_unsigned ? "%uu" : "%d", low);
+  } else {
+    /* GCC prints negative 64-bit constants in hex, we want %d.
+       GCC prints large positive unsigned 64-bit constants in hex, we want %u */
+    sprintf(buf, is_unsigned ? "%lluu" : "%lld",
+            ((long long)high << 32) | (0xffffffffll & low));
+  }
+
+  if (type == long_integer_type_node || type == long_unsigned_type_node)
+    strcat(buf, "l");
+  else if (type == long_long_integer_type_node ||
+           type == long_long_unsigned_type_node)
+    strcat(buf, "ll");
+
+  return buf;
 }
 
 void dehydra_defineProperty (Dehydra *this, JSObject *obj,
