@@ -124,7 +124,7 @@ void dehydra_init(Dehydra *this, const char *file) {
 }
 
 int dehydra_startup (Dehydra *this) {
-  return dehydra_includeScript (this, "system.js");
+  return dehydra_includeScript (this, "dehydra.js");
 }
 
 int dehydra_includeScript (Dehydra *this, const char *script) {
