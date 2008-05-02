@@ -42,14 +42,9 @@ def check_gcc_srcdir(gcc_src):
     if not os.path.isfile (os.path.join (gcc_src, "gcc/tree-plugin-pass.c")):
         error("GCC sources in "  + gcc_src + " do not have plugin patch applied")
 
-(dynamic_lib_suffix, shared_link_flags, nested_fn_enabler) = \
-('.so', '-shared', '') if platform.system() != 'Darwin' \
-else ('.dylib', '-bundle -flat_namespace -undefined suppress',
-      '-fnested-functions')
-
 def getjsdirs(jsname, jslibs, jsheaders):
     if jslibs == None:
-        libjs = "/usr/lib/lib" + jsname + so_suffix
+        libjs = "/usr/lib/lib" + jsname + dynamic_lib_suffix
         if (os.path.isfile (libjs)):
             jslibs = os.path.dirname(libjs)
             print "Detected JavaScript library: " + libjs
@@ -67,6 +62,11 @@ def getjsdirs(jsname, jslibs, jsheaders):
     return (jslibs, jsheaders)
 
 if __name__ == "__main__":
+    dynamic_lib_suffix, shared_link_flags = ('.so', '-shared') 
+    if platform.system() == 'Darwin' :
+        dynamic_lib_suffix, shared_link_flags = ('.dylib',
+            '-bundle -flat_namespace -undefined suppress -fnested-functions')
+
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h",
                                    ["js-name=", "js-libs=", "js-headers=", "gcc-src=", "gcc-build="])
@@ -127,9 +127,8 @@ SM_INCLUDE=%s
 SM_LIBDIR=%s
 SHARED_LINK_FLAGS=%s
 CONFIGURE_CFLAGS=%s
-NESTED_FN_ENABLER=%s""" % (gcc_src, gcc_build, jsname, dynamic_lib_suffix,
-                           jsheaders, jslibs, shared_link_flags, cflags,
-                           nested_fn_enabler))
+""" % (gcc_src, gcc_build, jsname, dynamic_lib_suffix,
+       jsheaders, jslibs, shared_link_flags, cflags))
     f.close()
     if os.path.exists("Makefile"):
         os.unlink("Makefile")

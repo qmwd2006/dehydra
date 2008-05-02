@@ -6,7 +6,7 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp \
 	-I$(SM_INCLUDE) -I/$(HOME)/local/include/js/ 
 #-I/$(HOME)/local/include/js/ 
-CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) $(CONFIGURE_CFLAGS) $(NESTED_FN_ENABLER)
+CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) $(CONFIGURE_CFLAGS)
 COMMON=dehydra.o util.o dehydra_types.o
 LDFLAGS=  -lm $(SM_LIBDIR)/lib$(SM_NAME)$(SM_SUFFIX) $(SHARED_LINK_FLAGS)
 DEHYDRA_OBJS = dehydra_ast.o $(COMMON)
