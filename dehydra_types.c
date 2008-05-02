@@ -18,6 +18,7 @@
 #include "dehydra_builtins.h"
 #include "util.h"
 #include "dehydra.h"
+#include "dehydra_ast.h"
 
 static const char *POINTER = "isPointer";
 static const char *REFERENCE = "isReference";
@@ -279,12 +280,13 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   switch (TREE_CODE (type)) {
   case POINTER_TYPE:
   case OFFSET_TYPE:
-    dehydra_defineProperty (this, obj, POINTER, JSVAL_TRUE);
-    next_type = TREE_TYPE (type);
-    break;
   case REFERENCE_TYPE:
-    dehydra_defineProperty (this, obj, REFERENCE, JSVAL_TRUE);
+    dehydra_defineProperty (this, obj,
+                            TREE_CODE (type) == REFERENCE_TYPE ? REFERENCE : POINTER,
+                            JSVAL_TRUE);
     next_type = TREE_TYPE (type);
+    dehydra_defineProperty(this, obj, PRECISION,
+                           INT_TO_JSVAL (TYPE_PRECISION (type)));
     break;
   case RECORD_TYPE:
   case UNION_TYPE:
@@ -298,18 +300,43 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
          Those need to be looked up later and finished
       */
       dehydra_defineProperty (this, obj, INCOMPLETE, JSVAL_TRUE);
-    } else if (TREE_CODE (type) == ENUMERAL_TYPE)
+    } else if (TREE_CODE (type) == ENUMERAL_TYPE) {
       dehydra_attachEnumStuff (this, obj, type);
-    else
+      dehydra_defineProperty(this, obj, UNSIGNED,
+                             TYPE_UNSIGNED (type) ? JSVAL_TRUE : JSVAL_FALSE);
+      dehydra_defineProperty(this, obj, PRECISION,
+                             INT_TO_JSVAL (TYPE_PRECISION (type)));
+
+    } else
       dehydra_attachClassStuff (this, obj, type);
 
     dehydra_attachTemplateStuff (this, obj, type);
     dehydra_setLoc (this, obj, type);
     break;
-  case VOID_TYPE:
-  case BOOLEAN_TYPE:
   case INTEGER_TYPE:
+  case BOOLEAN_TYPE:
+    {
+      JSObject *tmp = this->destArray;
+      if (!tmp)
+        this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+      tree type_min = TYPE_MIN_VALUE (type);
+      // min/max may be missing in typecast expressions
+      if (type_min)
+        dehydra_makeVar(this, type_min, MIN_VALUE, obj);
+      tree type_max = TYPE_MAX_VALUE (type);
+      if (type_max)
+        dehydra_makeVar(this, type_max, MAX_VALUE, obj);
+      this->destArray = tmp;
+    }
   case REAL_TYPE:
+    if (TYPE_UNSIGNED (type))
+      dehydra_defineProperty(this, obj, UNSIGNED, JSVAL_TRUE);
+    else
+      dehydra_defineProperty(this, obj, SIGNED, JSVAL_TRUE);
+
+    dehydra_defineProperty(this, obj, PRECISION,
+                           INT_TO_JSVAL (TYPE_PRECISION (type)));
+  case VOID_TYPE:
 #ifdef FIXED_POINT_TYPE_CHECK
   case FIXED_POINT_TYPE:
 #endif

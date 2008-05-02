@@ -19,7 +19,7 @@ static tree statement_walker (tree *, int *walk_, void *);
  * it relies on the tree walk of the tree to create a Dehydra variable
  * by calling dehydra_addVar at some point. */
 /*todo: make this avoid consecutive vars of the same thing */
-static JSObject* dehydra_makeVar (Dehydra *this, tree t, 
+JSObject* dehydra_makeVar (Dehydra *this, tree t, 
                                   char const *prop, JSObject *attachToObj) {
   unsigned int length = dehydra_getArrayLength (this, this->destArray);
   this->inExpr++;
@@ -267,7 +267,14 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     }
     *walk_subtrees = 0;
     break;
-  case INTEGER_CST:
+  case INTEGER_CST: 
+    {
+    /* Bug 429362: GCC pretty-printer is broken for unsigned ints. */
+      JSObject *obj = dehydra_addVar(this, NULL_TREE, NULL);
+      dehydra_defineStringProperty(this, obj, VALUE, 
+                                   dehydra_intCstToString(*tp));
+    }
+    break;
   case REAL_CST:
 #ifdef FIXED_CST_CHECK
   case FIXED_CST:

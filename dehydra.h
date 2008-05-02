@@ -38,8 +38,14 @@ extern const char *PARAMETERS;
 extern const char *ATTRIBUTES;
 extern const char *STATEMENTS;
 extern const char *BITFIELD;
+extern const char *PRECISION;
+extern const char *UNSIGNED;
+extern const char *SIGNED;
+extern const char *MIN_VALUE;
+extern const char *MAX_VALUE;
 
 jsuint dehydra_getArrayLength(Dehydra *this, JSObject *array);
+const char* dehydra_intCstToString(tree int_cst);
 void dehydra_defineProperty(Dehydra *this, JSObject *obj,
                             char const *name, jsval value);
 void dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
