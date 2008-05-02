@@ -6,11 +6,13 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp \
 	-I$(SM_INCLUDE) -I/$(HOME)/local/include/js/ 
 #-I/$(HOME)/local/include/js/ 
-CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) $(CONFIGURE_CFLAGS)
+CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) $(CONFIGURE_CFLAGS) $(NESTED_FN_ENABLER)
 COMMON=dehydra.o util.o dehydra_types.o
 LDFLAGS=  -lm $(SM_LIBDIR)/lib$(SM_NAME)$(SM_SUFFIX) $(SHARED_LINK_FLAGS)
 DEHYDRA_OBJS = dehydra_ast.o $(COMMON)
 TREEHYDRA_OBJS= treehydra.o treehydra_builtins.o treehydra_plugin.o treehydra_generated.o $(DEHYDRA_OBJS)
+DEPDIR = .deps
+-include $(TREEHYDRA_OBJS:%.o=$(DEPDIR)/%.P)
 
 gcc_dehydra.so: dehydra_plugin.o dehydra_builtins.o $(DEHYDRA_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $+
@@ -19,12 +21,11 @@ gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
 	$(CC) $(LDFLAGS) -o $@ $(TREEHYDRA_OBJS)
 
 %.o: %.c
-	$(CC) -g3 $(CFLAGS) -c $<
-
-dehydra_ast.o: dehydra_ast.c dehydra_ast.h
-
-treehydra_generated.o: treehydra_generated.c
-	$(CC) $(NESTED_FN_ENABLER) -g3 $(CFLAGS) -c $<
+	$(CC) -MD -g3 $(CFLAGS) -c $<
+	@cp $*.d $(DEPDIR)/$*.P; \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+            -e '/^$$/ d' -e 's/$$/ :/' < $*.d >> $(DEPDIR)/$*.P; \
+        rm -f $*.d
 
 treehydra_generated.c: gcc_cp_headers.h convert_tree.js gcc_dehydra.so
 	$(CXX) -Wp,-C -save-temps -DTREEHYDRA_CONVERT_JS -fshow-column $(CFLAGS) -fplugin=./gcc_dehydra.so -fplugin-arg=convert_tree.js -fsyntax-only $<
@@ -35,8 +36,6 @@ useful_arrays.ii: useful_arrays.c
 useful_arrays.js: useful_arrays.ii
 	sed -e 's/.*tree_code/var tree_code/' -e 's/^#.*//' -e 's/\[\]//' -e 's/{/[/' -e 's/}/]/' $< > $@
 
-treehydra.o: treehydra.c treehydra.h
-
 treehydra: gcc_treehydra.so
 
 .PHONY: treehydra
@@ -45,5 +44,5 @@ check check_dehydra check_treehydra check_both:
 	$(MAKE) -C test $@
 
 clean:
-	rm -f *.o *.so *~ *.ii *_generated.c enums.js useful_arrays.js
+	rm -f *.o *.so *~ *.ii *_generated.c enums.js useful_arrays.js $(DEPDIR)/*.P
 	$(MAKE) -C test clean
