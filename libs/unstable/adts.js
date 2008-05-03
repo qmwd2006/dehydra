@@ -48,7 +48,7 @@ function equals(v1, v2) {
 function test_perf() {
   let m = new Map(function (x, y) x === y, function(x) x);
   do_test_perf(m, 'Map');
-  m = new InjHashMap(function(x) x);
+  m = new InjHashMap(undefined, function(x) x);
   do_test_perf(m, 'InjHashMap');
 
   let s = new Set(function (x, y) x === y, function(x) x);
@@ -94,7 +94,7 @@ function MapFactoryCtor() {
 
 MapFactoryCtor.prototype.create_map = function(equals_func, hash_func, key_func) {
   if (this.use_injective) {
-    return new InjHashMap(key_func);
+    return new InjHashMap(undefined, key_func);
   } else {
     return new Map(equals_func, hash_func);
   }
