@@ -2,7 +2,7 @@ include('map.js');
 
 function create_set(map_ctor) {
   let Set = function(keyFunc, labelFunc) {
-    this.map = new map_ctor(keyFunc, labelFunc);
+    this.map = new map_ctor(labelFunc, keyFunc);
   }
 
   /** Iterate over the items in the set. */

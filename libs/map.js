@@ -5,9 +5,6 @@ function base_equals(x, y) {
   return x === y;
 }
 
-/** Default hash function for maps. */
-let base_hash = hashcode;
-
 /** Default key function for injective hash maps. */
 function base_key(x) {
   return x.toString();
@@ -16,7 +13,7 @@ function base_key(x) {
 /** Create a new Map with an ES4-like interface. */
 function Map(equals_func, hashcode_func) {
   this.equals_func = equals_func ? equals_func : base_equals;
-  this.hashcode_func = hashcode_func ? hashcode_func : base_hash;
+  this.hashcode_func = hashcode_func ? hashcode_func : hashcode;
   this.data = {};
 }
 
@@ -81,7 +78,7 @@ Map.prototype.put = function(k, v) {
 Map.prototype.remove = function(k) {
   let h = this.hashcode_func(k);
   let chain = this.data[h];
-  if (chain == undefined) return;
+  if (chain == undefined) return false;
   for (let i = 0; i < chain.length; ++i) {
     let entry = chain[i];
     if (this.equals_func(entry[0], k)) {
@@ -90,7 +87,7 @@ Map.prototype.remove = function(k) {
       } else {
         chain.splice(i, 1);
       }
-      return;
+      return true;
     }
   }
 }
@@ -150,26 +147,6 @@ Map.prototype.getValues = function() {
   }
 }
 
-function test_map2() {
-  let m = new Map2(function(x, y) x === y, 
-                   function(o) o);
-
-  m.put('a', 1);
-  m.put('b', 2);
-  m.put('c', 3);
-
-  m.remove('b');
-  m.remove('c');
-
-  m.put('c', 5);
-  m.put('c', 7);
-
-  print(m);
-  for (let [k,v] in m.getItems()) {
-    print( k + ' -> ' + v);
-  }
-}
-
 /** Create a new map with custom behavior.
   *
   * @param keyFunc    function key -> accessKey. This function must return the
@@ -181,16 +158,15 @@ function test_map2() {
   *            when printing the Map, in place to toString, which doesn't
   *            work well for Treehydra objects.
   */
-function InjHashMap(keyFunc, labelFunc) {
-  if (keyFunc == undefined) throw new Error("missing keyFunc arg");
-  this.getKey = keyFunc;
+function InjHashMap(labelFunc, keyFunc) {
+  this.getKey = keyFunc ? keyFunc : hashcode;
   this.getLabel = labelFunc == undefined ? function (s) s : labelFunc;
   this.data = {};
 }
 
 /** Create a new empty map with same customization functions as this one. */
 InjHashMap.prototype.create = function() {
-  return new InjHashMap(this.getKey, this.getLabel);
+  return new InjHashMap(this.getLabel, this.getKey);
 }
 
 /** Return a map that is a copy of this map: the map is distinct, but the
@@ -233,7 +209,11 @@ InjHashMap.prototype.put = function(k, v) {
 
 /** Remove entry with given key. */
 InjHashMap.prototype.remove = function(k) {
-  delete this.data[this.getKey(k)];
+  let key = this.getKey(k)
+  let ret = this.data.hasOwnProperty (key)
+  if (!ret) return false
+  delete this.data[key];
+  return true
 }
 
 /** Return the value associated with the given key, or undefined if none. */
