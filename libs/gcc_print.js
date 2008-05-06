@@ -56,20 +56,22 @@ function isn_display_basic(isn, code) {
   if (code == GIMPLE_MODIFY_STMT) {
     let operands = isn.operands();
     return [expr_display(operands[0]), ":=", expr_display(operands[1])]
-  } else if (TREE_CODE(isn) == RETURN_EXPR) {
+  } 
+  switch (TREE_CODE(isn)) {
+  case RETURN_EXPR:
     let operand = isn.operands()[0];
     if (operand) {
       return isn_display_basic(operand, TREE_CODE(operand));
     } else {
       return [ 'void', '', '' ];
     }
-  } else if (TREE_CODE(isn) == CALL_EXPR) {
+  case CALL_EXPR:
     return [ 'void', ':=', expr_display(isn) ];
-  } else if (TREE_CODE(isn) == COND_EXPR) {
+  case COND_EXPR:
     return [ 'if', '', expr_display(TREE_OPERAND(isn, 0)) ]
-  } else if (TREE_CODE(isn) == SWITCH_EXPR) {
+  case SWITCH_EXPR:
     return [ 'switch', '', expr_display(TREE_OPERAND(isn, 0)) ]
-  } else {
+  default:
     return ['[this tree code not impl]', '', ''];
   }
 }
@@ -77,25 +79,21 @@ function isn_display_basic(isn, code) {
 /** Return a string representation of the given expression node. */
 function expr_display(expr) {
   let code = TREE_CODE(expr);
-  if (code == INDIRECT_REF) {
+  switch (code) {
+  case INDIRECT_REF:
     return '*' + expr_display(expr.exp.operands[0]);
-  } else if (code == ADDR_EXPR) {
+  case ADDR_EXPR:
     return '&' + expr_display(TREE_OPERAND(expr, 0));
-  } else if (code == PLUS_EXPR) {
+  case PLUS_EXPR:
     return expr_display(TREE_OPERAND(expr, 0)) + ' +  ' +
       expr_display(TREE_OPERAND(expr, 1));
-  } else if (code == NE_EXPR) {
+  case NE_EXPR:
     return expr_display(TREE_OPERAND(expr, 0)) + ' != ' +
       expr_display(TREE_OPERAND(expr, 1));
-  } else if (code == EQ_EXPR) {
+  case EQ_EXPR:
     return expr_display(TREE_OPERAND(expr, 0)) + ' == ' +
       expr_display(TREE_OPERAND(expr, 1));
-  } else if (code == PARM_DECL || code == VAR_DECL || code == RESULT_DECL) {
-    let decl_name = DECL_NAME(expr);
-    if (decl_name) return IDENTIFIER_POINTER(decl_name);
-    let c = code == CONST_DECL ? 'C' : (code == RESULT_DECL ? 'R' : 'D');
-    return c + '.' + DECL_UID(expr);
-  } else if (code == CALL_EXPR) {
+  case CALL_EXPR:
     let ans = '';
     let name = TREE_OPERAND(expr, 1);
     ans += call_name_display(name);
@@ -111,9 +109,21 @@ function expr_display(expr) {
     }
     ans += ')';
     return ans;
-  } else if (code == INTEGER_CST) {
+  case INTEGER_CST:
     return expr.int_cst.int_cst.low;
-  } else {
+  case COMPONENT_REF:
+    let ops = expr.operands()
+    let struct = expr_display (ops[0])
+    if (TREE_CODE(ops[0]) == INDIRECT_REF)
+      struct = "(" + struct + ")"
+    return struct + "." + expr_display (ops[1])
+  default:
+    if (DECL_P(expr)) {
+      let decl_name = DECL_NAME(expr);
+      if (decl_name) return IDENTIFIER_POINTER(decl_name);
+      let c = code == CONST_DECL ? 'C' : (code == RESULT_DECL ? 'R' : 'D');
+      return c + '_' + DECL_UID(expr);
+    }
     //print("    *** " + code.name);
     //do_dehydra_dump(expr, 4, 2);
     return code.name;
