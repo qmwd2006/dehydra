@@ -291,9 +291,8 @@ function makeStruct (fields, type_name, prefix, subFunctions, fn_level) {
 function getPrefix (aggr) {
   if (aggr.kind != "struct")
     return aggr.kind + " "
-  var aloc = aggr.loc.split(":")
-  var file = aloc[0]
-  var line = aloc[1]*1
+  var file = aggr.loc.file;
+  var line = aggr.loc.line;
   for (var i = 0;i < 5;i++) {
     // first find the begining of struct ... {} part
     var str = getLine (file, line)

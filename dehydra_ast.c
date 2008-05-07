@@ -355,15 +355,7 @@ static void dehydra_nextStatement(Dehydra *this, location_t loc) {
     dehydra_defineProperty (this, obj, STATEMENTS, 
                             OBJECT_TO_JSVAL (this->destArray));
   }
-  /* always update location */
-  if (!loc_is_unknown(this->loc)) {
-    const char *loc_str = loc_as_string (this->loc);
-    const char *s = strrchr (loc_str, '/');
-    if (s) loc_str = s + 1;
-    dehydra_defineStringProperty (this, obj, LOC, loc_str);
-  } else {
-    dehydra_defineProperty (this, obj, LOC, JSVAL_VOID);
-  }
+  convert_location_t(this, obj, LOC, this->loc);
 }
 
 static void dehydra_iterate_statementlist (Dehydra *this, tree statement_list) {

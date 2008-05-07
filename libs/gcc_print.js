@@ -173,7 +173,9 @@ function edge_string(edge, cfg) {
   return bb_label(cfg, edge.src) + ' -> ' + bb_label(cfg, edge.dest);
 }
 
-/** Return a string representation of a return value from location_of. */
+/** Return a string representation of a return value from location_of. 
+ *  Use loc.toString() instead; this is for compatibility with existing
+ *  scripts. */
 function loc_string(loc) {
-  return loc.file + ':' + loc.line + ':' + loc.column;
+  return loc.toString();
 }

@@ -186,22 +186,6 @@ void convert_int (struct Dehydra *this, struct JSObject *parent,
   dehydra_defineProperty (this, parent, propname, v);
 }
 
-void convert_location_t (struct Dehydra *this, struct JSObject *parent,
-                         const char *propname, location_t loc) {
-  if (loc_is_unknown(loc)) {
-    dehydra_defineProperty (this, parent, propname, JSVAL_VOID);
-    return;
-  }
-  expanded_location eloc = expand_location(loc);
-  
-  JSObject *obj = dehydra_defineObjectProperty (this, parent, propname);
-  dehydra_defineStringProperty (this, obj, "file", eloc.file);
-  dehydra_defineProperty (this, obj, "line", INT_TO_JSVAL(eloc.line));
-#ifndef __APPLE__
-  // XXX remove once Apple GCC supports columns
-  dehydra_defineProperty (this, obj, "column", INT_TO_JSVAL(eloc.column));
-#endif
-}
 /* END Functions for treehydra_generated */
 
 typedef struct {

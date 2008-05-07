@@ -68,8 +68,7 @@ void dehydra_init(Dehydra *this, const char *file) {
     {"include",         Include,        1},
     {"write_file",      WriteFile,      1},
     {"read_file",       ReadFile,       1},
-    {"error",           Error,          0},
-    {"warning",         Warning,        0},
+    {"diagnostic",      Diagnostic,     0},
     {"require",         Require,        1},
     {"hashcode",        Hashcode,       1},
     {0}
@@ -86,7 +85,7 @@ void dehydra_init(Dehydra *this, const char *file) {
   /* register error handler */
   JS_SetErrorReporter (this->cx, ErrorReporter);
   xassert (JS_DefineFunctions (this->cx, this->globalObj, shell_functions));
-  if (dehydra_getToplevelFunction(this, "error") == JSVAL_VOID) {
+  if (dehydra_getToplevelFunction(this, "_print") == JSVAL_VOID) {
     fprintf (stderr, "Your version of spidermonkey has broken JS_DefineFunctions, upgrade it or ./configure with another version\n");
     exit(1);
   }
@@ -305,11 +304,39 @@ jsval dehydra_getToplevelFunction(Dehydra *this, char const *name) {
 void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
   location_t loc = location_of (t);
   if (loc_is_unknown(loc)) return;
-
-  char const *strLoc = loc_as_string (loc);
   /* Don't attach empty locations */
-  if (strLoc && *strLoc)
-    dehydra_defineStringProperty (this, obj, LOC, strLoc);
+  convert_location_t(this, obj, LOC, loc);
+}
+
+static JSClass js_location_class = {
+  "Location",  /* name */
+  JSCLASS_CONSTRUCT_PROTOTYPE, /* flags */
+  JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub,
+  JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, NULL,
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+};
+
+// Used by both Dehydra and Treehydra.
+void convert_location_t (struct Dehydra *this, struct JSObject *parent,
+                         const char *propname, location_t loc) {
+  if (loc_is_unknown(loc)) {
+    dehydra_defineProperty (this, parent, propname, JSVAL_VOID);
+    return;
+  }
+  expanded_location eloc = expand_location(loc);
+
+  // Instead of calling ConstructWithArguments, we simply create the 
+  // object and set up the properties because GC rooting is a lot
+  // easier this way.
+  JSObject *obj = JS_DefineObject(this->cx, parent, propname, 
+                                  &js_location_class, NULL, JSPROP_ENUMERATE);
+  dehydra_defineProperty (this, obj, "_source_location", INT_TO_JSVAL(loc));
+  dehydra_defineStringProperty (this, obj, "file", eloc.file);
+  dehydra_defineProperty (this, obj, "line", INT_TO_JSVAL(eloc.line));
+#ifndef __APPLE__
+  // XXX remove once Apple GCC supports columns
+  dehydra_defineProperty (this, obj, "column", INT_TO_JSVAL(eloc.column));
+#endif
 }
 
 void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
