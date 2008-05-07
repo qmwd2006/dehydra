@@ -68,6 +68,8 @@ int dehydra_rootObject (Dehydra *this, jsval val);
 void dehydra_unrootObject (Dehydra *this, int pos);
 jsval dehydra_getRootedObject (Dehydra *this, int pos);
 void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t);
+void convert_location_t (struct Dehydra *this, struct JSObject *parent,
+                         const char *propname, location_t loc);
 
 int dehydra_includeScript(Dehydra *this, const char *filename);
 void dehydra_appendToPath (Dehydra *this, const char *dir);

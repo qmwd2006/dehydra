@@ -9,9 +9,8 @@
 DH_JSNATIVE(Require);
 DH_JSNATIVE(Include);
  
-DH_JSNATIVE(Error);
+DH_JSNATIVE(Diagnostic);
 DH_JSNATIVE(Print);
-DH_JSNATIVE(Warning);
  
 DH_JSNATIVE(WriteFile);
 DH_JSNATIVE(ReadFile);

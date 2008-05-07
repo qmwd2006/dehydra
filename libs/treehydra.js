@@ -1,3 +1,4 @@
+include ("xhydra.js")
 include ("map.js")
 include ("platform.js")
 include ("gcc_compat.js")

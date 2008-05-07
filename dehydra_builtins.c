@@ -12,6 +12,7 @@
 #include <toplev.h>
 #include <jsapi.h>
 
+#include "util.h"
 #include "dehydra.h"
 #include "dehydra_builtins.h"
 #include "xassert.h"
@@ -171,34 +172,28 @@ JSBool Print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
   return JS_TRUE;
 }
 
-JSBool Error(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-             jsval *rval)
-{
-  uintN i;
-  for (i = 0; i < argc; i++) {
-    JSString *str = JS_ValueToString(cx, argv[i]);
-    if (!str)
-      return JS_FALSE;
-    error ("%s", JS_GetStringBytes(str));
-  }
-  return JS_TRUE;
-}
+typedef void (*diagnostic_func)(const char *, ...);
 
-JSBool Warning(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
-               jsval *rval)
-{
-  uintN i;
-  int code = 0;
-  for (i = 0; i < argc; i++) {
-    if (i == 0 && JSVAL_IS_INT (argv[i])) {
-      code = JSVAL_TO_INT (argv[i]);
-      continue;
+JSBool Diagnostic(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
+                  jsval *rval) {
+  JSBool is_error;
+  char *msg;
+  JSObject *loc_obj = NULL;
+
+  if (!JS_ConvertArguments(cx, argc, argv, "bs/o", &is_error, &msg, &loc_obj))
+    return JS_FALSE;
+  diagnostic_func diag = is_error ? error : warning0;
+  if (loc_obj) {
+    jsval jsloc;
+    JSBool rv = JS_GetProperty(cx, loc_obj, "_source_location", &jsloc);
+    if (rv) {
+      source_location loc = JSVAL_TO_INT(jsloc);
+      diag ("%H%s", &loc, msg);
+      return TRUE;
     }
-    JSString *str = JS_ValueToString(cx, argv[i]);
-    if (!str)
-      return JS_FALSE;
-    warning (code, "%s", JS_GetStringBytes(str));
   }
+
+  diag ("%s", msg);
   return JS_TRUE;
 }
 
