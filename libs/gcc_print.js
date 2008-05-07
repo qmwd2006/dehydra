@@ -119,10 +119,7 @@ function expr_display(expr) {
     return struct + "." + expr_display (ops[1])
   default:
     if (DECL_P(expr)) {
-      let decl_name = DECL_NAME(expr);
-      if (decl_name) return IDENTIFIER_POINTER(decl_name);
-      let c = code == CONST_DECL ? 'C' : (code == RESULT_DECL ? 'R' : 'D');
-      return c + '_' + DECL_UID(expr);
+      return decl_name(expr, true)
     }
     //print("    *** " + code.name);
     //do_dehydra_dump(expr, 4, 2);

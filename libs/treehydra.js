@@ -156,9 +156,9 @@ function walk_tree (t, func, guard, stack) {
 }
 
 /* prints a nice name for decls */
-function decl_name (decl) {
-  var str = ""
-  var context = DECL_CONTEXT (decl)
+function decl_name (decl, no_context) {
+  var str = "";
+  var context = no_context ? null : DECL_CONTEXT (decl)
 
   if (context) {
     var code = TREE_CODE (context) 
@@ -170,7 +170,21 @@ function decl_name (decl) {
     }
   }
   var name = DECL_NAME (decl)
-  str += name ? IDENTIFIER_POINTER (name) : ("<anonymous" + DECL_UID (decl) + ">")
+  if (name) {
+    str += IDENTIFIER_POINTER (name)
+  } else {
+    switch (TREE_CODE (decl)) {
+    case CONST_DECL: 
+      str += 'C'
+      break;
+    case RESULT_DECL:
+      str += 'R'
+      break;
+    default:
+      str += 'D'
+    }
+    str += "_" + DECL_UID (decl)
+  }
   return str
 }
 
