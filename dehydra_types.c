@@ -250,7 +250,7 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
 static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   tree next_type = NULL_TREE;
   tree type_decl = TYPE_NAME (type);
-  if (type_decl != NULL_TREE) {
+  if (type_decl && TREE_CODE(type_decl) == TYPE_DECL) {
     tree original_type = DECL_ORIGINAL_TYPE (type_decl);
     if (original_type) {
       //dehydra_defineStringProperty (this, obj, NAME, 
@@ -352,10 +352,13 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
           type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
         type_decl = TYPE_NAME (type);
       }
-    dehydra_defineStringProperty (this, obj, NAME,
-                                  type_decl 
-                                  ? IDENTIFIER_POINTER (DECL_NAME(type_decl))
-                                  : type_as_string (type, 0xff));
+    char const *realName;
+    if (type_decl)
+      realName = IDENTIFIER_POINTER(TREE_CODE (type_decl) == TYPE_DECL ?
+                                    DECL_NAME(type_decl) : type_decl);
+    else
+      realName = type_as_string(type, 0xff);
+    dehydra_defineStringProperty (this, obj, NAME, realName);
     break;
   case COMPLEX_TYPE:
   case VECTOR_TYPE:
