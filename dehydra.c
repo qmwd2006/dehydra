@@ -303,8 +303,8 @@ jsval dehydra_getToplevelFunction(Dehydra *this, char const *name) {
 
 void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
   location_t loc = location_of (t);
-  if (loc_is_unknown(loc)) return;
   /* Don't attach empty locations */
+  if (loc_is_unknown(loc)) return;
   convert_location_t(this, obj, LOC, loc);
 }
 
