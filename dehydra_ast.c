@@ -7,6 +7,7 @@
 
 #include "xassert.h"
 #include "dehydra.h"
+#include "dehydra_types.h"
 #include "util.h"
 
 static void dehydra_iterate_statementlist (Dehydra *, tree);
@@ -267,15 +268,8 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     }
     *walk_subtrees = 0;
     break;
-  case INTEGER_CST: 
-    {
-    /* Bug 429362: GCC pretty-printer is broken for unsigned ints. */
-      JSObject *obj = dehydra_addVar(this, NULL_TREE, NULL);
-      dehydra_defineStringProperty(this, obj, VALUE, 
-                                   dehydra_intCstToString(*tp));
-    }
-    break;
   case REAL_CST:
+  case INTEGER_CST: 
 #ifdef FIXED_CST_CHECK
   case FIXED_CST:
 #endif
@@ -284,9 +278,11 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case STRING_CST:
     {
       JSObject *obj = dehydra_addVar(this, NULL_TREE, NULL);
-      dehydra_defineStringProperty(this, 
-                                   obj, VALUE, 
-                                   expr_as_string(*tp, 0));
+      /* Bug 429362: GCC pretty-printer is broken for unsigned ints. */
+      dehydra_defineStringProperty(this, obj, VALUE, code == INTEGER_CST ?
+                                   dehydra_intCstToString(*tp) : expr_as_string(*tp, 0));
+      dehydra_defineProperty(this, obj, TYPE,
+                             dehydra_convertType(this, TREE_TYPE(*tp)));
     }
     break;
   case RETURN_EXPR: 
