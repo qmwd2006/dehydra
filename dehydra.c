@@ -312,7 +312,7 @@ static JSClass js_location_class = {
   "Location",  /* name */
   JSCLASS_CONSTRUCT_PROTOTYPE, /* flags */
   JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub,
-  JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, NULL,
+  JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, JS_FinalizeStub,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
