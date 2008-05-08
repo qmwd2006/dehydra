@@ -137,7 +137,7 @@ function call_name_display(name) {
   case PARM_DECL:
     return '*' + decl_name_string(name);
   case FUNCTION_DECL:
-    return decl_name_string(name);
+    return decl_name(name);
   case OBJ_TYPE_REF:
     let func = resolve_virtual_fun_from_obj_type_ref(name);
     return call_name_display(func);
