@@ -12,13 +12,14 @@ LDFLAGS=  -lm $(SM_LIBDIR)/lib$(SM_NAME)$(SM_SUFFIX) $(SHARED_LINK_FLAGS)
 DEHYDRA_OBJS = dehydra_ast.o $(COMMON)
 TREEHYDRA_OBJS= treehydra.o treehydra_builtins.o treehydra_plugin.o treehydra_generated.o $(DEHYDRA_OBJS)
 DEPDIR = .deps
--include $(TREEHYDRA_OBJS:%.o=$(DEPDIR)/%.P)
 
 gcc_dehydra.so: dehydra_plugin.o dehydra_builtins.o $(DEHYDRA_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $+
 
 gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
 	$(CC) $(LDFLAGS) -o $@ $(TREEHYDRA_OBJS)
+
+-include $(TREEHYDRA_OBJS:%.o=$(DEPDIR)/%.P)
 
 %.o: %.c
 	$(CC) -MD -g3 $(CFLAGS) -c $<
