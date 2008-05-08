@@ -63,9 +63,11 @@ def getjsdirs(jsname, jslibs, jsheaders):
 
 if __name__ == "__main__":
     dynamic_lib_suffix, shared_link_flags = ('.so', '-shared') 
+    cflags = ''
     if platform.system() == 'Darwin' :
         dynamic_lib_suffix, shared_link_flags = ('.dylib',
-            '-bundle -flat_namespace -undefined suppress -fnested-functions')
+            '-bundle -flat_namespace -undefined suppress')
+        cflags += '-fnested-functions'
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h",
@@ -115,9 +117,8 @@ if __name__ == "__main__":
         error("Must indicate javascript header directory with --js-headers=")
     check_gcc_srcdir(gcc_src)
     
-    cflags = ""
     if os.environ.has_key("CFLAGS"):
-        cflags = os.environ["CFLAGS"]
+        cflags += ' ' + os.environ["CFLAGS"]
     f = open("config.mk", "w")
     f.write("""GCCDIR=%s
 GCCBUILDDIR=%s
