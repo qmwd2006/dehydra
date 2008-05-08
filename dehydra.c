@@ -232,10 +232,15 @@ const char *dehydra_intCstToString(tree int_cst)
 {
   static char buf[32];  // holds repr of up to 64-bit ints
   xassert(TREE_CODE(int_cst) == INTEGER_CST);
-  int high = TREE_INT_CST_HIGH(int_cst);
-  int low  = TREE_INT_CST_LOW(int_cst);
   tree type = TREE_TYPE(int_cst);
   int is_unsigned = TYPE_UNSIGNED(type);
+#ifdef __APPLE__
+  // TREE_INT_CST_LOW(int_cst) is a 64-bit integer here
+  sprintf(buf, is_unsigned ? "%lluu" : "%lld",
+          TREE_INT_CST_LOW(int_cst));
+#else
+  int high = TREE_INT_CST_HIGH(int_cst);
+  int low = TREE_INT_CST_LOW(int_cst);
   if (high == 0 || (high == -1 && !is_unsigned)) {
     /* GCC prints negative signed numbers in hex, we print using %d.
        GCC prints unsigned numbers as if signed, we really do unsigned. */
@@ -246,6 +251,7 @@ const char *dehydra_intCstToString(tree int_cst)
     sprintf(buf, is_unsigned ? "%lluu" : "%lld",
             ((long long)high << 32) | (0xffffffffll & low));
   }
+#endif
 
   if (type == long_integer_type_node || type == long_unsigned_type_node)
     strcat(buf, "l");
