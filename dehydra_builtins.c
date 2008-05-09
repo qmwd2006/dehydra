@@ -184,10 +184,18 @@ JSBool Diagnostic(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
     return JS_FALSE;
   diagnostic_func diag = is_error ? error : warning0;
   if (loc_obj) {
+    location_t loc;
+#if defined(__APPLE__)
+    jsval jsfile, jsline;
+    if (JS_GetProperty(cx, loc_obj, "file", &jsfile) &&
+        JS_GetProperty(cx, loc_obj, "line", &jsline)) {
+      loc.file = JS_GetStringBytes(JSVAL_TO_STRING(jsfile));
+      loc.line = JSVAL_TO_INT(jsline);
+#else
     jsval jsloc;
-    JSBool rv = JS_GetProperty(cx, loc_obj, "_source_location", &jsloc);
-    if (rv) {
-      source_location loc = JSVAL_TO_INT(jsloc);
+    if (JS_GetProperty(cx, loc_obj, "_source_location", &jsloc)) {
+      loc = JSVAL_TO_INT(jsloc);
+#endif
       diag ("%H%s", &loc, msg);
       return TRUE;
     }

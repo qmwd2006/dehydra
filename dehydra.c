@@ -336,12 +336,12 @@ void convert_location_t (struct Dehydra *this, struct JSObject *parent,
   // easier this way.
   JSObject *obj = JS_DefineObject(this->cx, parent, propname, 
                                   &js_location_class, NULL, JSPROP_ENUMERATE);
-  dehydra_defineProperty (this, obj, "_source_location", INT_TO_JSVAL(loc));
   dehydra_defineStringProperty (this, obj, "file", eloc.file);
   dehydra_defineProperty (this, obj, "line", INT_TO_JSVAL(eloc.line));
 #ifndef __APPLE__
   // XXX remove once Apple GCC supports columns
   dehydra_defineProperty (this, obj, "column", INT_TO_JSVAL(eloc.column));
+  dehydra_defineProperty (this, obj, "_source_location", INT_TO_JSVAL(loc));
 #endif
 }
 
