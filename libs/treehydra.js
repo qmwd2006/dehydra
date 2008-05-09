@@ -93,10 +93,13 @@ function walk_tree (t, func, guard, stack) {
   function WALK_SUBTREE (t) {
     walk_tree (t, func, guard, stack)
   }
-  if (!t || guard.has (t)) {
+  if (!t)
     return
+  else if (guard) {
+    if (guard.has (t))
+      return
+    guard.put (t)
   }
-  guard.put (t)
   if (!stack)
     stack = [];
   var walk_subtrees = func (t, stack)
