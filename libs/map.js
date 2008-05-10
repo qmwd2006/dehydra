@@ -194,6 +194,11 @@ InjHashMap.prototype.equals = function(m) {
   return true;
 };
 
+InjHashMap.prototype.toString = function() {
+  let ss = [ this.getLabel(k) + ": " + v for ([k,v]  in this.getItems()) ];
+  return Array.join(ss, ', ');
+};
+
 /** True if this map has no elements. */
 InjHashMap.prototype.isEmpty = function() {
   for (let k in this.data) {
