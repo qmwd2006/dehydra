@@ -396,6 +396,9 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
 }
 
 jsval dehydra_convertType (Dehydra *this, tree type) {
+  /* Not allowed to pass in NULLs
+     this prevents nodes without types from haivng undefined .type*/
+  xassert (type);
   if (!typeMap) {
     typeMap = pointer_map_create ();
   }
