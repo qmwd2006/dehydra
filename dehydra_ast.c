@@ -277,12 +277,15 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case VECTOR_CST:
   case STRING_CST:
     {
-      JSObject *obj = dehydra_addVar(this, NULL_TREE, NULL);
+      tree type = TREE_TYPE (*tp);
+      JSObject *obj = dehydra_addVar (this, NULL_TREE, NULL);
       /* Bug 429362: GCC pretty-printer is broken for unsigned ints. */
-      dehydra_defineStringProperty(this, obj, VALUE, code == INTEGER_CST ?
-                                   dehydra_intCstToString(*tp) : expr_as_string(*tp, 0));
-      dehydra_defineProperty(this, obj, TYPE,
-                             dehydra_convertType(this, TREE_TYPE(*tp)));
+      dehydra_defineStringProperty (this, obj, VALUE, code == INTEGER_CST ?
+                                    dehydra_intCstToString(*tp) : expr_as_string(*tp, 0));
+      if (type) {
+        dehydra_defineProperty (this, obj, TYPE,
+                                dehydra_convertType(this, type));
+      }
     }
     break;
   case RETURN_EXPR: 
