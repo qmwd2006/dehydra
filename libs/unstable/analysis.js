@@ -234,9 +234,10 @@ BackwardAnalysis.prototype.run = function() {
     this.mergeStateOut(bb);
     if (this.trace) print("  out state: " + this.stateLabel(bb.stateOut))
     let changed = this.flowStateIn(bb);
-    if (this.trace) print("   in state: " + this.stateLabel(bb.stateIn))
+    if (this.trace) print("   in state: " + this.stateLabel(bb.stateIn) + ' ' +
+                          (changed ? '(changed)' : '(same)'));
     if (changed) {
-      for (let bb_pred in bb_pred(bb)) {
+      for (let bb_pred in bb_preds(bb)) {
         if (!bb_pred.ready) {
           bb_pred.ready = true;
           readyCount += 1;
@@ -275,7 +276,9 @@ BackwardAnalysis.prototype.flowStateIn = function(bb) {
     this.flowState(isn, state);
     if (this.trace) print("     | " + this.stateLabel(state));
   }
+  let ans = !equals(bb.stateIn, state);
   bb.stateIn = state;
+  return ans;
 }
 
 // Functions to be customized per analysis -- defaults are reasonable
