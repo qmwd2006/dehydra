@@ -47,6 +47,16 @@ function create_set(map_ctor) {
     return Array.join(ss, ', ');
   };
 
+  Set.prototype.equals = function(m) {
+    for (let k1 in this.items()) {
+      if (!m.has(k1)) return false;
+    }
+    for (let k1 in m.items()) {
+      if (!this.has(k1)) return false;
+    }
+    return true;
+  };
+
   return Set;
 }
 
