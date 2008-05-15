@@ -86,17 +86,12 @@ let ESP = function() {
     let factory = this.factory;
     this.update(function(ss) {
       let cur_val = ss.get(vbl);
-      if (cur_val == undefined || cur_val == factory.BOTTOM) {
-        // Value is unknown in this substate; simply set it
-        // TODO this seems correct only for exec state vbls
-        ss.assignValue(vbl, val, blame);
-        return [ss];
-      } else if (cur_val == val) {
-        // Nothing to do. Could assign blame here but seems unneeded.
-        return [ss];
-      } else {
-        return [];
-      }
+      let new_val = factory.meet(cur_val, val);
+      if (new_val == undefined) return [];
+      if (new_val == cur_val) return [ ss ];
+      
+      ss.assignValue(vbl, val, blame);
+      return [ss];
     });
   };
 
@@ -274,10 +269,17 @@ let ESP = function() {
    *                  for a variable, i.e., any value
    *   @param trace   Debug tracing level: 0, 1, 2, or 3.
    */
-  let Analysis = function(cfg, psvbls, bottom, trace) {
+  let Analysis = function(cfg, psvbls, bottom, meet, trace) {
+    if (meet == undefined) {
+      meet = this.default_meet;
+      // Can't issue a warning here because instances used as prototypes
+      // would print warnings
+    }
+
     this.cfg = cfg;
     this.trace = trace;
     this.BOTTOM = bottom;
+    this.meet = meet;
     this.psvbls = psvbls;
     this.psvblset = create_decl_set(psvbls);
   };
@@ -285,6 +287,12 @@ let ESP = function() {
 /** Run the solver to a fixed point. */
 Analysis.prototype.run = function() {
   if (this.trace) print("analysis starting");
+
+  if (this.meet == this.default_meet) {
+    warning("ESP solver warning: using unsound default meet() function.\n" +
+            "Some code paths may be wrongly excluded from analysis.");
+  }
+  
   // Make us valid as a factory for States, while still allowing us
   // to be a prototype in the usual idiom.
   if (this.psvbls == undefined) throw new Error("Invalid psvbls");
@@ -475,6 +483,13 @@ Analysis.prototype.stateLabel = function(s) {
    *  every variable having any possible value. */
   Analysis.prototype.startValues = function(isn, state) {
     throw new Error("abstract method");
+  };
+
+  /** Default meet operator. Note that this version is unsound. If used,
+   *  a warning will be issued. Return value of undefined indicates
+   *  empty set state (TODO, s/b lattice member?). */
+  Analysis.default_meet = function(v1, v2) {
+    return undefined;
   };
 
 return {
