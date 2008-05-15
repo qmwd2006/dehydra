@@ -165,9 +165,7 @@ let ESP = function() {
       }
       for each (let v in keys) {
         if (ss.get(v) != factory.BOTTOM && !var_set.has(v)) {
-          if (!factory.outparams.has(v) && v != factory.retvar) {
-            ss.remove(v);
-          }
+          ss.remove(v);
         }
       }
       return [ss];
@@ -376,7 +374,7 @@ Analysis.prototype.run = function() {
           // keep live vars only, which can vary on succs.
           e.state = bb.stateOut.copy();
         }
-        e.state.keepOnly(e.dest.liveVarsIn);
+        this.updateEdgeState(e);
         if (!bb_succ.ready) {
           bb_succ.ready = true;
           readyCount += 1;
@@ -475,6 +473,14 @@ Analysis.prototype.stateLabel = function(s) {
    *  @see State.predicate */
   Analysis.prototype.flowStateCond = function(isn, truth, state) {
     throw new Error("abstract method");
+  };
+
+  /** Customization function. Update the state on the given edge. This
+   *  is purely optional. It can be used for things like dropping state
+   *  on variables no longer of interest.
+   *  @param edge  CFG edge, with src and dest BB properties. There
+   *               is also the .state property. */
+  Analysis.prototype.updateEdgeState = function(edge) {
   };
 
   /** Customization function. Return a mapping of variables to abstract
