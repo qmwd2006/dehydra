@@ -238,6 +238,10 @@ let ESP = function() {
     }
   };
 
+  Substate.prototype.getVariables = function () {
+    return this.map.getKeys();
+  }
+
   /** Not for public use. See source code. */
   Substate.prototype.mergeWith = function(ss) {
     // We have to be very careful -- we keep a value only if present
