@@ -194,3 +194,4 @@ else:
     print "    %3d passed"%(r.testsRun - len(r.failures) - len(r.errors))
     print "    %3d failed"%len(r.failures)
     print "    %3d error(s)"%len(r.errors)
+    sys.exit(1)
