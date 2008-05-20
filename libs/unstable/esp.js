@@ -44,7 +44,7 @@ let ESP = function() {
 
   State.prototype.list = function() {
     if (this.substates.isEmpty()) {
-      print("      | TOP");
+      print("      | Not Reached");
     } else {
       for (let [ps, ss] in this.substates.getItems()) {
         print("      | " + ss);
