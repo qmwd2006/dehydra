@@ -171,11 +171,11 @@ static void dehydra_attachTemplateStuff (Dehydra *this, JSObject *parent, tree t
   for (ix = 0; ix != len; ix++) {
     tree arg = TREE_VEC_ELT (args, ix);
     jsval val = JSVAL_VOID;
-    if (CONSTANT_CLASS_P (arg)) {
+    if (TYPE_P (arg)) {
+      val = dehydra_convert (this, arg);
+    } else {
       JSString *str = JS_NewStringCopyZ (this->cx, expr_as_string (arg, 0));
       val = STRING_TO_JSVAL (str);
-    } else if (TYPE_P (arg)) {
-      val = dehydra_convert (this, arg);
     }
     xassert (val != JSVAL_VOID);
     JS_DefineElement(this->cx, arguments, ix,
