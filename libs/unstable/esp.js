@@ -87,7 +87,7 @@ let ESP = function() {
     this.update(function(ss) {
       let cur_val = ss.get(vbl);
       let new_val = factory.meet(cur_val, val);
-      if (new_val == undefined) return [];
+      if (new_val == ESP.NOT_REACHED) return [];
       if (new_val == cur_val) return [ ss ];
       
       ss.assignValue(vbl, val, blame);
@@ -101,7 +101,7 @@ let ESP = function() {
     let factory = this.factory;
     this.assignMapped(vbl, function(ss) {
       let rval = ss.get(arg);
-      if (rval == undefined || rval == factory.BOTTOM) {
+      if (rval == undefined || rval == factory.TOP) {
         return undefined;
       } else if (rval == val) {
         return av.NONZERO;
@@ -137,7 +137,7 @@ let ESP = function() {
     let factory = this.factory;
     this.update(function (ss) {
       let rhs = func(ss);
-      if (rhs == undefined || rhs == factory.BOTTOM) {
+      if (rhs == undefined || rhs == factory.TOP) {
         if (factory.psvblset.has(lhs)) {
           let [s1, s2] = [ss, ss.copy()];
           s1.assignValue(lhs, av.ZERO, blame);
@@ -154,7 +154,7 @@ let ESP = function() {
   };
 
   /** Set the abstract value of all variables not in the given set
-   *  to BOTTOM. This effectively demotes these variables to execution
+   *  to TOP. This effectively demotes these variables to execution
    *  variables, potentially decreasing the size of the state. */
   State.prototype.keepOnly = function(var_set) {
     let factory = this.factory;
@@ -164,7 +164,7 @@ let ESP = function() {
         keys.push(v);
       }
       for each (let v in keys) {
-        if (ss.get(v) != factory.BOTTOM && !var_set.has(v)) {
+        if (ss.get(v) != factory.TOP && !var_set.has(v)) {
           ss.remove(v);
         }
       }
@@ -196,16 +196,24 @@ let ESP = function() {
     return this.map.equals(ss.map);
   };
 
+  function toShortString(latticeValue) {
+    if (latticeValue === ESP.TOP)
+      return "T"
+    if (latticeValue.toShortString)
+      return latticeValue.toShortString()
+
+    return latticeValue.toString()
+  }
   /** Return a string value that uniquely represents the property state
    * of this substate. */
   Substate.prototype.pskey = function() {
-    return Array.join([ this.map.get(vbl).ch 
+    return Array.join([ toShortString(this.map.get(vbl)) 
                         for each (vbl in this.factory.psvbls) ], '');
   };
 
   Substate.prototype.toString = function() {
     return this.pskey() + ' ' + 
-      Array.join([ expr_display(vbl) + ':' + this.map.get(vbl).ch
+      Array.join([ expr_display(vbl) + ':' + toShortString(this.map.get(vbl))
                    for (vbl in this.map.getKeys()) ], ', ');
   };
 
@@ -231,7 +239,7 @@ let ESP = function() {
   /** Not for public use. See source code. */
   Substate.prototype.remove = function(vbl, value, blame) {
     if (this.factory.psvblset.has(vbl)) {
-      this.map.put(vbl, this.factory.BOTTOM);
+      this.map.put(vbl, this.factory.TOP);
       this.blames.put(vbl, blame);
     } else {
       this.map.remove(vbl);
@@ -267,11 +275,11 @@ let ESP = function() {
    *
    *   @param cfg     CFG to analyze
    *   @param psvbls  Set of property state variables
-   *   @param bottom  Abstract value representing BOTTOM state
+   *   @param bottom  Abstract value representing TOP state
    *                  for a variable, i.e., any value
    *   @param trace   Debug tracing level: 0, 1, 2, or 3.
    */
-  let Analysis = function(cfg, psvbls, bottom, meet, trace) {
+  let Analysis = function(cfg, psvbls, meet, trace) {
     if (meet == undefined) {
       meet = this.default_meet;
       // Can't issue a warning here because instances used as prototypes
@@ -280,7 +288,6 @@ let ESP = function() {
 
     this.cfg = cfg;
     this.trace = trace;
-    this.BOTTOM = bottom;
     this.meet = meet;
     this.psvbls = psvbls;
     this.psvblset = create_decl_set(psvbls);
@@ -499,11 +506,10 @@ Analysis.prototype.stateLabel = function(s) {
    *  a warning will be issued. Return value of undefined indicates
    *  empty set state (TODO, s/b lattice member?). */
   Analysis.default_meet = function(v1, v2) {
-    return undefined;
+    return ESP.NOT_REACHED;
   };
 
-return {
-  'Analysis': Analysis
-};
+  return {Analysis: Analysis, TOP:undefined, NOT_REACHED:{}};
 
 }();
+
