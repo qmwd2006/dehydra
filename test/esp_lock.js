@@ -74,21 +74,18 @@ function AbstractValue(name, ch) {
   this.ch = ch;
 }
 
-AbstractValue.prototype.equals = function(v) {
-  return this === v;
-}
-
 AbstractValue.prototype.toString = function() {
   return this.name + ' (' + this.ch + ')';
+}
+
+AbstractValue.prototype.toShortString = function() {
+  return this.ch
 }
 
 // Our actual abstract values. We have these specific values, plus
 // any number of additional values for integer constants as needed.
 // The integers are used to figure out GCC control flow.
 let avspec = [
-  // General-purpose abstract values
-  [ 'BOTTOM',        '.' ],   // any value, also used for dead vars
-
   // Abstract values for lock status
   [ 'LOCKED',          'L' ],
   [ 'UNLOCKED',        'U' ],
@@ -130,29 +127,25 @@ av.intVal = function(v) {
 
 /** Meet function for our abstract values. */
 av.meet = function(v1, v2) {
-  // Important for following cases -- as output, undefined means top here.
-  if (v1 == undefined) v1 = av.BOTTOM;
-  if (v2 == undefined) v2 = av.BOTTOM;
-
   // These cases apply for any lattice.
-  if (v1 == av.BOTTOM) return v2;
-  if (v2 == av.BOTTOM) return v1;
+  if (v1 == ESP.TOP) return v2;
+  if (v2 == ESP.TOP) return v1;
   if (v1 == v2) return v1;
 
   // At this point we know v1 != v2.
   switch (v1) {
   case av.LOCKED:
   case av.UNLOCKED:
-    return undefined;
+    return ESP.NOT_REACHED;
   case av.ZERO:
-    return av.intVal(v2) == 0 ? v2 : undefined;
+    return av.intVal(v2) == 0 ? v2 : ESP.NOT_REACHED;
   case av.NONZERO:
-    return av.intVal(v2) != 0 ? v2 : undefined;
+    return av.intVal(v2) != 0 ? v2 : ESP.NOT_REACHED;
   default:
     let iv = av.intVal(v1);
-    if (iv == 0) return v2 == av.ZERO ? v1 : undefined;
-    if (iv != undefined) return v2 == av.NONZERO ? v1 : undefined;
-    return undefined;
+    if (iv == 0) return v2 == av.ZERO ? v1 : ESP.NOT_REACHED;
+    if (iv != undefined) return v2 == av.NONZERO ? v1 : ESP.NOT_REACHED;
+    return ESP.NOT_REACHED;
   }
 }     
 
@@ -200,7 +193,7 @@ function LockCheck(cfg, finally_tmps, trace) {
     }
   }
 
-  ESP.Analysis.call(this, cfg, this.psvar_list, av.BOTTOM, av.meet, trace);
+  ESP.Analysis.call(this, cfg, this.psvar_list, av.meet, trace);
 }
 
 LockCheck.prototype = new ESP.Analysis;
@@ -210,7 +203,7 @@ LockCheck.prototype = new ESP.Analysis;
 LockCheck.prototype.startValues = function() {
   let ans = create_decl_map();
   for each (let p in this.psvar_list) {
-    ans.put(p, av.BOTTOM);
+    ans.put(p, ESP.TOP);
   }
   return ans;
 }
@@ -320,7 +313,7 @@ LockCheck.prototype.filter = function(state, vbl, val, truth, blame) {
 };
 
 // State transition for assignments. We'll just handle constants and copies.
-// For everything else, the result is unknown (i.e., BOTTOM).
+// For everything else, the result is unknown (i.e., TOP).
 LockCheck.prototype.processAssign = function(isn, state) {
   let lhs = isn.operands()[0];
   let rhs = isn.operands()[1];
@@ -419,7 +412,7 @@ LockCheck.prototype.processCall = function(dest, expr, blame, state) {
     this.processLock(expr, av.UNLOCKED, undefined, blame, state);
   } else {
     if (dest != undefined && DECL_P(dest)) {
-      state.assignValue(dest, av.BOTTOM, blame);
+      state.assignValue(dest, ESP.TOP, blame);
     }
   }
 };
@@ -452,4 +445,3 @@ LockCheck.prototype.checkSubstate = function(vbl, precond, blame, ss) {
             val, location_of(blame));
   }
 }
-

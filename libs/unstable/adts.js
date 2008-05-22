@@ -36,13 +36,11 @@ function equals(v1, v2) {
         if (!equals(v1[i], v2[i])) return false;
       }
       return true;
-    } else {
-      //print("VEQ " + v1.constructor.name);
+    } else if (v1.equals) {
       return v1.equals(v2);
     }
-  } else {
-    return v1 == v2;
-  }
+  } 
+  return v1 == v2;
 }
 
 function test_perf() {
