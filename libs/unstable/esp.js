@@ -79,6 +79,13 @@ let ESP = function() {
     }
   };
 
+  function meet (v1, v2, next_meet) {
+    if (v1 === v2) return v1
+    if (v1 === ESP.TOP) return v2
+    if (v2 === ESP.TOP) return v1
+    return next_meet(v1, v2)
+  }
+
   /** Apply a filter to the state, which keeps substates only where
    * vbl == val. More formally, set the state to be the conjunction
    * of itself and the given condition vbl == val. */
@@ -86,7 +93,7 @@ let ESP = function() {
     let factory = this.factory;
     this.update(function(ss) {
       let cur_val = ss.get(vbl);
-      let new_val = factory.meet(cur_val, val);
+      let new_val = meet(cur_val, val, factory.meet);
       if (new_val == ESP.NOT_REACHED) return [];
       if (new_val == cur_val) return [ ss ];
       
