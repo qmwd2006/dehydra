@@ -49,6 +49,7 @@ def getjsdirs(jsname, jslibs, jsheaders):
             jslibs = os.path.dirname(libjs)
             print "Detected JavaScript library: " + libjs
     else:
+        jslibs = os.path.realpath(jslibs)
         checkdir (jslibs, "js-libs")
 
     if jsheaders != None:
