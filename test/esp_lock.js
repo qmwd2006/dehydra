@@ -11,6 +11,9 @@ include('unstable/analysis.js');
 include('unstable/esp.js');
 include('unstable/liveness.js');
 
+var Zero_NonZero = {}
+include('unstable/zero_nonzero.js', Zero_NonZero);
+
 // Names of functions to check lock/unlock protocol on
 CREATE_FUNCTION = 'create_mutex';
 LOCK_FUNCTION = 'lock';
@@ -25,17 +28,7 @@ let TRACE_ESP = 0;
 // Print time-taken stats 
 let TRACE_PERF = 0;
 
-// Filter functions to process per CLI
-let func_filter;
-if (this.arg == undefined || this.arg == '') {
-  func_filter = function(fd) true;
-} else {
-  func_filter = function(fd) function_decl_name(fd) == this.arg;
-}
-
 function process_tree(fndecl) {
-  if (!func_filter(fndecl)) return;
-
   // At this point we have a function we want to analyze
   if (TRACE_FUNCTIONS) {
     print('* function ' + decl_name(fndecl));
@@ -71,82 +64,32 @@ function process_tree(fndecl) {
 // which is a single-character label used in traces.
 function AbstractValue(name, ch) {
   this.name = name;
-  this.ch = ch;
 }
 
 AbstractValue.prototype.toString = function() {
-  return this.name + ' (' + this.ch + ')';
+  return this.name + ' (' + this.name[0] + ')';
 }
 
 AbstractValue.prototype.toShortString = function() {
-  return this.ch
+  return this.name[0]
 }
 
-// Our actual abstract values. We have these specific values, plus
-// any number of additional values for integer constants as needed.
-// The integers are used to figure out GCC control flow.
-let avspec = [
-  // Abstract values for lock status
-  [ 'LOCKED',          'L' ],
-  [ 'UNLOCKED',        'U' ],
-  
-  // Abstract values for booleans (control flags)
-  [ 'ZERO',          '0' ],   // zero value
-  [ 'NONZERO',       '1' ]    // nonzero value
-];
-
+// Our actual abstract values.
+// Abstract values for lock status 
 let av = {};
-for each (let [name, ch] in avspec) {
-  av[name] = new AbstractValue(name, ch);
-}
-
-// Negations are needed to understand the conditions on else branches.
-av.ZERO.negation = av.NONZERO;
-av.NONZERO.negation = av.ZERO;
-
-let cachedAVs = {};
-
-// Abstract values for int constants. We use these to figure out feasible
-// paths in the presence of GCC finally_tmp-controlled switches.
-function makeIntAV(v) {
-  let key = 'int_' + v;
-  if (cachedAVs.hasOwnProperty(key)) return cachedAVs[key];
-
-  let s = "" + v;
-  let ans = cachedAVs[key] = new AbstractValue(s, s);
-  ans.int_val = v;
-  return ans;
-}
-
-/** Return the integer value if this is an integer av, otherwise undefined. */
-av.intVal = function(v) {
-  if (v.hasOwnProperty('int_val'))
-    return v.int_val;
-  return undefined;
+for each (let name in ['LOCKED', 'UNLOCKED']) {
+  av[name] = new AbstractValue(name);
 }
 
 /** Meet function for our abstract values. */
 av.meet = function(v1, v2) {
-  // These cases apply for any lattice.
-  if (v1 == ESP.TOP) return v2;
-  if (v2 == ESP.TOP) return v1;
-  if (v1 == v2) return v1;
-
   // At this point we know v1 != v2.
-  switch (v1) {
-  case av.LOCKED:
-  case av.UNLOCKED:
+  let values = [v1,v2]
+  if (values.indexOf(av.LOCKED) != -1
+      || values.indexOf(av.UNLOCKED) != -1)
     return ESP.NOT_REACHED;
-  case av.ZERO:
-    return av.intVal(v2) == 0 ? v2 : ESP.NOT_REACHED;
-  case av.NONZERO:
-    return av.intVal(v2) != 0 ? v2 : ESP.NOT_REACHED;
-  default:
-    let iv = av.intVal(v1);
-    if (iv == 0) return v2 == av.ZERO ? v1 : ESP.NOT_REACHED;
-    if (iv != undefined) return v2 == av.NONZERO ? v1 : ESP.NOT_REACHED;
-    return ESP.NOT_REACHED;
-  }
+
+  return Zero_NonZero.meet(v1, v2)
 }     
 
 function LockCheck(cfg, finally_tmps, trace) {
@@ -193,6 +136,7 @@ function LockCheck(cfg, finally_tmps, trace) {
     }
   }
 
+  this.zeroNonzero = new Zero_NonZero.Zero_NonZero()
   ESP.Analysis.call(this, cfg, this.psvar_list, av.meet, trace);
 }
 
@@ -218,191 +162,25 @@ LockCheck.prototype.updateEdgeState = function(e) {
 // another function as either an assignment or a call.
 LockCheck.prototype.flowState = function(isn, state) {
   switch (TREE_CODE(isn)) {
-  case GIMPLE_MODIFY_STMT:
-    this.processAssign(isn, state);
-    break;
-  case CALL_EXPR:
-    this.processCall(undefined, isn, isn, state);
-    break;
   case SWITCH_EXPR:
   case COND_EXPR:
     // This gets handled by flowStateCond instead, has no exec effect
     break;
-  case RETURN_EXPR:
-    let op = isn.operands()[0];
-    if (op) this.processAssign(isn.operands()[0], state);
-    break;
-  case LABEL_EXPR:
-  case RESX_EXPR:
-  case ASM_EXPR:
-    // NOPs for us
-    break;
+  case CALL_EXPR:
+    if (this.processCall(isn, isn, state))
+      break;
   default:
-    print(TREE_CODE(isn));
-    throw new Error("ni");
+    this.zeroNonzero.flowState(isn, state)
   }
 }
 
 // State transition function to apply branch filters. This is kind
 // of boilerplate--we're just handling some stuff that GCC generates.
 LockCheck.prototype.flowStateCond = function(isn, truth, state) {
-  switch (TREE_CODE(isn)) {
-  case COND_EXPR:
-    this.flowStateIf(isn, truth, state);
-    break;
-  case SWITCH_EXPR:
-    this.flowStateSwitch(isn, truth, state);
-    break;
-  default:
-    throw new Error("ni " + TREE_CODE(isn));
-  }
+  this.zeroNonzero.flowStateCond (isn, truth, state)
 }
 
-// Apply filter for an if statement. This handles only tests for
-// things being zero or nonzero.
-LockCheck.prototype.flowStateIf = function(isn, truth, state) {
-  let exp = TREE_OPERAND(isn, 0);
-
-  if (DECL_P(exp)) {
-    this.filter(state, exp, av.NONZERO, truth, isn);
-    return;
-  }
-
-  switch (TREE_CODE(exp)) {
-  case EQ_EXPR:
-  case NE_EXPR:
-    // Handle 'x op <int lit>' pattern only
-    let op1 = TREE_OPERAND(exp, 0);
-    let op2 = TREE_OPERAND(exp, 1);
-    if (expr_literal_int(op1) != undefined) {
-      [op1,op2] = [op2,op1];
-    }
-    if (!DECL_P(op1)) break;
-    if (expr_literal_int(op2) != 0) break;
-    let val = TREE_CODE(exp) == EQ_EXPR ? av.ZERO : av.NONZERO;
-
-    this.filter(state, op1, val, truth, isn);
-    break;
-  default:
-    // Don't care about anything else.
-  }
-
-};
-
-// State transition for switch cases.
-LockCheck.prototype.flowStateSwitch = function(isn, truth, state) {
-  let exp = TREE_OPERAND(isn, 0);
-
-  if (DECL_P(exp)) {
-    if (truth != null) {
-      this.filter(state, exp, makeIntAV(truth), true, isn);
-    }
-    return;
-  }
-  throw new Error("ni");
-}
-
-// Apply a filter to the state. We need to special case it for this analysis
-// because outparams only care about being a NULL pointer.
-LockCheck.prototype.filter = function(state, vbl, val, truth, blame) {
-  if (truth != true && truth != false) throw new Error("ni " + truth);
-  if (truth == false) {
-    val = val.negation;
-  }
-  state.filter(vbl, val, blame);
-};
-
-// State transition for assignments. We'll just handle constants and copies.
-// For everything else, the result is unknown (i.e., TOP).
-LockCheck.prototype.processAssign = function(isn, state) {
-  let lhs = isn.operands()[0];
-  let rhs = isn.operands()[1];
-
-  if (DECL_P(lhs)) {
-    // Unwrap NOP_EXPR, which is semantically a copy.
-    if (TREE_CODE(rhs) == NOP_EXPR) {
-      rhs = rhs.operands()[0];
-    }
-
-    if (DECL_P(rhs)) {
-      state.assign(lhs, rhs, isn);
-      return;
-    }
-    
-    switch (TREE_CODE(rhs)) {
-    case INTEGER_CST:
-      if (is_finally_tmp(lhs)) {
-        // Need to know the exact int value for finally_tmp.
-        let v = TREE_INT_CST_LOW(rhs);
-        state.assignValue(lhs, makeIntAV(v), isn);
-      } else {
-        // Otherwise, just track zero/nonzero.
-        let value = expr_literal_int(rhs) == 0 ? av.ZERO : av.NONZERO;
-        state.assignValue(lhs, value, isn);
-      }
-      break;
-    case NE_EXPR: {
-      // We only care about gcc-generated x != 0 for conversions and such.
-      let [op1, op2] = rhs.operands();
-      if (DECL_P(op1) && expr_literal_int(op2) == 0) {
-        state.assign(lhs, op1, isn);
-      }
-    }
-      break;
-    case CALL_EXPR:
-      let fname = call_function_name(rhs);
-      if (fname == '__builtin_expect') {
-        // Same as an assign from arg 0 to lhs
-        state.assign(lhs, call_args(rhs)[0], isn);
-      } else {
-        this.processCall(lhs, rhs, isn, state);
-      }
-      break;
-    // Stuff we don't analyze -- just kill the LHS info
-    case EQ_EXPR: 
-    case ADDR_EXPR:
-    case POINTER_PLUS_EXPR:
-    case ARRAY_REF:
-    case COMPONENT_REF:
-    case INDIRECT_REF:
-    case FILTER_EXPR:
-    case EXC_PTR_EXPR:
-    case CONSTRUCTOR:
-
-    case REAL_CST:
-    case STRING_CST:
-
-    case CONVERT_EXPR:
-    case TRUTH_NOT_EXPR:
-    case TRUTH_XOR_EXPR:
-    case BIT_FIELD_REF:
-      state.remove(lhs);
-      break;
-    default:
-      if (UNARY_CLASS_P(rhs) || BINARY_CLASS_P(rhs) || COMPARISON_CLASS_P(rhs)) {
-        state.remove(lhs);
-        break;
-      }
-      print(TREE_CODE(rhs));
-      throw new Error("ni");
-    }
-    return;
-  }
-
-  switch (TREE_CODE(lhs)) {
-  case INDIRECT_REF: // unsound
-  case COMPONENT_REF: // unsound
-  case ARRAY_REF: // unsound
-  case EXC_PTR_EXPR:
-  case FILTER_EXPR:
-    break;
-  default:
-    print(TREE_CODE(lhs));
-    throw new Error("ni");
-  }
-}
-
-LockCheck.prototype.processCall = function(dest, expr, blame, state) {
+LockCheck.prototype.processCall = function(expr, blame, state) {
   let fname = call_function_name(expr);
   if (fname == LOCK_FUNCTION) {
     this.processLock(expr, av.LOCKED, av.UNLOCKED, blame, state);
@@ -411,10 +189,9 @@ LockCheck.prototype.processCall = function(dest, expr, blame, state) {
   } else if (fname == CREATE_FUNCTION) {
     this.processLock(expr, av.UNLOCKED, undefined, blame, state);
   } else {
-    if (dest != undefined && DECL_P(dest)) {
-      state.assignValue(dest, ESP.TOP, blame);
-    }
+    return false
   }
+  return true
 };
 
 // State transition for a lock API.

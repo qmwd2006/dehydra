@@ -1,13 +1,19 @@
 #include "locks.h"
-void good1() 
+void good1(int x) 
 {
   mutex *m = new mutex;
   create_mutex(m);
   lock(m);
   unlock(m);
 
-  if (0) {
-    unlock(m);
+  if (!x) {
+    switch (x) {
+    case 3:
+      unlock(m);
+      break;
+    default:
+      break;
+    }
   }
 }
 
