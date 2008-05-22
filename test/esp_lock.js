@@ -19,9 +19,9 @@ UNLOCK_FUNCTION = 'unlock';
 MapFactory.use_injective = true;
 
 // Print a trace for each function analyzed
-let TRACE_FUNCTIONS = 1;
+let TRACE_FUNCTIONS = 0;
 // Trace operation of the ESP analysis, use 2 or 3 for more detail
-let TRACE_ESP = 2;
+let TRACE_ESP = 0;
 // Print time-taken stats 
 let TRACE_PERF = 0;
 
@@ -448,7 +448,7 @@ LockCheck.prototype.checkPrecondition = function(vbl, precond, blame, state) {
 LockCheck.prototype.checkSubstate = function(vbl, precond, blame, ss) {
   let val = ss.get(vbl);
   if (val != precond) {
-    warning("precondition not met: expected " + precond + ", got " +
+    error("precondition not met: expected " + precond + ", got " +
             val, location_of(blame));
   }
 }
