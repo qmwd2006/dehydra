@@ -1,13 +1,28 @@
-const Lattice = {ZERO:0, 
+/* Base abstract interpretation for booleans and ints. This is
+ * useful for a lot of basic control flow, especially GCC-generated
+ * conditions and switches. */
+
+/** Our value lattice. The lattice also includes all integer values,
+ *  which are encoded directly as integers. */
+const Lattice = {
+  ZERO: 0, 
   NONZERO: {toString: function() {return "NONZERO"}, 
             toShortString: function() {return "!0"}}
-  // additionally all ints belong here
   }
 
+/** Negate an abstract value as a _condition_. By this, we mean return
+  * the abstract value that represents all concrete values not in v. 
+  * We do not mean operational negation, i.e., the effect of applying 
+  * a C++ negation operator. */
 function negate (v) {
-  if (v == Lattice.ZERO)
-    return 1
-  return Lattice.ZERO
+  switch (v) {
+  case Lattice.ZERO: return Lattice.NONZERO;
+  case Lattice.NONZERO: return Lattice.ZERO;
+  default:
+    // It would be sound to return BOTTOM here, but this case shouldn't
+    // be reached in current code.
+    throw new Error("Tried to negate non-boolean abstract value " + v);
+  }
 }
 
 function Zero_NonZero() {
@@ -44,15 +59,11 @@ Zero_NonZero.prototype.processAssign = function(isn, state) {
     
     switch (TREE_CODE(rhs)) {
     case INTEGER_CST:
-      if (is_finally_tmp(lhs)) {
-        // Need to know the exact int value for finally_tmp.
-        let v = TREE_INT_CST_LOW(rhs);
-        state.assignValue(lhs, makeIntAV(v), isn);
-      } else {
-        // Otherwise, just track zero/nonzero.
-        let value = expr_literal_int(rhs) == 0 ? Lattice.ZERO : Lattice.NONZERO;
-        state.assignValue(lhs, value, isn);
-      }
+      // The exact value is required for handling control flow around
+      // finally_tmp variables. We can use it always now that we have
+      // a lattice with meet.
+      let value = TREE_INT_CST_LOW(rhs);
+      state.assignValue(lhs, value, isn);
       break;
     case NE_EXPR: {
       // We only care about gcc-generated x != 0 for conversions and such.
@@ -133,7 +144,6 @@ Zero_NonZero.prototype.flowStateIf = function(isn, truth, state) {
     if (!DECL_P(op1)) break;
     if (expr_literal_int(op2) != 0) break;
     let val = TREE_CODE(exp) == EQ_EXPR ? Lattice.ZERO : Lattice.NONZERO;
-
     this.filter(state, op1, val, truth, isn);
     break;
   default:
