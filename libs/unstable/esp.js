@@ -64,10 +64,22 @@ let ESP = function() {
     }
   };
 
-  /** Apply an update function to the state. The update function
-   * maps a state to a set of states. If it returns one state, it
-   * may change the state in place, but otherwise, it should return
-   * separate states. */
+  /** Apply an update function to the state.
+   *
+   *  This is the primary method used to transform ESP states. Several
+   *  other methods wrap this one. The idea is that it's easy to write
+   *  a transformation function that transforms a substate (i.e., a 
+   *  simple mapping of vbls to abstract values). update() will apply
+   *  one of those tranforms to the entire state. It is essentially a
+   *  map-reduce operation that transforms each substate, then collects
+   *  them into a new ESP state.
+   *
+   *  The transformer function gets one argument, an ESP substate. The
+   *  return value is an array of states, so the transformer can not
+   *  only change a value, it can also drop or split substates. 
+   *
+   *  The transformer is allowed to update a state in place, but if it
+   *  returns more than one state, it must make copies of all but one. */
   State.prototype.update = function(func) {
     if (this.substates.isEmpty()) return;
     let old_substates = this.substates;
