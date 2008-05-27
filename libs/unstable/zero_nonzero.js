@@ -174,6 +174,22 @@ Zero_NonZero.prototype.filter = function(state, vbl, val, truth, blame) {
   state.filter(vbl, val, blame);
 }
 
+/** Update an ESP state so that vbl is predicated on val(arg).
+ * i.e.,  vbl := absvalue(arg) == val */
+Zero_NonZero.prototype.predicate = function(state, vbl, val, arg, blame) {
+  let factory = state.factory;
+  state.assignMapped(vbl, function(ss) {
+    let rval = ss.get(arg);
+    if (rval == undefined || rval == factory.TOP) {
+      return undefined;
+    } else if (rval == val) {
+      return Lattice.NONZERO;
+    } else {
+      return Lattice.ZERO;
+    }
+  }, blame); 
+}
+
 function meet (v1, v2) {
   // at this point possible values for v1, v2
   // are: NONZERO, some int value
