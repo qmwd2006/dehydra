@@ -102,22 +102,6 @@ let ESP = function() {
     });
   };
 
-  /** Update the state so that vbl is predicated on val(arg).
-   * i.e.,  vbl := absvalue(arg) == val */
-  State.prototype.predicate = function(vbl, val, arg, blame) {
-    let factory = this.factory;
-    this.assignMapped(vbl, function(ss) {
-      let rval = ss.get(arg);
-      if (rval == undefined || rval == factory.TOP) {
-        return undefined;
-      } else if (rval == val) {
-        return av.NONZERO;
-      } else {
-        return av.ZERO;
-      }
-    }, blame); 
-  }
-
   /** Update the state by assigning the given abstract value to
    * the given variable. */
   State.prototype.assignValue = function(vbl, value, blame) {
@@ -146,10 +130,13 @@ let ESP = function() {
       let rhs = func(ss);
       if (rhs == undefined || rhs == factory.TOP) {
         if (factory.psvblset.has(lhs)) {
-          let [s1, s2] = [ss, ss.copy()];
-          s1.assignValue(lhs, av.ZERO, blame);
-          s2.assignValue(lhs, av.NONZERO, blame);
-          return [s1, s2];
+          let ans = [];
+          for each (let v in factory.split(lhs, factory.TOP)) {
+            let s = ss.copy();
+            s.assignValue(lhs, v, blame);
+            ans.push(s);
+          }
+          return ans;
         } else {
           ss.remove(lhs);
           return [ss];
@@ -515,6 +502,16 @@ Analysis.prototype.stateLabel = function(s) {
   Analysis.default_meet = function(v1, v2) {
     return ESP.NOT_REACHED;
   };
+
+  /** Split a property state abstract value. The return value should
+   *  be a list of abstract values whose join (union) is equal to the
+   *  input. This is used by assignMapped to split values like TOP for
+   *  later more precise handling. Generally, the right thing to do
+   *  is to return the list of specific abstract values possible for
+   *  the given property variable. The default implementation is sound.*/
+  Analysis.prototype.split = function(vbl, v) {
+    return [ v ];
+  }
 
   return {Analysis: Analysis, TOP:undefined, NOT_REACHED:{}};
 
