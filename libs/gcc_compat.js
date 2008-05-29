@@ -21,6 +21,12 @@ var IS_GIMPLE_STMT_CODE_CLASS = isGCCApple ?
   function (code_class) { return false; } :
   function (code_class) { return code_class == tcc_gimple_stmt; }
 
+function TreeCheckError (expected_code, actual_code) {
+  var err = new Error("Expected " + expected_code + ", got " + actual_code)
+  err.TreeCheckError = true
+  return err
+}
+
 // comparable to CHECK_foo..except here foo is the second parameter
 function TREE_CHECK (tree_node, expected_code) {
   const code = TREE_CODE (tree_node)
@@ -29,7 +35,7 @@ function TREE_CHECK (tree_node, expected_code) {
     for (var i = 2; i < a.length; i++)
       if (a[i] == code)
         return tree_node
-    throw Error("Expected " + expected_code + ", got " + TREE_CODE (tree_node))
+    throw TreeCheckError(expected_code, TREE_CODE (tree_node))
   }
   return tree_node
 }

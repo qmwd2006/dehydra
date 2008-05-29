@@ -63,6 +63,10 @@ GCCNode.prototype.toCString = function () {
   throw new Error("not implemented; only DECLs are supported");
 }
 
+GCCNode.prototype.tree_check = function (expected_code) {
+  return TREE_CHECK(this, expected_code)
+}
+
 function tree_stmt_iterator (ptr, container) {
   this.ptr = ptr
   this.container = container
@@ -202,14 +206,18 @@ function pretty_walk (body, limit) {
       str += " "
     var code = TREE_CODE (t)
     str += code
-    
+    if (code == OBJ_TYPE_REF) {
+      t = resolve_virtual_fun_from_obj_type_ref(t)
+    }
     if (DECL_P (t))
       str += " " + decl_name (t);
-
+    else if (code == STRING_CST) {
+      str += " \"" + TREE_STRING_POINTER(t) + "\""
+    }
     print (str)
   }
   try {
-    walk_tree (body, code_printer, new Map())
+    walk_tree (body, code_printer)
   } catch (e if e == "done") {
   }
 
