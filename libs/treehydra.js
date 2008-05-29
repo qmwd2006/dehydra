@@ -57,6 +57,10 @@ GCCNode.prototype.operands = function () {
   }
 }
 
+GCCNode.prototype.toSource = function () {
+  throw new Error("Unevaling treehydra objects is unsupported");
+}
+
 GCCNode.prototype.toCString = function () {
   if (DECL_P (this))
     return decl_name(this)
