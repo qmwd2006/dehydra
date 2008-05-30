@@ -297,10 +297,16 @@ let ESP = function() {
     this.meet = meet;
     this.psvbls = psvbls;
     this.psvblset = create_decl_set(psvbls);
+
+    // Resource limits -- Set these properties directly to control halting
+    this.time_limit = undefined; // wall clock time in ms
+    this.pass_limit = undefined; // number of passes per BB
   };
 
 /** Run the solver to a fixed point. */
 Analysis.prototype.run = function() {
+  let t0 = new Date();
+
   if (this.trace) print("analysis starting");
 
   if (this.meet == this.default_meet) {
@@ -316,7 +322,10 @@ Analysis.prototype.run = function() {
   let order = postorder(this.cfg);
   order.reverse();
   // Start with everything ready so each block gets analyzed at least once.
-  for each (let bb in order) bb.ready = true;
+  for each (let bb in order) {
+    bb.ready = true;
+    bb.pass_count = 0; // number of passes made over this BB
+  }
   let readyCount = order.length;
   let next = 0;
 
@@ -330,6 +339,11 @@ Analysis.prototype.run = function() {
   }
 
   while (readyCount) {
+    let dt = new Date() - t0;
+    if (dt > this.time_limit) 
+      throw new Error("ESP halting: time limit exceeded (" + 
+                      this.time_limit + " ms)");
+
     // Get next node needing to be processed
     let index = next;
     let bb = order[index];
@@ -340,6 +354,11 @@ Analysis.prototype.run = function() {
     bb.ready = false;
     readyCount -= 1;
     if (this.trace) print("update bb: " + bb_label(this.cfg, bb));
+
+    ++bb.pass_count;
+    if (bb.pass_count > this.pass_limit)
+      throw new Error("ESP halting: BB pass limit exceeded (" +
+                      bb_label(bb) + " on pass " + bb.pass_count + ")");
 
     // Process bb
     if (bb != this.cfg.x_entry_block_ptr) this.mergeStateIn(bb);
