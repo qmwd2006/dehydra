@@ -234,7 +234,7 @@ const char *dehydra_intCstToString(tree int_cst)
   xassert(TREE_CODE(int_cst) == INTEGER_CST);
   tree type = TREE_TYPE(int_cst);
   int is_unsigned = TYPE_UNSIGNED(type);
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__x86_64__)
   // TREE_INT_CST_LOW(int_cst) is a 64-bit integer here
   sprintf(buf, is_unsigned ? "%lluu" : "%lld",
           TREE_INT_CST_LOW(int_cst));
