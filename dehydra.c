@@ -262,6 +262,14 @@ const char *dehydra_intCstToString(tree int_cst)
   return buf;
 }
 
+JSObject *definePropertyObject (JSContext *cx, JSObject *obj,
+                                const char *name, JSClass *clasp,
+                                JSObject *proto, uintN flags) {
+  JSObject *nobj = JS_NewObject (cx, clasp, proto, NULL);
+  JS_DefineProperty (cx, obj, name, OBJECT_TO_JSVAL(nobj), NULL, NULL, flags);
+  return nobj;
+}
+
 void dehydra_defineProperty (Dehydra *this, JSObject *obj,
                              char const *name, jsval value)
 {
@@ -285,9 +293,9 @@ JSObject *dehydra_defineArrayProperty (Dehydra *this, JSObject *obj,
 
 JSObject *dehydra_defineObjectProperty (Dehydra *this, JSObject *obj,
                                        char const *name) {
-  return JS_DefineObject(this->cx, obj,
-                  name, NULL, NULL,
-                  JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT);
+  return definePropertyObject(
+      this->cx, obj, name, NULL, NULL,
+      JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT);
 }
 
 /* Load and execute a Javascript file. 
@@ -334,8 +342,9 @@ void convert_location_t (struct Dehydra *this, struct JSObject *parent,
   // Instead of calling ConstructWithArguments, we simply create the 
   // object and set up the properties because GC rooting is a lot
   // easier this way.
-  JSObject *obj = JS_DefineObject(this->cx, parent, propname, 
-                                  &js_location_class, NULL, JSPROP_ENUMERATE);
+  JSObject *obj = definePropertyObject(this->cx, parent, propname, 
+                                       &js_location_class, NULL, 
+                                       JSPROP_ENUMERATE);
   dehydra_defineStringProperty (this, obj, "file", eloc.file);
   dehydra_defineProperty (this, obj, "line", INT_TO_JSVAL(eloc.line));
 #ifndef __APPLE__
