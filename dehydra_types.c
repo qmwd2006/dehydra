@@ -147,7 +147,8 @@ static void dehydra_attachTemplateStuff (Dehydra *this, JSObject *parent, tree t
   if (!tpl) return;
 
   JSObject *obj = 
-    JS_DefineObject(this->cx, parent, "template", NULL, NULL, JSPROP_ENUMERATE);
+    definePropertyObject(this->cx, parent, "template", NULL, NULL, 
+                         JSPROP_ENUMERATE);
   
   while (DECL_TEMPLATE_INFO (tpl))
     tpl = DECL_TI_TEMPLATE (tpl);

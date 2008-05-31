@@ -44,6 +44,12 @@ extern const char *SIGNED;
 extern const char *MIN_VALUE;
 extern const char *MAX_VALUE;
 
+/* Drop-in replacement for JS_DefineObject, required as a workaround
+ * because JS_DefineObject always sets the parent property. */
+JSObject *definePropertyObject (JSContext *cx, JSObject *obj,
+                               const char *name, JSClass *clasp,
+                               JSObject *proto, uintN flags);
+
 jsuint dehydra_getArrayLength(Dehydra *this, JSObject *array);
 const char* dehydra_intCstToString(tree int_cst);
 void dehydra_defineProperty(Dehydra *this, JSObject *obj,

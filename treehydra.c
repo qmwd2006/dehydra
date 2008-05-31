@@ -106,9 +106,9 @@ jsval get_lazy (Dehydra *this, treehydra_handler handler, void *v,
   xassert (parent && propname);
     
   obj = 
-    JS_DefineObject(this->cx, parent,
-                    propname, &js_tree_class, NULL,
-                    JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT);
+    definePropertyObject(
+        this->cx, parent, propname, &js_tree_class, NULL,
+        JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT);
   jsvalObj = OBJECT_TO_JSVAL (obj);
 
   lazy_handler *lazy = xmalloc (sizeof (lazy_handler));
