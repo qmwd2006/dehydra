@@ -62,6 +62,13 @@ def stderr_has(*args):
                 test.fail("Expected '%s' in error output; not found"%e)
     return checker
 
+def stdout_has(*args):
+    def checker(test, ec, out, err):
+        for e in args:
+            if out.find(e) == -1:
+                test.fail("Expected '%s' in output; not found"%e)
+    return checker
+
 def stderr_empty(test, ec, out, err):
     test.failUnless(err == '', "Expected no error output, got error output")
 
