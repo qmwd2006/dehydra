@@ -38,6 +38,7 @@ extern const char *PARAMETERS;
 extern const char *ATTRIBUTES;
 extern const char *STATEMENTS;
 extern const char *BITFIELD;
+extern const char *MEMBER_OF;
 extern const char *PRECISION;
 extern const char *UNSIGNED;
 extern const char *SIGNED;
