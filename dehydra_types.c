@@ -19,6 +19,7 @@
 #include "util.h"
 #include "dehydra.h"
 #include "dehydra_ast.h"
+#include "dehydra_types.h"
 
 static const char *POINTER = "isPointer";
 static const char *REFERENCE = "isReference";
@@ -249,8 +250,14 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
 }
 
 static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
-  tree next_type = NULL_TREE;
+  tree context = TYPE_CONTEXT(type);
+  if (context && TYPE_P(context)) {
+    dehydra_defineProperty (this, obj, MEMBER_OF,
+                            dehydra_convertType (this, context));
+  }
+
   tree type_decl = TYPE_NAME (type);
+  tree next_type = NULL_TREE;
   if (type_decl && TREE_CODE(type_decl) == TYPE_DECL) {
     tree original_type = DECL_ORIGINAL_TYPE (type_decl);
     if (original_type) {
