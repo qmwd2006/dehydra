@@ -27,3 +27,14 @@ function EnumValue (name, value) {
   this.name = name
   this.value = value
 }
+
+function print (msg, loc) {
+  // this._loc is used by process in dehydra
+  // scripts can set it to customize error reporting
+  if (!loc)
+    loc = this._loc
+  if (loc)
+    _print (loc + ": " + msg);
+  else
+    _print (msg);
+}

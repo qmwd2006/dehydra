@@ -393,13 +393,6 @@ function process_function (decl, statements) {
   delete this._loc
 }
 
-function print (msg) {
-  if (this._loc)
-    _print (this._loc + ": " + msg);
-  else
-    _print (msg);
-}
-
 function sameVar (v1, v2) {
   // allow both to be undefined or both to be defined
   if (!v1 && !v2) return true;
