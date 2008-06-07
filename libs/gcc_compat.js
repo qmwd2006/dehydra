@@ -104,13 +104,42 @@ function BIND_EXPR_BODY (node) {
   return TREE_OPERAND (TREE_CHECK (node, BIND_EXPR), 1)
 }
 
+const CALL_EXPR_FN_OPERAND_INDEX = isGCCApple ? 0 : 1;
 function CALL_EXPR_FN (node) {
-  return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), 1)
+  return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), CALL_EXPR_FN_OPERAND_INDEX)
 }
 
-function CALL_EXPR_ARG(node, i) {
-  return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), i + 3)
-}
+var call_expr_arg_iterator = isGCCApple ?
+  function (node) {
+    for (let arg_holder = TREE_OPERAND(node, 1); arg_holder;
+         arg_holder = TREE_CHAIN(arg_holder))
+      yield TREE_VALUE(arg_holder);
+  } :
+  function (node) {
+    let nargs = call_expr_nargs(node);
+    for (let i = 0; i < nargs; ++i)
+      yield CALL_EXPR_ARG(node, i);
+  }
+
+var CALL_EXPR_ARG = isGCCApple ?
+  function (node, i) {
+    let iter = call_expr_arg_iterator(node);
+    for (let j = 0; j < i; ++j)
+      iter.next();
+    return iter.next();
+  } :
+  function (node, i) {
+    return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), i + 3);
+  }
+
+var call_expr_nargs = isGCCApple ?
+  function (node) {
+    return [arg for (arg in call_expr_arg_iterator(node))].length;
+  } :
+  function (node) {
+    return TREE_INT_CST_LOW(TREE_OPERAND(node, 0)) - 3;
+  }
+
 
 function GIMPLE_TUPLE_P (node) {
   return GIMPLE_STMT_P (node) || TREE_CODE (node) == PHI_NODE
@@ -274,7 +303,11 @@ function TYPE_METHODS(node) {
 the client for each it*/
 // undefined is used for empty vectors, so support it nicely here.
 var VEC_iterate = isGCCApple ?
-  function (vec_node) { return vec_node ? vec_node.vec : []; } :
+  function (vec_node) {
+    if (!vec_node)
+      return [];
+    return vec_node.base ? vec_node.base.vec : vec_node.vec;
+  } :
   function (vec_node) { return vec_node ? vec_node.base.vec : []; }
 
 function EXPR_P(node) {

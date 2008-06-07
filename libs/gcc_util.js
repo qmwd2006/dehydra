@@ -103,18 +103,26 @@ function bb_pred_edges(bb) {
   return VEC_iterate(bb.preds);
 }
 
+/** stmt_list in a bb, may vary on gcc version.
+ */
+var bb_stmt_list = isGCCApple ?
+  function (bb) { return bb.stmt_list; } :
+  function (bb) {
+    let iltree = bb.il.tree;
+    return iltree ? iltree.stmt_list : undefined;
+  }    
+
 /** Last instruction of a BB. Throws an exception if there are no instructions. */
 function bb_isn_last(bb) {
-  let iltree = bb.il.tree;
-  let stmt_list = iltree.stmt_list.stmt_list;
+  let stmt_list = bb_stmt_list(bb).stmt_list;
   return stmt_list.tail.stmt;
 }
 
 /** Iterate over statements of a BB. */
 function bb_isn_iterator(bb) {
-  let iltree = bb.il.tree;
-  if (iltree != undefined) {
-    let stmt_list = iltree.stmt_list.stmt_list;
+  let outer_stmt_list = bb_stmt_list(bb);
+  if (outer_stmt_list != undefined) {
+    let stmt_list = outer_stmt_list.stmt_list;
     let head = stmt_list.head;
     let tail = stmt_list.tail;
     let cur = head;
@@ -130,9 +138,9 @@ function bb_isn_iterator(bb) {
 
 /** Iterator over statements of a BB in reverse order. */
 function bb_isn_iterator_reverse(bb) {
-  let iltree = bb.il.tree;
-  if (iltree != undefined) {
-    let stmt_list = iltree.stmt_list.stmt_list;
+  let outer_stmt_list = bb_stmt_list(bb);
+  if (outer_stmt_list != undefined) {
+    let stmt_list = outer_stmt_list.stmt_list;
     let head = stmt_list.head;
     let tail = stmt_list.tail;
     let cur = tail;
@@ -214,7 +222,7 @@ function expr_literal_int(expr) {
  * function (not a method or function pointer), then return the name.
  * Otherwise return undefined. */
 function call_function_name(expr) {
-  let fptr = TREE_OPERAND(expr, 1);
+  let fptr = CALL_EXPR_FN(expr);
   if (TREE_CODE(fptr) != ADDR_EXPR) return undefined;
   let name = TREE_OPERAND(fptr, 0);
   if (TREE_CODE(name) != FUNCTION_DECL) return undefined;
@@ -224,21 +232,14 @@ function call_function_name(expr) {
 /** Return the ith argument of the function, counting from zero and including
  * 'this' in the list if it is present. */
 function call_arg(expr, i) {
-  let operand_count = TREE_INT_CST_LOW(TREE_OPERAND(expr, 0));
-  let arg_count = operand_count - 3;
-  if (i < 0 || i >= arg_count) {
+  let arg_count = call_expr_nargs(expr);
+  if (i < 0 || i >= arg_count)
     throw new Error("arg index out of range: call has " + arg_count + " args");
-  }
-  return TREE_OPERAND(expr, i + 3);
+  return CALL_EXPR_ARG(expr, i);
 }
 
 /** Iterator over the argument list of the function call. */
-function call_arg_iterator(expr) {
-  let operand_count = TREE_INT_CST_LOW(TREE_OPERAND(expr, 0));
-  for (let i = 3; i < operand_count; ++i) {
-    yield TREE_OPERAND(expr, i);
-  }
-}
+var call_arg_iterator = call_expr_arg_iterator;
 
 /** Return an array of the arguments of a function call. */
 function call_args(expr) {
