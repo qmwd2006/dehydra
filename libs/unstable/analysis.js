@@ -45,9 +45,9 @@ function decl_get_label(d) {
 function isn_defs(isn, kind) {
   switch (TREE_CODE(isn)) {
   case GIMPLE_MODIFY_STMT:
-    yield GIMPLE_STMT_OPERAND(isn, 0);
+    yield GENERIC_TREE_OPERAND(isn, 0);
     if (kind != 'strong') {
-      let rhs = GIMPLE_STMT_OPERAND(isn, 1);
+      let rhs = GENERIC_TREE_OPERAND(isn, 1);
       if (TREE_CODE(rhs) == CALL_EXPR) {
         for (let d in call_expr_defs(isn)) yield d;
       }
@@ -90,7 +90,7 @@ function call_expr_defs(isn) {
 function isn_uses(isn) {
   switch (TREE_CODE(isn)) {
   case GIMPLE_MODIFY_STMT:
-    return expr_uses(GIMPLE_STMT_OPERAND(isn, 1));
+    return expr_uses(GENERIC_TREE_OPERAND(isn, 1));
   case CALL_EXPR:
     return call_expr_uses(isn);
   case RETURN_EXPR:
@@ -164,15 +164,7 @@ function expr_uses(expr) {
 }
 
 /** Iterate over variables used by a CALL_EXPR. */
-function call_expr_uses(isn) {
-  let operand_count = TREE_INT_CST(TREE_OPERAND(isn, 0)).low;
-  let arg_count = operand_count - 3;
-  for (let i = 0; i < arg_count; ++i) {
-    let operand_index = i + 3;
-    let operand = TREE_OPERAND(isn, operand_index);
-    yield operand;
-  }
-};
+var call_expr_uses = call_expr_arg_iterator;
 
 /* General analysis functions */
 
@@ -195,7 +187,7 @@ function do_postorder(bb, order) {
 }
 
 /** Backward data flow analysis framework. To use, customize the abstract
- *  states, flow functions, and mege functions. 
+ *  states, flow functions, and merge functions.
  *  @constructor 
  *  @param cfg   CFG to analyze.
  *  @param trace Level of debug tracing. 0 is no tracing. 1 is basic state
