@@ -1,7 +1,7 @@
 include ../config.mk
 
 CXX = $(GCCBUILDDIR)/gcc/g++
-CC1PLUS = $(GCCBUILDDIR)/gcc/cc1plus -quiet
+CC1PLUS = $(GCCBUILDDIR)/gcc/cc1plus -quiet -O1 -ftest-coverage
 PLUGIN = ../gcc_dehydra.so
 PLUGINARG = -fplugin=$(PLUGIN)
 SCRIPT=test.js

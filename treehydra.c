@@ -1,5 +1,8 @@
 /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 #include <jsapi.h>
+#ifdef TEST_BIT
+#undef TEST_BIT
+#endif
 #include <unistd.h>
 #include <stdio.h>
 
@@ -13,6 +16,7 @@
 #include <tree-iterator.h>
 #include <pointer-set.h>
 #include <toplev.h>
+#include <cgraph.h>
 
 #include "xassert.h"
 #include "dehydra_builtins.h"
@@ -244,20 +248,37 @@ JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
 }
 
 void treehydra_plugin_pass (Dehydra *this) {
-  jsval process_tree = dehydra_getToplevelFunction(this, "process_tree");
-  if (process_tree == JSVAL_VOID) return;
-
+  xassert (!jsobjMap);
   /* the map is per-invocation 
    to cope with gcc mutating things */
-  jsobjMap = pointer_map_create ();
-  
-  jsval fnval = get_existing_or_lazy (this, lazy_tree_node, current_function_decl, this->globalObj, "current_function_decl");
   jsval rval;
-  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
-                                 1, &fnval, &rval));
-  JS_DeleteProperty (this->cx, this->globalObj, "current_function_decl");
-  pointer_map_destroy (jsobjMap);
-  jsobjMap = NULL;
+  if (current_function_decl) {
+    jsval process_tree = dehydra_getToplevelFunction(this, "process_tree");
+    if (process_tree == JSVAL_VOID) return;
+
+    jsobjMap = pointer_map_create ();   
+
+    jsval fnval = get_existing_or_lazy (this, lazy_tree_node, current_function_decl, this->globalObj, "current_function_decl");
+    //cgraph_nodes
+    xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
+                                   1, &fnval, &rval));
+    JS_DeleteProperty (this->cx, this->globalObj, "current_function_decl");
+  } else if (cgraph_nodes) {
+    jsval process_cgraph = dehydra_getToplevelFunction(this, "process_cgraph");
+    if (process_cgraph == JSVAL_VOID) return;
+    
+    jsobjMap = pointer_map_create ();   
+
+    jsval cgraphval = get_existing_or_lazy (this, lazy_cgraph_node, cgraph_nodes, this->globalObj, "cgraph_nodes");
+    xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_cgraph,
+                                   1, &cgraphval, &rval));
+
+    JS_DeleteProperty (this->cx, this->globalObj, "cgraph_nodes");
+  }
+  if (jsobjMap) {
+    pointer_map_destroy (jsobjMap);
+    jsobjMap = NULL;
+  }
 }
 
 int treehydra_startup (Dehydra *this) {

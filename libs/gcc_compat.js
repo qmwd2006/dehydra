@@ -207,6 +207,10 @@ function DECL_SAVED_TREE (node) {
   return TREE_CHECK (node, FUNCTION_DECL).decl_non_common.saved_tree
 }
 
+function DECL_STRUCT_FUNCTION(node) {
+  return  node.function_decl.f
+}
+
 function IDENTIFIER_POINTER (node) {
   return node.identifier.id.str
 }

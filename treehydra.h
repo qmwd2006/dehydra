@@ -15,6 +15,8 @@ jsval get_enum_value (struct Dehydra *this, const char *name);
 
 void lazy_tree_node (struct Dehydra *this, void *structure, struct JSObject *obj);
 
+void lazy_cgraph_node (struct Dehydra *this, void* void_var, struct JSObject *obj);
+
 struct JSObject *dehydra_defineArrayProperty (struct Dehydra *this,
                                                   struct JSObject *obj,
                                                   char const *name,

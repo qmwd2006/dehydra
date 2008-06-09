@@ -539,8 +539,14 @@ function convert (unit, aggr) {
                           : "unsigned int"), subFunctions, 
                      isToplevelType ? FN_TOPMOST : FN_NESTED)
   } else if (aggr.kind == "struct") {
-    ret = makeStruct (ls, aggr_name, getPrefix(aggr), subFunctions,
-                      isToplevelType ? FN_STATIC : FN_NESTED)
+    let level
+    if (aggr_name == "cgraph_node")
+      level == FN_TOPMOST
+    else if (isToplevelType)
+      level = FN_STATIC
+    else
+      level = FN_NESTED
+    ret = makeStruct (ls, aggr_name, getPrefix(aggr), subFunctions, level)
   } else if (isEnum) {
     var enum_inherit = undefined
     if (aggr_name == "tree_code") {
@@ -565,11 +571,11 @@ function process_type(type) {
     // needed because doing enumType foo:1
     // makes gcc loose enum info in the bitfield
     this.tree_code = type
-  } else if (type.name == "tree_node") {
+  } else if (type.name == "cgraph_node") {
     if (!type.attributes) {
       throw new Error (type.name + " doesn't have attributes defined. GTY as attribute stuff must be busted.")
     }
-    this.tree_node = type
+    this.cgraph_node = type
   } else if (type.name == "tree_code_class") {
     this.tree_code_class = type
     // this enum occurs last, so do the generation here
@@ -578,18 +584,18 @@ function process_type(type) {
   }
   // got all the ingradients, time to cook
   if (this.tree_code_class && this.tree_code
-      && this.tree_node && this.cplus_tree_code) {
+      && this.cgraph_node && this.cplus_tree_code) {
     for each (var m in this.tree_code_class.members) {
       unit.registerEnumValue (m.name, m.value)
     }
-    convert(unit, this.tree_node)
+    convert(unit, this.cgraph_node)
     var str = unit.toString()
     var fname = "treehydra_generated.c";
     write_file (fname, str)
     print ("Generated " + fname)
     unit.saveEnums ("enums.js")
     delete this.tree_code_class
-    delete this.tree_node
+    delete this.cgraph_node
     delete this.tree_code
   }
 }
