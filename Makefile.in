@@ -14,10 +14,10 @@ TREEHYDRA_OBJS= treehydra.o treehydra_builtins.o treehydra_plugin.o treehydra_ge
 DEPDIR = .deps
 
 gcc_dehydra.so: dehydra_plugin.o dehydra_builtins.o $(DEHYDRA_OBJS)
-	$(CC) $(LDFLAGS) -o $@ $+
+	$(CC) -o $@ $+ $(LDFLAGS)
 
 gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
-	$(CC) $(LDFLAGS) -o $@ $(TREEHYDRA_OBJS)
+	$(CC) -o $@ $(TREEHYDRA_OBJS) $(LDFLAGS)
 
 -include $(TREEHYDRA_OBJS:%.o=$(DEPDIR)/%.P)
 
