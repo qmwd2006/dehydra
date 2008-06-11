@@ -53,11 +53,19 @@ LazyTypedef.prototype.__defineGetter__('typedef', function get_typedef() {
   return dehydra_convert(this._originaltype);
 });
 LazyTypedef.prototype.__defineGetter__('name', function typedef_name() {
-  return decl_as_string(this._type);
+  return dehydra_typeString(this._type);
 });
 LazyTypedef.toString = function() {
   return "typedef " + this.name;
 };
+
+function dehydra_typeString(t)
+{
+  let ans = type_string(t);
+  if (ans.substr(0,6) == "const ")
+    ans = ans.substr(6);
+  return ans;
+}
 
 /* A type which has a .type subtype accessible via TREE_TYPE */
 function LazySubtype(type) {
@@ -240,7 +248,7 @@ function LazyDecl(type) {
 }
 LazyDecl.prototype = new LazySubtype();
 LazyDecl.prototype.__defineGetter__('name', function lazydecl_name() {
-  return decl_as_string(this._type);
+  return dehydra_typeString(this._type);
 });
 LazyDecl.prototype.__defineGetter__('isFunction', function lazydecl_isfunc() {
   return TREE_CODE(this._type) == FUNCTION_DECL;
@@ -363,17 +371,11 @@ function convert_template_arg(arg) {
   return "??";
 }
 
-function translate_attributes(a) {
-  let attrs = [];
-  for (; a; a = TREE_CHAIN (a)) {
-    let name = IDENTIFIER_POINTER (TREE_PURPOSE (a));
-    for (let v = TREE_VALUE(a); v; v = TREE_CHAIN (v)) {
-      let value = TREE_STRING_POINTER (TREE_VALUE (v));
-      attrs.push({'name': name,
-                  'value': value});
-    }
-  }
-  return attrs;
+function translate_attributes(atts) {
+  return [{'name': IDENTIFIER_POINTER(TREE_PURPOSE(a)),
+	   'value': [TREE_STRING_POINTER(TREE_VALUE(arg))
+		     for (arg in flatten_chain(TREE_VALUE(a)))]}
+	  for (a in flatten_chain(atts))];
 }
 
 function dehydra_typeString(t) {
