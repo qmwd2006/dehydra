@@ -53,19 +53,11 @@ LazyTypedef.prototype.__defineGetter__('typedef', function get_typedef() {
   return dehydra_convert(this._originaltype);
 });
 LazyTypedef.prototype.__defineGetter__('name', function typedef_name() {
-  return dehydra_typeString(this._type);
+  return decl_name(TYPE_NAME(this._type));
 });
 LazyTypedef.toString = function() {
   return "typedef " + this.name;
 };
-
-function dehydra_typeString(t)
-{
-  let ans = type_string(t);
-  if (ans.substr(0,6) == "const ")
-    ans = ans.substr(6);
-  return ans;
-}
 
 /* A type which has a .type subtype accessible via TREE_TYPE */
 function LazySubtype(type) {
@@ -96,7 +88,7 @@ LazyReference.prototype.toString = function () {
 function LazyRecord(type) {
   this._type = type;
   this.kind = class_key_or_enum_as_string(type);
-  if (!isAnonymousStruct(type)) this.name = dehydra_typeString(type);
+  if (!isAnonymousStruct(type)) this.name = decl_name(TYPE_NAME(type));
   if (!COMPLETE_TYPE_P(type))
     this.isIncomplete = true;
 }
@@ -184,7 +176,7 @@ LazyRecord.prototype.toString = function() {
 
 function LazyEnum(type) {
   this._type = type;
-  if (!isAnonymousStruct(type)) this.name = dehydra_typeString(type);
+  if (!isAnonymousStruct(type)) this.name = decl_name(TYPE_NAME(type));
   if (!COMPLETE_TYPE_P(type))
     this.isIncomplete = true;
 }
@@ -248,7 +240,7 @@ function LazyDecl(type) {
 }
 LazyDecl.prototype = new LazySubtype();
 LazyDecl.prototype.__defineGetter__('name', function lazydecl_name() {
-  return dehydra_typeString(this._type);
+  return decl_name(TYPE_NAME(this._type));
 });
 LazyDecl.prototype.__defineGetter__('isFunction', function lazydecl_isfunc() {
   return TREE_CODE(this._type) == FUNCTION_DECL;
@@ -332,7 +324,7 @@ function dehydra_convert2(type) {
     /* maybe should add an isTemplateParam? */
   case TEMPLATE_TYPE_PARM:
   case TYPENAME_TYPE:
-    return {'name': dehydra_typeString(type)};
+    return {'name': decl_name(TYPE_NAME(type))};
   case FUNCTION_TYPE:
   case METHOD_TYPE:
     return new LazyFunctionType(type);
@@ -378,36 +370,8 @@ function translate_attributes(atts) {
 	  for (a in flatten_chain(atts))];
 }
 
-function dehydra_typeString(t) {
-  let ans = type_string(t);
-  if (ans.substr(0, 6) == "const ") ans = ans.substr(6);
-  return ans;
-}
-
 // This is a rough port of the GCC function meant for the use of this
 // module only.
 function type_as_string(t) {
   return type_string(t);
 }
-
-// This is a rough port of the GCC function meant for the use of this
-// module only.
-function decl_as_string(t) {
-  let ans = decl_name(t);
-  if (TREE_CODE(t) == FUNCTION_DECL) {
-    let type = TREE_TYPE(t);
-    let args = TYPE_ARG_TYPES(type);
-    if (TREE_CODE(type) == METHOD_TYPE) {
-      // skip this
-      args = TREE_CHAIN(args);
-    }
-    // The 'if' checks for void_list_node. This isn't precisely what
-    // GCC checks but should be ok -- it's not like void is a real arg type.
-    let params = [ type_as_string(TREE_VALUE(pt)) 
-                   for (pt in flatten_chain(args)) 
-                     if (TREE_CODE(TREE_VALUE(pt)) != VOID_TYPE) ];
-    ans += '(' + params.join(',') + ')';
-  }
-  return ans;
-}
-
