@@ -90,7 +90,15 @@ let ESP = function() {
       }
     }
   };
-
+  
+  State.prototype.yieldPreconditions = function (variable) {
+    for each (let substate in this.substates.getValues()) {
+      ret = substate.get(variable)
+      if (ret)
+        yield [ret, substate.getBlame(variable)]
+    }
+  };
+  
   function meet (v1, v2, next_meet) {
     if (v1 === v2) return v1
     if (v1 === ESP.TOP) return v2
