@@ -85,7 +85,7 @@ void dehydra_init(Dehydra *this, const char *file) {
   /* register error handler */
   JS_SetErrorReporter (this->cx, ErrorReporter);
   xassert (JS_DefineFunctions (this->cx, this->globalObj, shell_functions));
-  if (dehydra_getToplevelFunction(this, "_print") == JSVAL_VOID) {
+  if (dehydra_getToplevelFunction(this, "include") == JSVAL_VOID) {
     fprintf (stderr, "Your version of spidermonkey has broken JS_DefineFunctions, upgrade it or ./configure with another version\n");
     exit(1);
   }
