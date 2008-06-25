@@ -53,7 +53,7 @@ LazyTypedef.prototype.__defineGetter__('typedef', function get_typedef() {
   return dehydra_convert(this._originaltype);
 });
 LazyTypedef.prototype.__defineGetter__('name', function typedef_name() {
-  return decl_name(TYPE_NAME(this._type));
+  return decl_name(this._type);
 });
 LazyTypedef.prototype.toString = function() {
   return "typedef " + this.name;
@@ -211,7 +211,7 @@ function LazyArray(type) {
 LazyArray.prototype = new LazySubtype();
 LazyArray.prototype.__defineGetter__('size', function array_size() {
   if (TYPE_DOMAIN(this._type)) {
-    let dtype = TYPE_DOMAIN(type);
+    let dtype = TYPE_DOMAIN(this._type);
     let min_t = TYPE_MIN_VALUE(dtype);
     let max_t = TYPE_MAX_VALUE(dtype);
     if (TREE_CODE(min_t) == INTEGER_CST && TREE_CODE(max_t) == INTEGER_CST)
@@ -220,7 +220,7 @@ LazyArray.prototype.__defineGetter__('size', function array_size() {
   return undefined;
 });
 LazyArray.prototype.toString = function() {
-  return this.type + " [" + this.size === undefined ? "" : this.size + "]";
+  return this.type + " [" + (this.size === undefined ? "" : this.size) + "]";
 };
 
 function LazyFunctionType(type) {
@@ -229,7 +229,7 @@ function LazyFunctionType(type) {
 LazyFunctionType.prototype = new LazySubtype();
 LazyFunctionType.prototype.__defineGetter__('parameters', function fntype_parameters() {
   return [dehydra_convert(TREE_VALUE(arg_type))
-	  for (arg_type in flatten_chain(TYPE_ARG_TYPES(this._type)))];
+	  for (arg_type in chain_function_arguments(this._type))];
 });
 LazyFunctionType.prototype.toString = function() {
   return this.type + " (*)(" + this.parameters.join(', ') + ")";
@@ -357,6 +357,13 @@ function tree_vec_iterate(t) {
   for (let i = 0; i < len; ++i) {
     yield TREE_VEC_ELT(t, i);
   }
+}
+
+function chain_function_arguments(fntype) {
+  for (let a = TYPE_ARG_TYPES(fntype);
+       TREE_CODE(TREE_VALUE(a)) != VOID_TYPE;
+       a = TREE_CHAIN(a))
+    yield a;
 }
 
 function convert_template_arg(arg) {
