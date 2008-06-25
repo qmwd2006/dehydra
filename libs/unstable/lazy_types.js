@@ -55,7 +55,7 @@ LazyTypedef.prototype.__defineGetter__('typedef', function get_typedef() {
 LazyTypedef.prototype.__defineGetter__('name', function typedef_name() {
   return decl_name(TYPE_NAME(this._type));
 });
-LazyTypedef.toString = function() {
+LazyTypedef.prototype.toString = function() {
   return "typedef " + this.name;
 };
 
@@ -72,7 +72,7 @@ function LazyPointer(type) {
 }
 LazyPointer.prototype = new LazySubtype();
 LazyPointer.prototype.isPointer = true;
-LazyPointer.toString = function() {
+LazyPointer.prototype.toString = function() {
   return this.type + " *";
 };
 
@@ -273,6 +273,9 @@ LazyDecl.prototype.__defineGetter__('isVirtual', function lazydecl_isvirt() {
 LazyDecl.prototype.__defineGetter__('isStatic', function lazydecl_isstatic() {
   return !!TREE_STATIC(this._type);
 });
+LazyDecl.prototype.toString = function() {
+  return "LazyDecl instance";
+}
 
 function LazyConstructor(type) {
   this._type = type;
@@ -285,6 +288,9 @@ LazyConstructor.prototype.isConstructor = true;
 LazyConstructor.prototype.__defineGetter__('methodOf', function lazycons_methodOf() {
   return dehydra_convert(TREE_TYPE(this._type));
 });
+LazyConstructor.prototype.toString = function() {
+  return "LazyConstructor instance";
+}
 
 // Convert the given GCC type object to a lazy Dehydra type
 // Users should call dehydra_convert.
