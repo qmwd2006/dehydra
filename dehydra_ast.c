@@ -79,6 +79,46 @@ resolve_virtual_fun_from_obj_type_ref (tree ref)
   return BV_FN (fun);
 }
 
+/* Does variable initialization and special case logic for stack
+   variables being initialized by a constructor.
+*/
+void dehydra_initVar (Dehydra *this, tree lval, tree init, bool rotate) {
+  unsigned int objPos = dehydra_getArrayLength (this, this->destArray);
+  JSObject *obj = dehydra_makeVar (this, lval, NULL, NULL);
+  xassert (obj);
+  /* now add constructor */
+  /* note here we are assuming that last addVar as the last declaration */
+  /* op 0 is an anonymous temporary..i think..so use last var instead */
+  if (!init) return;
+  jsval val = dehydra_attachNestedFields (this, obj, ASSIGN, init); 
+
+  JSObject *assignArray = JSVAL_TO_OBJECT (val);
+  unsigned int assignArrayLength = 
+    dehydra_getArrayLength (this, assignArray);
+  /* Ensure the world makes sense and nothing but except for a possible
+     constructor is in assignArray */
+  if (assignArrayLength != 1) return;
+
+  JS_GetElement (this->cx, assignArray, 0, &val);
+  JSObject *objConstructor = JSVAL_TO_OBJECT (val);
+  /* verify that we got a constructor */
+  JS_GetProperty(this->cx, objConstructor, DH_CONSTRUCTOR, &val);
+  if (val == JSVAL_TRUE) {
+    /* swap obj<->objConstructor if constructor */
+    dehydra_defineProperty (this, objConstructor, FIELD_OF, 
+                            OBJECT_TO_JSVAL (obj));
+    if (rotate) {
+      /* replace obj with objConstructor */
+      JS_DefineElement (this->cx, this->destArray, objPos,
+                        OBJECT_TO_JSVAL(objConstructor),
+                        NULL, NULL, JSPROP_ENUMERATE);
+      /* finish up by deleting assign */
+      JS_DeleteProperty (this->cx, obj, ASSIGN);
+    }
+  }
+}
+
+
 static const int enable_ast_debug = 0;
 static int statement_walker_depth = 0;
 static tree
@@ -104,11 +144,12 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       tree decl = GENERIC_TREE_OPERAND (e, 0);
       if (TREE_CODE (decl) != USING_DECL) {
         tree init = DECL_INITIAL (decl);
-        JSObject *obj = dehydra_addVar(this, decl, NULL);
+        dehydra_initVar (this, decl, init, false);      
+        /*JSObject *obj = dehydra_addVar(this, decl, NULL);
         dehydra_defineProperty(this, obj, DECL, JSVAL_TRUE);
         if (init) {
           dehydra_attachNestedFields(this, obj, ASSIGN, init);
-        }
+          }*/
       }
       *walk_subtrees = 0;
       break;
@@ -117,41 +158,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     {
       tree lval = GENERIC_TREE_OPERAND (*tp, 0);
       tree init = GENERIC_TREE_OPERAND(*tp, 1);
-      /* TODO dehydra_makeVar should check the entry prior to the one it adds
-         to see if it's the same thing and then nuke the new one and return old one
-         this will avoid gcc annoynace with
-         declar foo = boo; beaing broken up into declare foo; foo = boo;
-       */
-      unsigned int objPos = dehydra_getArrayLength (this, this->destArray);
-      JSObject *obj = dehydra_makeVar (this, lval, NULL, NULL);
-      xassert (obj);
-      /* now add constructor */
-      /* note here we are assuming that last addVar as the last declaration */
-      /* op 0 is an anonymous temporary..i think..so use last var instead */
-      jsval val = dehydra_attachNestedFields (this, obj, ASSIGN, init); 
-      /* Now do special case for stack variables being initialized by a constructor*/
-      JSObject *assignArray = JSVAL_TO_OBJECT (val);
-      unsigned int assignArrayLength = 
-        dehydra_getArrayLength (this, assignArray);
-      /* Ensure the world makes sense and nothing but except for a possible
-         constructor is in assignArray */
-      if (assignArrayLength == 1) {
-        JS_GetElement (this->cx, assignArray, 0, &val);
-        JSObject *objConstructor = JSVAL_TO_OBJECT (val);
-        /* verify that we got a constructor */
-        JS_GetProperty(this->cx, objConstructor, DH_CONSTRUCTOR, &val);
-        if (val == JSVAL_TRUE) {
-          /* swap obj<->objConstructor if constructor */
-          dehydra_defineProperty (this, objConstructor, FIELD_OF, 
-                                  OBJECT_TO_JSVAL (obj));
-          /* replace obj with objConstructor */
-          JS_DefineElement (this->cx, this->destArray, objPos,
-                            OBJECT_TO_JSVAL(objConstructor),
-                            NULL, NULL, JSPROP_ENUMERATE);
-          /* finish up by deleting assign */
-          JS_DeleteProperty (this->cx, obj, ASSIGN);
-        }
-      }
+      dehydra_initVar (this, lval, init, true);      
     }
     *walk_subtrees = 0;
     break;
