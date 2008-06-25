@@ -55,6 +55,9 @@ LazyTypedef.prototype.__defineGetter__('typedef', function get_typedef() {
 LazyTypedef.prototype.__defineGetter__('name', function typedef_name() {
   return decl_name(this._type);
 });
+LazyTypedef.prototype.__defineGetter__('attributes', function typedef_atts() {
+  return translate_attributes(DECL_ATTRIBUTES(this._type));
+});
 LazyTypedef.prototype.toString = function() {
   return "typedef " + this.name;
 };
