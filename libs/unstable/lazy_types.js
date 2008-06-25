@@ -361,7 +361,7 @@ function tree_vec_iterate(t) {
 
 function chain_function_arguments(fntype) {
   for (let a = TYPE_ARG_TYPES(fntype);
-       TREE_CODE(TREE_VALUE(a)) != VOID_TYPE;
+       a && TREE_CODE(TREE_VALUE(a)) != VOID_TYPE;
        a = TREE_CHAIN(a))
     yield a;
 }
