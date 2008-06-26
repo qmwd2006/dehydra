@@ -241,7 +241,15 @@ LazyFunctionType.prototype.toString = function() {
 function LazyDecl(type) {
   this._type = type;
 }
-LazyDecl.prototype = new LazySubtype();
+LazyDecl.prototype.__defineGetter__('loc', function lazydecl_loc() {
+  return location_of(this._type);
+});
+LazyDecl.prototype.__defineGetter__('attributes', function lazydecl_atts() {
+  return translate_attributes(DECL_ATTRIBUTES(this._type));
+});
+LazyDecl.prototype.__defineGetter__('type', function lazydecl_type() {
+  return dehydra_convert(TREE_TYPE(this._type));
+});
 LazyDecl.prototype.__defineGetter__('name', function lazydecl_name() {
   return decl_name(TYPE_NAME(this._type));
 });
@@ -255,12 +263,15 @@ LazyDecl.prototype.__defineGetter__('isConstructor', function lazydecl_construct
     return true;
   return false;
 });
-LazyDecl.prototype.__defineGetter__('methodOf', function lazydecl_methodof() {
+LazyDecl.prototype.__defineGetter__('isDestructor', function lazydecl_destructor() {
   if (!this.isFunction)
     return undefined;
-  if (DECL_CONSTRUCTOR_P(this._type) ||
-      TREE_CODE(TREE_TYPE(this._type)) == METHOD_TYPE)
-    return dehydra_convert(DECL_CONTEXT(this._type));
+  return isDestructor(this._type);
+});
+LazyDecl.prototype.__defineGetter__('memberOf', function lazydecl_methodof() {
+  let cx = DECL_CONTEXT(this._type);
+  if (cx && TREE_CODE(cx) == RECORD_TYPE)
+    return dehydra_convert(cx);
   return undefined;
 });
 LazyDecl.prototype.__defineGetter__('isVirtual', function lazydecl_isvirt() {
@@ -288,7 +299,7 @@ LazyConstructor.prototype.__defineGetter__('name', function lazycons_name() {
   return type_as_string(TREE_TYPE(this._type));
 });
 LazyConstructor.prototype.isConstructor = true;
-LazyConstructor.prototype.__defineGetter__('methodOf', function lazycons_methodOf() {
+LazyConstructor.prototype.__defineGetter__('memberOf', function lazycons_methodOf() {
   return dehydra_convert(TREE_TYPE(this._type));
 });
 LazyConstructor.prototype.toString = function() {
@@ -351,6 +362,10 @@ function isAnonymousStruct(t) {
   let name = TYPE_NAME(t);
   if (name) name = DECL_NAME(name);
   return !name || ANON_AGGRNAME_P(name);
+}
+
+function isDestructor(fndecl) {
+  return fndecl.decl_common.lang_specific.decl_flags.destructor_attr;
 }
 
 /** Iterator over a TREE_VEC. Note that this is entirely different from
