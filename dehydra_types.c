@@ -40,7 +40,7 @@ void dehydra_attachTypeAttributes (Dehydra *this, JSObject *obj, tree type) {
   dehydra_defineProperty (this, obj, ATTRIBUTES,
                           OBJECT_TO_JSVAL (destArray));
   /* first add attributes from template */
-  tree decl_template_info = TREE_CODE (type) == RECORD_TYPE 
+  tree decl_template_info = (isGPlusPlus() && TREE_CODE (type) == RECORD_TYPE)
     ? TYPE_TEMPLATE_INFO (type) : NULL_TREE;
   
   if (decl_template_info) {
@@ -127,12 +127,13 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
 
 static bool isAnonymousStruct(tree t) {
   tree name = TYPE_NAME (t);
-  if (name)
+  if (name && TREE_CODE (name) == TYPE_DECL)
     name = DECL_NAME (name);
   return !name || ANON_AGGRNAME_P (name);
 }
 
 static void dehydra_attachTemplateStuff (Dehydra *this, JSObject *parent, tree type) {
+  if (!isGPlusPlus()) return;
   /* for reference see dump_aggr_type */
   /* ugliest guard ever */
   tree type_name = TYPE_NAME (type);
@@ -386,7 +387,9 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
         tree dtype = TYPE_DOMAIN (type);
         tree max = TYPE_MAX_VALUE (dtype);
         dehydra_defineStringProperty (this, obj, SIZE,
-                                      expr_as_string (max, 0));
+                                      (max && TREE_CODE(max) == INTEGER_CST 
+                                       ? dehydra_intCstToString (max)
+                                       : expr_as_string (max, 0)));
       }
     next_type = TREE_TYPE (type);
     break;
