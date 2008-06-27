@@ -2,6 +2,10 @@
 #ifndef DEHYDRA_H
 #define DEHYDRA_H
 
+/* not sure if there is a better place to put these */
+#pragma weak global_namespace
+#pragma weak cp_walk_subtrees
+
 struct Dehydra {
   JSRuntime *rt;
   JSContext *cx;
@@ -52,7 +56,6 @@ JSObject *definePropertyObject (JSContext *cx, JSObject *obj,
                                JSObject *proto, uintN flags);
 
 jsuint dehydra_getArrayLength(Dehydra *this, JSObject *array);
-const char* dehydra_intCstToString(tree int_cst);
 void dehydra_defineProperty(Dehydra *this, JSObject *obj,
                             char const *name, jsval value);
 void dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
@@ -82,4 +85,5 @@ int dehydra_includeScript(Dehydra *this, const char *filename);
 void dehydra_appendToPath (Dehydra *this, const char *dir);
 void dehydra_appendDirnameToPath (Dehydra *this, const char *filename);
 FILE *dehydra_searchPath (Dehydra *this, const char *filename, char **realname);
+bool isGPlusPlus ();
 #endif

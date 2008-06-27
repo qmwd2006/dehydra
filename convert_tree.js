@@ -11,8 +11,19 @@ function getLine(fname, line) {
 
 function skipTypeWrappers (type) {
   while (type) {
-    if (type.typedef)
-      type = type.typedef
+    if (type.typedef) {
+      let next_type = type.typedef
+      /* Workaround: C frontend doesn't give names to structs declared with a typedef:
+       * typedef struct {...} foo; 
+       * on the other hand, that makes life easier for getPrefix() */
+      if (!next_type.name && type.name)
+        next_type.name = type.name
+      if(next_type.name == type.name) {
+        next_type.hasTypedef = true
+      }
+
+      type = next_type
+    }
     else if (type.type)
       type = type.type
     else
@@ -289,6 +300,19 @@ function makeStruct (fields, type_name, prefix, subFunctions, fn_level) {
 }
 
 function getPrefix (aggr) {
+  /* if there is a typedef that was encounted while skipTypeWrappers()ing
+   * then just use that...onfortunately C++ FE eats some typedefs
+   * This works great in C
+   */
+  if (aggr.hasTypedef)
+    return ""
+  /* if this is C FE, then we know what we want to know 
+   * aka no typedef...with C++ there might still be a need to use the typedef 
+   * that was eaten
+   */
+  if (sys.frontend == "GNU C") 
+    return aggr.kind
+  
   if (aggr.kind != "struct")
     return aggr.kind + " "
   var file = aggr.loc.file;
@@ -434,6 +458,7 @@ function convert (unit, aggr) {
 
   var oldloc = this._loc
   for each (var m in aggr_ls) {
+    this._loc = m.loc
     var name = stripPrefixRegexp.exec(m.name)[1]
     var type = skipTypeWrappers (m.type)
     var type_name = stripPrefixRegexp.exec(type.name)[1]
@@ -454,7 +479,6 @@ function convert (unit, aggr) {
       type = this.tree_code
       type_name = type.name
     }
-    this._loc = m.loc
     switch (m.name) {
     case "tree_type::symtab":
     case "emit_status::x_regno_reg_rtx":
@@ -498,7 +522,7 @@ function convert (unit, aggr) {
       cast = "char *"
       isPrimitive = true
       lengthExpr = undefined
-    } else if (!isGCCApple && location_tRegexp(m.type)) {
+    } else if (!isGCCApple && location_tRegexp(m.type.name)) {
       // This must appear before isUnsignedOrInt because location_t is an
       // int (if we are not using Apple GCC), but we want to convert it to a
       // formatted location.
@@ -578,25 +602,31 @@ function process_type(type) {
     this.cgraph_node = type
   } else if (type.name == "tree_code_class") {
     this.tree_code_class = type
-    // this enum occurs last, so do the generation here
   } else if (type.name == "cplus_tree_code") {
     this.cplus_tree_code = type
   }
-  // got all the ingradients, time to cook
-  if (this.tree_code_class && this.tree_code
-      && this.cgraph_node && this.cplus_tree_code) {
-    for each (var m in this.tree_code_class.members) {
-      unit.registerEnumValue (m.name, m.value)
-    }
-    convert(unit, this.cgraph_node)
-    var str = unit.toString()
-    var fname = "treehydra_generated.c";
-    write_file (fname, str)
-    print ("Generated " + fname)
-    unit.saveEnums ("enums.js")
-    delete this.tree_code_class
-    delete this.cgraph_node
-    delete this.tree_code
-  }
 }
 
+function input_end () {
+  // got all the ingradients, time to cook
+  if (!(this.tree_code_class && this.tree_code
+      && this.cgraph_node)) {
+    print ("Dehydra didn't find required types needed to generate Treehydra")
+    return
+  }
+  if (!this.cplus_tree_code)
+    this.cplus_tree_code = this.tree_code
+
+  for each (var m in this.tree_code_class.members) {
+    unit.registerEnumValue (m.name, m.value)
+  }
+  convert(unit, this.cgraph_node)
+  var str = unit.toString()
+  var fname = "treehydra_generated.c";
+  write_file (fname, str)
+  print ("Generated " + fname)
+  unit.saveEnums ("enums.js")
+  delete this.tree_code_class
+  delete this.cgraph_node
+  delete this.tree_code
+}
