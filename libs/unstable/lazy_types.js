@@ -251,7 +251,7 @@ LazyDecl.prototype.__defineGetter__('type', function lazydecl_type() {
   return dehydra_convert(TREE_TYPE(this._type));
 });
 LazyDecl.prototype.__defineGetter__('name', function lazydecl_name() {
-  return decl_name(TYPE_NAME(this._type));
+  return decl_name(this._type);
 });
 LazyDecl.prototype.__defineGetter__('isFunction', function lazydecl_isfunc() {
   return TREE_CODE(this._type) == FUNCTION_DECL;

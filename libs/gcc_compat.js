@@ -334,6 +334,13 @@ function COMPARISON_CLASS_P (node) {
   return TREE_CODE_CLASS (TREE_CODE (node)) == tcc_comparison;
 }
 
+function INDIRECT_REF_P(node) {
+  let code = TREE_CODE(node);
+  return code == INDIRECT_REF ||
+         code == ALIGN_INDIRECT_REF ||
+         code == MISALIGNED_INDIRECT_REF;
+}
+
 function DECL_ARGUMENTS(tree) {
   return tree.decl_non_common.arguments;
 }
