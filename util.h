@@ -8,5 +8,5 @@ static inline bool loc_is_unknown(location_t loc) {
   return !memcmp(&loc, &unk, sizeof(location_t));
 }
 char const * loc_as_string (location_t loc);
-
+const char* dehydra_intCstToString(tree int_cst);
 #endif

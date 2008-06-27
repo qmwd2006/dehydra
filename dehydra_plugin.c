@@ -57,7 +57,7 @@ static void process_record_or_union_type (tree c) {
   if (!COMPLETE_TYPE_P (c)) return;
 
   // bug 418170: don't process template specializations
-  if (CLASSTYPE_USE_TEMPLATE(c) == 2) return;
+  if (isGPlusPlus() && CLASSTYPE_USE_TEMPLATE(c) == 2) return;
   //fprintf(stderr, "class %s\n", type_as_string(c, 0));
 
   /* iterate over base classes to ensure they are visited first */
@@ -124,7 +124,7 @@ static void process_type(tree t) {
   // We need to process the original type first, because it will be the target
   // of the typedef field. This is the natural extension of the DFS strategy.
   tree type_decl = TYPE_NAME (t);
-  if (type_decl) {
+  if (type_decl && TREE_CODE (type_decl) == TYPE_DECL) {
     tree original_type = DECL_ORIGINAL_TYPE (type_decl);
     if (original_type) {
       process_type(original_type);
@@ -266,7 +266,8 @@ int gcc_plugin_post_parse() {
     free(q);
   }
   tree_queue_tail = NULL;
-  process(global_namespace);
+  if (global_namespace)
+    process(global_namespace);
 
   postGlobalNamespace = 1;
   return 0;
