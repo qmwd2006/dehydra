@@ -215,6 +215,10 @@ function IDENTIFIER_POINTER (node) {
   return node.identifier.id.str
 }
 
+function IDENTIFIER_OPNAME_P (node) {
+  return !!node.base.lang_flag_2;
+}
+
 function TREE_VEC_LENGTH (node) {
   return TREE_CHECK (node, TREE_VEC).vec.length
 }
