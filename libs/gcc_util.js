@@ -57,6 +57,15 @@ function cfg_bb_iterator(cfg) {
   }
 }
 
+/** Iterate over the statements in a STATEMENT_LIST */
+function iter_statement_list(sl)
+{
+  for (let ptr = STATEMENT_LIST_HEAD(sl);
+       ptr;
+       ptr = ptr.next)
+    yield ptr.stmt;
+}
+
 // BB Access
 
 /** Return a text label for a BB. 'cfg' is optional, and is used to add (entry) and (exit) to
