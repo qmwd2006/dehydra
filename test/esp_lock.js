@@ -9,7 +9,6 @@ include('gcc_print.js');
 include('unstable/adts.js');
 include('unstable/analysis.js');
 include('unstable/esp.js');
-include('unstable/liveness.js');
 
 var Zero_NonZero = {}
 include('unstable/zero_nonzero.js', Zero_NonZero);
@@ -37,26 +36,10 @@ function process_tree(fndecl) {
   if (TRACE_PERF) timer_start(fstring);
 
   let cfg = function_decl_cfg(fndecl);
-
-  // We do live variable analysis so that we can throw away 
-  // dead variables and make ESP faster.
-  {
-    let trace = 0;
-    let b = new LivenessAnalysis(cfg, trace);
-    b.run();
-    for (let bb in cfg_bb_iterator(cfg)) {
-      bb.keepVars = bb.stateIn;
-    }
-  }
-
-  {
-    let trace = TRACE_ESP;
-    // Link switches so ESP knows switch conditions.
-    let fts = link_switches(cfg);
-    let a = new LockCheck(cfg, fts, trace);
-    a.run();
-  }
   
+  let a = new LockCheck(cfg, TRACE_ESP);
+  a.run();
+
   if (TRACE_PERF) timer_stop(fstring);
 }
 
@@ -92,71 +75,34 @@ av.meet = function(v1, v2) {
   return Zero_NonZero.meet(v1, v2)
 }     
 
-function LockCheck(cfg, finally_tmps, trace) {
+function LockCheck(cfg, trace) {
   // Property variable list. ESP will track full tuples of abstract
   // states for these variables.
-  this.psvar_list = [];
+  let psvar_list = [];
 
   // Scan for mutex vars and put them in the list. This isn't particularly
   // complete, it just works for the example.
   let found = create_decl_set(); // ones we already found
   for (let bb in cfg_bb_iterator(cfg)) {
     for (let isn in bb_isn_iterator(bb)) {
-      if (TREE_CODE(isn) == CALL_EXPR) {
-        let fname = call_function_name(isn);
-        if (fname == CREATE_FUNCTION) {
-          let arg = call_arg(isn, 0);
-          if (DECL_P(arg)) {
-            if (!found.has(arg)) {
-              found.add(arg);
-              this.psvar_list.push(arg);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Add mutex vars to the keep list so we always keep them
-  for (let bb in cfg_bb_iterator(cfg)) {
-    for each (let v in this.psvar_list) {
-      bb.keepVars.add(v);
-    }
-  }
-
-  // Add finally temps so we can decode GCC destructor usages.
-  for each (let v in finally_tmps) {
-    this.psvar_list.push(v);
-  }
-
-  if (trace) {
-    print("PS vars");
-    for each (let v in this.psvar_list) {
-      print("    " + expr_display(v));
+      if (TREE_CODE(isn) != CALL_EXPR) continue
+      
+      let fname = call_function_name(isn);
+      if (fname != CREATE_FUNCTION) continue
+      
+      let arg = call_arg(isn, 0);
+      if (!DECL_P(arg) || found.has(arg)) continue;
+      
+      found.add(arg);
+      psvar_list.push(new ESP.PropVarSpec(arg, true));
     }
   }
 
   this.zeroNonzero = new Zero_NonZero.Zero_NonZero()
-  ESP.Analysis.call(this, cfg, this.psvar_list, av.meet, trace);
+  ESP.Analysis.call(this, cfg, psvar_list, av.meet, trace);
 }
 
 LockCheck.prototype = new ESP.Analysis;
-
-// Return start state to use in entry block of CFG. This must assign
-// a value to all property vars.
-LockCheck.prototype.startValues = function() {
-  let ans = create_decl_map();
-  for each (let p in this.psvar_list) {
-    ans.put(p, ESP.TOP);
-  }
-  return ans;
-}
-
-// Edge state update. We'll drop dead variables that aren't property
-// variables, although this is optional.
-LockCheck.prototype.updateEdgeState = function(e) {
-  e.state.keepOnly(e.dest.keepVars);
-}
 
 // State transition function. Mostly, we delegate everything to
 // another function as either an assignment or a call.
@@ -206,7 +152,6 @@ LockCheck.prototype.processLock = function(call, val, precond, blame, state) {
             location_of(blame));
   }
 };
-
 
 // Check that a precondition is held.
 LockCheck.prototype.checkPrecondition = function(vbl, precond, blame, state) {
