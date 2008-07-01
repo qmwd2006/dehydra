@@ -227,15 +227,20 @@ function expr_literal_int(expr) {
   }
 }
 
+function call_function_decl(expr) {
+  let fptr = CALL_EXPR_FN(expr);
+  if (fptr.tree_code() != ADDR_EXPR) return undefined;
+  let decl = TREE_OPERAND(fptr, 0);
+  if (decl.tree_code() != FUNCTION_DECL) return undefined;
+  return decl
+}
+
 /** The argument must be a CALL_EXPR. If it represents a call to a named
  * function (not a method or function pointer), then return the name.
  * Otherwise return undefined. */
 function call_function_name(expr) {
-  let fptr = CALL_EXPR_FN(expr);
-  if (TREE_CODE(fptr) != ADDR_EXPR) return undefined;
-  let name = TREE_OPERAND(fptr, 0);
-  if (TREE_CODE(name) != FUNCTION_DECL) return undefined;
-  return decl_name_string(name);
+  let decl = call_function_decl(expr)
+  return decl ? decl_name_string(decl) : undefined;
 }
 
 /** Return the ith argument of the function, counting from zero and including
