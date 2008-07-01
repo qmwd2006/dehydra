@@ -1,3 +1,4 @@
+include('unstable/liveness.js');
 /* ESP Program Analysis Library */
 
 /** Namespace */
@@ -288,12 +289,14 @@ let ESP = function() {
    *   http://portal.acm.org/citation.cfm?id=512538 
    *
    *   @param cfg     CFG to analyze
-   *   @param psvbls  Set of property state variables
+   *   @param psvbls  List of PropVarSpec objects describing state variables
    *   @param bottom  Abstract value representing TOP state
    *                  for a variable, i.e., any value
    *   @param trace   Debug tracing level: 0, 1, 2, or 3.
    */
   let Analysis = function(cfg, psvbls, meet, trace) {
+    // if used as prototype don't do anything
+    if (!cfg) return
     if (meet == undefined) {
       meet = this.default_meet;
       // Can't issue a warning here because instances used as prototypes
@@ -303,12 +306,44 @@ let ESP = function() {
     this.cfg = cfg;
     this.trace = trace;
     this.meet = meet;
-    this.psvbls = psvbls;
-    this.psvblset = create_decl_set(psvbls);
+    this.psvbls = [];
+    // We do live variable analysis so that we can throw away 
+    // dead variables and make ESP faster.
+    {
+      let trace = 0;
+      let b = new LivenessAnalysis(cfg, trace);
+      b.run();
+      for (let bb in cfg_bb_iterator(cfg)) {
+        bb.keepVars = bb.stateIn;
+      }
+    }
 
+    // Link switches so ESP knows switch conditions.
+    for each (let finally_tmp in link_switches(cfg)) {
+      // Add finally temps so we can decode GCC destructor usages.
+      this.psvbls.push(finally_tmp)  
+    }
+    
+    this.startValues = create_decl_map();
+    for each (let v in psvbls) {
+      this.psvbls.push(v.vbl);
+      this.startValues.put(v.vbl, v.initial_val)
+      if (!v.keep) continue
+      for (let bb in cfg_bb_iterator(cfg)) {
+        bb.keepVars.add(v.vbl);
+      }
+    }
+    this.psvblset = create_decl_set(this.psvbls);
+    
     // Resource limits -- Set these properties directly to control halting
     this.time_limit = undefined; // wall clock time in ms
     this.pass_limit = undefined; // number of passes per BB
+    if (trace) {
+      print("PS vars");
+      for each (let v in this.psvbls) {
+        print("    " + expr_display(v));
+      }
+    }
   };
 
 /** Run the solver to a fixed point. */
@@ -340,7 +375,7 @@ Analysis.prototype.run = function() {
   // Fixed point computation
   this.initStates(order, order[next]);
   this.cfg.x_entry_block_ptr.stateIn = 
-    new State(this, new Substate(this, this.startValues(), create_decl_map()));;
+    new State(this, new Substate(this, this.startValues, create_decl_map()));;
   if (this.trace) {
     print("initial state:");
     this.cfg.x_entry_block_ptr.stateIn.list();
@@ -520,19 +555,12 @@ Analysis.prototype.stateLabel = function(s) {
   };
 
   /** Customization function. Update the state on the given edge. This
-   *  is purely optional. It can be used for things like dropping state
-   *  on variables no longer of interest.
+   *  is purely optional, override it to disable.
+   *  This can be used for dropping state on variables no longer of interest.
    *  @param edge  CFG edge, with src and dest BB properties. There
    *               is also the .state property. */
   Analysis.prototype.updateEdgeState = function(edge) {
-  };
-
-  /** Customization function. Return a mapping of variables to abstract
-   *  values to use for the initialization state on entry to the CFG
-   *  being analyzed. This would normally be a map that represents
-   *  every variable having any possible value. */
-  Analysis.prototype.startValues = function(isn, state) {
-    throw new Error("abstract method");
+    edge.state.keepOnly(edge.dest.keepVars);
   };
 
   /** Default meet operator. Note that this version is unsound. If used,
@@ -551,8 +579,19 @@ Analysis.prototype.stateLabel = function(s) {
   Analysis.prototype.split = function(vbl, v) {
     return [ v ];
   }
+  
+  /**
+   * vbl: variable
+   * keep: don't drop variables due to liveness
+   * initial_val: initial lattice value..defaults to undefined which is ESP.TOP
+   */
+  PropVarSpec = function (vbl,keep,initial_val) {
+    this.vbl = vbl
+    this.keep = keep
+    this.initial_val = initial_val
+  }
 
-  return {Analysis: Analysis, TOP:undefined, NOT_REACHED:{}};
+  return {Analysis: Analysis, PropVarSpec: PropVarSpec, TOP:undefined, NOT_REACHED:{}};
 
 }();
 
