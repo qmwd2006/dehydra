@@ -26,8 +26,12 @@ function decl_name_string(decl) {
 }
 
 /** Return an iterator over the args of a FUNCTION_TYPE. */
-function function_type_args(type) {
-  return (TREE_VALUE(t) for (t in flatten_chain(TYPE_ARG_TYPES(type))));
+function function_type_args(fntype) {
+  for (let a = TYPE_ARG_TYPES(fntype);
+       a && TREE_CODE(TREE_VALUE(a)) != VOID_TYPE;
+       a = TREE_CHAIN(a)) {
+    yield TREE_VALUE(a);
+  }
 }
 
 /** Return the CFG of a FUNCTION_DECL. */
@@ -212,9 +216,8 @@ function rfunc_string(rfunc) {
 /** Iterator over parameters of a FUNCTION_DECL. */
 function function_decl_params(tree) {
   // void is used as a sentinel-type thing by GCC.
-  // TODO: actually, this doesn't seem to show up here. need to check again.
   return (v for (v in flatten_chain(DECL_ARGUMENTS(tree)))
-    if (TREE_CODE(TREE_TYPE(v)) != VOID_TYPE) );
+    if (v && TREE_CODE(TREE_TYPE(v)) != VOID_TYPE));
 }
 
 /** If the given node represents an integer literal expression, return
