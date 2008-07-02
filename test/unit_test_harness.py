@@ -59,14 +59,14 @@ def stderr_has(*args):
     def checker(test, ec, out, err):
         for e in args:
             if err.find(e) == -1:
-                test.fail("Expected '%s' in error output; not found"%e)
+                test.fail("Expected '%s' in error output; not found. stderr:%s"%(e,err))
     return checker
 
 def stdout_has(*args):
     def checker(test, ec, out, err):
         for e in args:
             if out.find(e) == -1:
-                test.fail("Expected '%s' in output; not found"%e)
+                test.fail("Expected '%s' in output; not found. stdout:%s"%(e, out))
     return checker
 
 def stderr_empty(test, ec, out, err):
