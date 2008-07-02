@@ -231,8 +231,8 @@ function LazyFunctionType(type) {
 }
 LazyFunctionType.prototype = new LazySubtype();
 LazyFunctionType.prototype.__defineGetter__('parameters', function fntype_parameters() {
-  return [dehydra_convert(TREE_VALUE(arg_type))
-	  for (arg_type in chain_function_arguments(this._type))];
+  return [dehydra_convert(arg_type)
+	  for (arg_type in function_type_args(this._type))];
 });
 LazyFunctionType.prototype.toString = function() {
   return this.type + " (*)(" + this.parameters.join(', ') + ")";
@@ -375,13 +375,6 @@ function tree_vec_iterate(t) {
   for (let i = 0; i < len; ++i) {
     yield TREE_VEC_ELT(t, i);
   }
-}
-
-function chain_function_arguments(fntype) {
-  for (let a = TYPE_ARG_TYPES(fntype);
-       a && TREE_CODE(TREE_VALUE(a)) != VOID_TYPE;
-       a = TREE_CHAIN(a))
-    yield a;
 }
 
 function convert_template_arg(arg) {
