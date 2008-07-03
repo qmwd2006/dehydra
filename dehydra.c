@@ -394,7 +394,15 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
       dehydra_defineProperty (this, obj, ATTRIBUTES, OBJECT_TO_JSVAL (tmp));
       dehydra_addAttributes (this, tmp, attributes);
     }
-    if (TREE_STATIC (v))
+    
+    /* Following code handles 3 different meanings of static */
+    /* static vars */
+    if ((TREE_CODE (v) == VAR_DECL && TREE_STATIC (v)) 
+        /* static functions */
+        || (TREE_CODE (v) == FUNCTION_DECL && !TREE_PUBLIC (v)) 
+        /* static class members */
+        || (TREE_CODE (TREE_TYPE(v)) == FUNCTION_TYPE && DECL_CONTEXT (v) 
+            && TREE_CODE (DECL_CONTEXT(v)) == RECORD_TYPE))
       dehydra_defineProperty (this, obj, STATIC, JSVAL_TRUE);
   } else if (TREE_CODE(v) == CONSTRUCTOR) {
     /* Special case for this node type */
