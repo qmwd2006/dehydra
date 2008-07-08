@@ -126,11 +126,15 @@ let ESP = function() {
   /** Update the state by assigning the given abstract value to
    * the given variable. */
   State.prototype.assignValue = function(vbl, value, blame) {
-    // TODO use lattice?
-    this.update(function(ss) {
-      ss.assignValue(vbl, value, blame);
-      return [ss];
-    });
+    if (value == ESP.TOP) {
+      this.remove(vbl, blame);
+    } else {
+      // TODO use lattice?
+      this.update(function(ss) {
+        ss.assignValue(vbl, value, blame);
+        return [ss];
+      });
+    }
   };
 
   /** Update the state to reflect the assignment lhs := rhs, where
@@ -398,13 +402,19 @@ Analysis.prototype.run = function() {
     readyCount -= 1;
     if (this.trace) print("update bb: " + bb_label(this.cfg, bb));
 
+    // Process bb
+    if (bb != this.cfg.x_entry_block_ptr) {
+      if (!this.mergeStateIn(bb)) {
+        if (this.trace) print("  in state unchanged");
+        continue;
+      }
+    }
+
     ++bb.pass_count;
     if (bb.pass_count > this.pass_limit)
       throw new Error("ESP halting: BB pass limit exceeded (" +
                       bb_label(bb) + " on pass " + bb.pass_count + ")");
 
-    // Process bb
-    if (bb != this.cfg.x_entry_block_ptr) this.mergeStateIn(bb);
     if (this.trace) {
       print("  in state:");
       bb.stateIn.list();
@@ -476,7 +486,8 @@ Analysis.prototype.initStates = function(bbs, exit_bb) {
   }
 };
 
-/** Set the stateIn to be the merge of all the pred stateOut values. */
+/** Set the stateIn to be the merge of all the pred stateOut values. 
+ *  Return true if the result is different from the original stateIn. */
 Analysis.prototype.mergeStateIn = function(bb) {
   let state = this.top();
   for each (let e in bb_pred_edges(bb)) {
@@ -486,7 +497,9 @@ Analysis.prototype.mergeStateIn = function(bb) {
     }
     this.merge(state, e.state);
   }
+  let ans = !bb.stateIn.equals(state);
   bb.stateIn = state;
+  return ans;
 };
 
 /** Run the flow functions for a basic block, updating stateOut from
