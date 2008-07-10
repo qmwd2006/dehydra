@@ -57,14 +57,6 @@ static const char *FRONTEND = "frontend";
 static char *my_dirname (char *path);
 
 void dehydra_init(Dehydra *this, const char *file) {
-  static JSClass global_class = {
-    "global", JSCLASS_NEW_RESOLVE,
-    JS_PropertyStub,  JS_PropertyStub,
-    JS_PropertyStub,  JS_PropertyStub,
-    JS_EnumerateStub, JS_ResolveStub,
-    JS_ConvertStub,   JS_FinalizeStub
-  };
-
   static JSFunctionSpec shell_functions[] = {
     {"_print",          Print,          0},
     {"include",         Include,        1},
@@ -82,7 +74,7 @@ void dehydra_init(Dehydra *this, const char *file) {
 
   JS_SetContextPrivate (this->cx, this);
   
-  this->globalObj = JS_NewObject (this->cx, &global_class, 0, 0);
+  this->globalObj = JS_NewObject (this->cx, NULL, 0, 0);
   JS_InitStandardClasses (this->cx, this->globalObj);
   /* register error handler */
   JS_SetErrorReporter (this->cx, ErrorReporter);
@@ -350,36 +342,59 @@ void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
   }
 }
 
+static void dehydra_setName (Dehydra *this, JSObject *obj, tree v) {
+  char const *name = NULL;
+    if (DECL_NAME(v)) {
+      name = decl_as_string (v, 0);
+    } else {
+      static char buf[128];
+      sprintf(buf, " _%d", DECL_UID (v));
+      switch (TREE_CODE (v)) {
+      case CONST_DECL: 
+        buf[0] = 'C';
+        break;
+      case RESULT_DECL:
+        buf[0] = 'R';
+        break;
+      default:
+        buf[0] = 'D';
+      }
+      name = buf;
+    }
+    dehydra_defineStringProperty (this, obj, NAME, 
+                                  name);
+}
+
 /* Add a Dehydra variable to the given parent array corresponding to
  * the GCC tree v, which must represent a declaration (e.g., v can
  * be a DECL_*. */
 JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   if (!parentArray) parentArray = this->destArray;
   unsigned int length = dehydra_getArrayLength (this, parentArray);
-  JSObject *obj = JS_ConstructObject (this->cx, NULL, NULL, 
+  JSObject *obj = JS_NewObject (this->cx, NULL, NULL, 
                                       this->globalObj);
   //append object to array(rooting it)
   JS_DefineElement (this->cx, parentArray, length,
-                    OBJECT_TO_JSVAL(obj),
+                    OBJECT_TO_JSVAL (obj),
                     NULL, NULL, JSPROP_ENUMERATE);
   if (!v) return obj;
-  if (DECL_P(v)) {
-    /* Common case */
-    char const *name = decl_as_string (v, 0);
-    dehydra_defineStringProperty (this, obj, NAME, 
-                                  name);
 
-    tree decl = DECL_CONTEXT(v);
-    if (decl && TREE_CODE(decl) == RECORD_TYPE) {
+  /* Common case */
+  if (DECL_P(v)) {
+    dehydra_setName (this, obj, v);
+    tree decl_context = DECL_CONTEXT(v);
+    if (decl_context && TREE_CODE(decl_context) == RECORD_TYPE) {
       dehydra_defineProperty (this, obj, MEMBER_OF, 
-                              dehydra_convertType (this, decl));
+                              dehydra_convertType (this, decl_context));
     }
 
     tree typ = TREE_TYPE (v);
     if (TREE_CODE (v) == FUNCTION_DECL) {
       dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
-      if (DECL_CONSTRUCTOR_P (v))
+
+      if (DECL_CONSTRUCTOR_P (v)) {
         dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
+      }
 
       if (DECL_PURE_VIRTUAL_P (v))
         dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
@@ -407,8 +422,9 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   } else if (TREE_CODE(v) == CONSTRUCTOR) {
     /* Special case for this node type */
     tree type = TREE_TYPE(v);
+    char const *name = type_as_string(type, 0);
     dehydra_defineStringProperty(this, obj, NAME, 
-                                 type_as_string(type, 0));
+                                 name);
     dehydra_defineProperty(this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
     dehydra_defineProperty(this, obj, MEMBER_OF, 
                            dehydra_convertType(this, type));
@@ -517,7 +533,7 @@ void dehydra_visitDecl (Dehydra *this, tree d) {
 }
 
 void dehydra_print(Dehydra *this, jsval arg) {
-  jsval print = dehydra_getToplevelFunction(this, "user_print");
+  jsval print = dehydra_getToplevelFunction(this, "print");
   if (print == JSVAL_VOID) {
     fprintf(stderr, "function user_print() not defined in JS\n");
     return;
