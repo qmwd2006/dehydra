@@ -49,7 +49,7 @@ static inline tree aggr_init_expr_args(tree t) {
   return args;
 }
 #else
-static const int aggr_init_expr_first_param_index = 4;
+static const int aggr_init_expr_first_param_index = 3;
 static inline tree aggr_init_expr_args(tree t) { return t; }
 static inline int aggr_init_expr_param_count(tree t) {
   return aggr_init_expr_nargs(t) + 3;
