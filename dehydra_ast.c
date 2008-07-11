@@ -37,6 +37,7 @@ JSObject* dehydra_makeVar (Dehydra *this, tree t,
   return obj;
 }
 
+#ifndef DEHYDRA_INPLACE_ARGS
 static void 
 dehydra_fcallDoArgs (Dehydra *this, JSObject *obj, tree expr,
                                  int i, int count) {
@@ -51,6 +52,7 @@ dehydra_fcallDoArgs (Dehydra *this, JSObject *obj, tree expr,
   }
   this->destArray = tmp;
 }
+#endif
 
 /* messes with dest-array, returns the  */
 static jsval dehydra_attachNestedFields(Dehydra *this, JSObject *obj, char const *name, tree t) {
@@ -118,6 +120,36 @@ void dehydra_initVar (Dehydra *this, tree lval, tree init, bool rotate) {
   }
 }
 
+JSObject* dehydra_call_or_aggr_init_expr (Dehydra *this, tree t) {
+  TREE_CHECK2(t, CALL_EXPR, AGGR_INIT_EXPR);
+  tree fn = TREE_OPERAND (t, 1);
+  if (TREE_CODE (fn) == ADDR_EXPR)
+    fn = TREE_OPERAND (fn, 0);
+
+  int offset = 0;
+  JSObject *obj = dehydra_makeVar (this, fn, NULL, NULL);
+  dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
+  tree args;
+  if (TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE) {
+    // need to generalize this arg_init_expr
+    tree o = call_expr_first_arg(t);
+    ++offset;
+    xassert (dehydra_makeVar (this, o, FIELD_OF, obj));
+    // same as above
+    args = call_expr_rest_args(t);
+  }
+#ifdef DEHYDRA_INPLACE_ARGS
+  else {
+    args = call_expr_args(t);
+  }
+  dehydra_attachNestedFields(this, obj, ARGUMENTS, args);
+#else
+  dehydra_fcallDoArgs (this, obj, t,
+                       call_expr_first_param_index + offset,
+                       TREE_OPERAND_LENGTH(t));
+#endif
+  return obj;
+}
 
 static const int enable_ast_debug = 0;
 static int statement_walker_depth = 0;
@@ -175,18 +207,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case AGGR_INIT_EXPR:
     {
       /* C++ constructor invocation. */
-      tree fn = AGGR_INIT_EXPR_FN(*tp);
-      JSObject *obj = dehydra_makeVar (this, fn, NULL, NULL);
-      dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
-#ifdef DEHYDRA_INPLACE_ARGS
-      // the arguments are not operands but a chain, like in apple gcc42
-      dehydra_attachNestedFields(this, obj, ARGUMENTS,
-				 aggr_init_expr_args(*tp));
-#else
-      // the arguments are operands
-      dehydra_fcallDoArgs (this, obj, *tp, aggr_init_expr_first_param_index,
-			   TREE_OPERAND_LENGTH(*tp));
-#endif
+      dehydra_call_or_aggr_init_expr (this, *tp);
       *walk_subtrees = 0;
       break;
     }
@@ -224,34 +245,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     break;
   case CALL_EXPR:
     {
-      tree fn = CALL_EXPR_FN (*tp);
-      if (TREE_CODE (fn) == ADDR_EXPR)
-        fn = TREE_OPERAND (fn, 0);
-
-      int offset = 0;
-      JSObject *obj = dehydra_makeVar (this, fn, NULL, NULL);
-      dehydra_defineProperty (this, obj, FCALL, JSVAL_TRUE);
-      tree args;
-      if (TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE) {
-        tree o = call_expr_first_arg(*tp);
-        ++offset;
-        xassert (dehydra_makeVar (this, o, FIELD_OF, obj));
-	args = call_expr_rest_args(*tp);
-      }
-      else {
-#ifdef DEHYDRA_INPLACE_ARGS
-	args = call_expr_args(*tp);
-#else
-	args = *tp; // confusing call_expr_args is defined in gcc
-#endif
-      }
-#ifdef DEHYDRA_INPLACE_ARGS
-        dehydra_attachNestedFields(this, obj, ARGUMENTS, args);
-#else
-        dehydra_fcallDoArgs (this, obj, *tp,
-                            call_expr_first_param_index + offset,
-                            TREE_OPERAND_LENGTH(*tp));
-#endif
+      dehydra_call_or_aggr_init_expr (this, *tp);
       *walk_subtrees = 0;
       break;
     }
@@ -309,19 +303,13 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       *walk_subtrees = 0;
       break;
     }
-  case VAR_DECL:
-  case FUNCTION_DECL:
-  case PARM_DECL:
-    /* result decl is a funky special case return values*/
-  case RESULT_DECL:
-    {
-      dehydra_addVar(this, *tp, NULL);
-      break;
-    }
     /* this isn't magic, but breaks pretty-printing */
   case LABEL_DECL:
     break;
   default:
+    if (DECL_P(*tp)) {
+      dehydra_addVar (this, *tp, NULL);
+    }
     break;
   }
   if (enable_ast_debug) {
