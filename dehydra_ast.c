@@ -307,7 +307,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case LABEL_DECL:
     break;
   default:
-    if (DECL_P(*tp)) {
+    if (code != NAMESPACE_DECL && DECL_P(*tp)) {
       dehydra_addVar (this, *tp, NULL);
     }
     break;
