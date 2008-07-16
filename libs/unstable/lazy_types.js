@@ -111,20 +111,16 @@ LazyRecord.prototype.__defineGetter__('members', function record_members() {
     if (TREE_CODE(func) == TEMPLATE_DECL) continue;
     members.push(dehydra_convert(func));
   }
-  return members;
-});
-LazyRecord.prototype.__defineGetter__('fields', function record_fields() {
-  let fields = [];
   for (let field in flatten_chain(TYPE_FIELDS(this._type))) {
     if (DECL_ARTIFICIAL(field) && !DECL_IMPLICIT_TYPEDEF_P(field)) continue;
     // ignore typedef of self field
     // my theory is that the guard above takes care of this one too
     if (TREE_CODE (field) == TYPE_DECL 
-        && TREE_TYPE (field) == record_type) continue;
+        && TREE_TYPE (field) == this._type) continue;
     if (TREE_CODE (field) != FIELD_DECL) continue;
-    field.push(dehydra_var(func));
+    members.push(dehydra_convert(field));
   }
-  return fields;
+  return members;
 });
 LazyRecord.prototype.__defineGetter__('size_of', function record_size() {
   return TREE_INT_CST_LOW(TYPE_SIZE_UNIT(this._type));
@@ -196,7 +192,7 @@ LazyEnum.prototype.toString = function() {
 
 function LazyNumber(type, type_decl) {
   if (!type_decl) {
-    this.bitfieldbits = TYPE_PRECISION(type);
+    this.precision = TYPE_PRECISION(type);
     type_decl = TYPE_NAME(type);
   }
   if (type_decl)
