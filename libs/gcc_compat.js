@@ -453,8 +453,13 @@ let UNKNOWN_LOCATION = undefined;
 function location_of(t) {
   if (TREE_CODE (t) == PARM_DECL && DECL_CONTEXT (t))
     t = DECL_CONTEXT (t);
-  else if (TYPE_P (t))
+  else if (TYPE_P (t)) {
     t = TYPE_MAIN_DECL (t);
+    /* pointer and reference types don't have a TYPE_MAIN_DECL, or a location */
+    if (!t)
+      return UNKNOWN_LOCATION;
+  }
+  
   // TODO disabling this for now
   //else if (TREE_CODE (t) == OVERLOAD)
   //  t = OVL_FUNCTION (t);
