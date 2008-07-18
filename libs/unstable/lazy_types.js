@@ -142,11 +142,11 @@ LazyRecord.prototype.__defineGetter__('template', function record_args() {
   if (!(decl_artificial &&
         TYPE_LANG_SPECIFIC (this._type) &&
 	CLASSTYPE_TEMPLATE_INFO (this._type) &&
-        (TREE_CODE (CLASSTYPE_TI_TEMPLATE (type)) != TEMPLATE_DECL ||
-         PRIMARY_TEMPLATE_P (CLASSTYPE_TI_TEMPLATE (type)))))
+        (TREE_CODE (CLASSTYPE_TI_TEMPLATE (this._type)) != TEMPLATE_DECL ||
+         PRIMARY_TEMPLATE_P (CLASSTYPE_TI_TEMPLATE (this._type)))))
     return undefined;
 
-  let tpl = CLASSTYPE_TI_TEMPLATE (type);
+  let tpl = CLASSTYPE_TI_TEMPLATE (this._type);
   if (!tpl) return undefined;
 
   let template = {};
@@ -284,7 +284,7 @@ LazyDecl.prototype.__defineGetter__('isStatic', function lazydecl_isstatic() {
   return !!TREE_STATIC(this._type);
 });
 LazyDecl.prototype.toString = function() {
-  return "LazyDecl instance";
+  return this.name;
 }
 
 function LazyConstructor(type) {
