@@ -251,6 +251,10 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       break;
     }
   case MODIFY_EXPR:
+  case PREDECREMENT_EXPR:
+  case PREINCREMENT_EXPR:
+  case POSTDECREMENT_EXPR:
+  case POSTINCREMENT_EXPR:
     {
       JSObject *obj = dehydra_makeVar (this, GENERIC_TREE_OPERAND (*tp, 0),
                                        NULL, NULL);
