@@ -32,6 +32,7 @@ static const char *ACCESS = "access";
 static const char *PUBLIC = "public";
 static const char *PRIVATE = "private";
 static const char *PROTECTED = "protected";
+static const char *ISTYPENAME = "isTypename";
 
 static struct pointer_map_t *typeMap = NULL;
 
@@ -165,7 +166,7 @@ static void dehydra_attachTemplateStuff (Dehydra *this, JSObject *parent, tree t
   if (!tpl) return;
 
   JSObject *obj = 
-    definePropertyObject(this->cx, parent, "template", NULL, NULL, 
+    definePropertyObject(this->cx, parent, TEMPLATE, NULL, NULL, 
                          JSPROP_ENUMERATE);
   
   while (DECL_TEMPLATE_INFO (tpl))
@@ -391,6 +392,7 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   case TEMPLATE_TYPE_PARM:
   case TYPENAME_TYPE:
     dehydra_defineStringProperty (this, obj, NAME, dehydra_typeString(type));
+    dehydra_defineProperty (this, obj, ISTYPENAME, JSVAL_TRUE);
     break;
   case FUNCTION_TYPE:
   case METHOD_TYPE:

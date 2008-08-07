@@ -21,11 +21,11 @@
 #include "util.h"
 #include "dehydra.h"
 #include "dehydra_types.h"
+#include "dehydra_ast.h"
 
 const char *NAME = "name";
 const char *LOC = "loc";
 const char *BASES = "bases";
-const char *DECL = "isDecl";
 const char *ASSIGN = "assign";
 const char *VALUE = "value";
 const char *TYPE = "type";
@@ -46,6 +46,7 @@ const char *SIGNED = "isSigned";
 const char *MIN_VALUE = "min";
 const char *MAX_VALUE = "max";
 const char *PRECISION = "precision";
+const char *TEMPLATE = "template";
 static const char *STATIC = "isStatic";
 static const char *VIRTUAL = "isVirtual";
 static const char *SYS = "sys";
@@ -389,7 +390,8 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
     }
 
     tree typ = TREE_TYPE (v);
-    if (TREE_CODE (v) == FUNCTION_DECL) {
+    if (TREE_CODE (v) == FUNCTION_DECL ||
+        DECL_FUNCTION_TEMPLATE_P (v)) {
       dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
 
       if (DECL_CONSTRUCTOR_P (v)) {
@@ -400,6 +402,20 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
         dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
       else if (DECL_VIRTUAL_P (v))
         dehydra_defineProperty (this, obj, VIRTUAL, JSVAL_TRUE);
+
+      if (DECL_FUNCTION_TEMPLATE_P (v)) {
+        tree args = DECL_INNERMOST_TEMPLATE_PARMS (v);
+        int len = TREE_VEC_LENGTH (args);
+
+        JSObject *template = JS_NewArrayObject (this->cx, 0, NULL);
+        dehydra_defineProperty (this, obj, TEMPLATE,
+                                OBJECT_TO_JSVAL (template));
+
+        int ix;
+        for (ix = 0; ix != len; ++ix) {
+          dehydra_addVar(this, TREE_VALUE(TREE_VEC_ELT(args, ix)), template);
+        }
+      }
     }
     dehydra_defineProperty (this, obj, TYPE, 
                             dehydra_convertType (this, typ));
