@@ -28,6 +28,10 @@ static const char *TYPEDEF = "typedef";
 static const char *ARRAY = "isArray";
 static const char *SIZE = "size";
 static const char *INCOMPLETE = "isIncomplete";
+static const char *ACCESS = "access";
+static const char *PUBLIC = "public";
+static const char *PRIVATE = "private";
+static const char *PROTECTED = "protected";
 
 static struct pointer_map_t *typeMap = NULL;
 
@@ -75,28 +79,40 @@ static void dehydra_attachEnumStuff (Dehydra *this, JSObject *objEnum, tree enum
                               INT_TO_JSVAL (value));
     }
 }
+
+static void dehydra_addClassMember (Dehydra *this, tree decl, JSObject *memberArray) {
+  JSObject *m = dehydra_addVar (this, decl, memberArray);
+  dehydra_defineStringProperty (this, m, ACCESS,
+                                TREE_PRIVATE (decl) ? PRIVATE :
+                                (TREE_PROTECTED (decl) ? PROTECTED
+                                 : PUBLIC));
+}
+
 /* Note that this handles class|struct|union nodes */
 static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree record_type) {
   JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);
   tree binfo = TYPE_BINFO (record_type);
   
   int n_baselinks = binfo ? BINFO_N_BASE_BINFOS (binfo) : 0;
+  if (n_baselinks)
+    dehydra_defineProperty (this, objClass, BASES, 
+                            OBJECT_TO_JSVAL(destArray));
+
+  VEC(tree,gc) *accesses = BINFO_BASE_ACCESSES (binfo);
   int i;
   for (i = 0; i < n_baselinks; i++)
     {
-      tree base_binfo;
-      jsval baseval;
-
-      if (!i)
-        dehydra_defineProperty (this, objClass, BASES, 
-                                OBJECT_TO_JSVAL(destArray));
-
-      base_binfo = BINFO_BASE_BINFO (binfo, i);
-      baseval = dehydra_convert(this, BINFO_TYPE(base_binfo));
-
+      JSObject *obj = JS_NewObject(this->cx, NULL, 0, 0);
       JS_DefineElement (this->cx, destArray, i, 
-                        baseval,
+                        OBJECT_TO_JSVAL (obj),
                         NULL, NULL, JSPROP_ENUMERATE);
+      tree access = VEC_index (tree, accesses, i);
+      dehydra_defineStringProperty (this, obj, ACCESS, IDENTIFIER_POINTER(access));
+      
+      tree base_binfo = BINFO_BASE_BINFO (binfo, i);
+      jsval base_type = 
+        OBJECT_TO_JSVAL (dehydra_convert(this, BINFO_TYPE(base_binfo)));
+      dehydra_defineProperty (this, obj, TYPE, base_type);
     }
   
   destArray = JS_NewArrayObject(this->cx, 0, NULL);
@@ -108,7 +124,7 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
     if (DECL_ARTIFICIAL(func)) continue;
     /* Don't output the cloned functions.  */
     if (DECL_CLONED_FUNCTION_P (func)) continue;
-    dehydra_addVar (this, func, destArray);
+    dehydra_addClassMember (this, func, destArray);
   }
 
   tree field;
@@ -119,7 +135,7 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
     if (TREE_CODE (field) == TYPE_DECL 
         && TREE_TYPE (field) == record_type) continue;
     if (TREE_CODE (field) != FIELD_DECL) continue;
-    dehydra_addVar (this, field, destArray);
+    dehydra_addClassMember (this, field, destArray);
   }
   dehydra_defineProperty (this, objClass, "size_of", 
                           INT_TO_JSVAL (host_integerp (TYPE_SIZE_UNIT (record_type), 1)));
