@@ -278,6 +278,9 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
   if (DECL_ARTIFICIAL(fndecl)) return;
   
   dehydra_cp_pre_genericize(&dehydra, fndecl, postGlobalNamespace);
+#ifdef TREEHYDRA_PLUGIN
+  treehydra_cp_pre_genericize(&dehydra, fndecl);
+#endif
 }
 
 void gcc_plugin_finish_struct (tree t) {
