@@ -98,7 +98,7 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
     dehydra_defineProperty (this, objClass, BASES, 
                             OBJECT_TO_JSVAL(destArray));
 
-  VEC(tree,gc) *accesses = BINFO_BASE_ACCESSES (binfo);
+  VEC(tree,gc) *accesses = binfo ? BINFO_BASE_ACCESSES (binfo) : 0;
   int i;
   for (i = 0; i < n_baselinks; i++)
     {
