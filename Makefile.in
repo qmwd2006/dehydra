@@ -4,7 +4,7 @@ INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc 
 	-I$(GCCDIR)/gcc/. -I$(GCCDIR)/gcc/../include -I$(GCCDIR)/gcc/../libcpp/include \
 	-I$(GCCDIR)/gcc/../libdecnumber -I$(GCCDIR)/gcc/../libdecnumber/bid \
 	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp \
-	-I$(SM_INCLUDE) -I/$(HOME)/local/include/js/ 
+	-I$(SM_INCLUDE) -I$(SM_LIBDIR) -I/$(HOME)/local/include/js/ 
 #-I/$(HOME)/local/include/js/ 
 CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) $(CONFIGURE_CFLAGS)
 COMMON=dehydra.o util.o dehydra_types.o
