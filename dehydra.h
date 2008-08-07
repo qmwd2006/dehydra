@@ -48,6 +48,7 @@ extern const char *UNSIGNED;
 extern const char *SIGNED;
 extern const char *MIN_VALUE;
 extern const char *MAX_VALUE;
+extern const char *TEMPLATE;
 
 /* Drop-in replacement for JS_DefineObject, required as a workaround
  * because JS_DefineObject always sets the parent property. */
