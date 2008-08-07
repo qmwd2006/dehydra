@@ -258,8 +258,9 @@ void treehydra_plugin_pass (Dehydra *this) {
 
     jsobjMap = pointer_map_create ();   
 
-    jsval fnval = get_existing_or_lazy (this, lazy_tree_node, current_function_decl, this->globalObj, "current_function_decl");
-    //cgraph_nodes
+    jsval fnval = 
+      get_existing_or_lazy (this, lazy_tree_node, current_function_decl,
+                            this->globalObj, "current_function_decl");
     xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
                                    1, &fnval, &rval));
     JS_DeleteProperty (this->cx, this->globalObj, "current_function_decl");
@@ -269,7 +270,9 @@ void treehydra_plugin_pass (Dehydra *this) {
     
     jsobjMap = pointer_map_create ();   
 
-    jsval cgraphval = get_existing_or_lazy (this, lazy_cgraph_node, cgraph_nodes, this->globalObj, "cgraph_nodes");
+    jsval cgraphval =
+      get_existing_or_lazy (this, lazy_cgraph_node, cgraph_nodes,
+                            this->globalObj, "cgraph_nodes");
     xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_cgraph,
                                    1, &cgraphval, &rval));
 
@@ -279,6 +282,24 @@ void treehydra_plugin_pass (Dehydra *this) {
     pointer_map_destroy (jsobjMap);
     jsobjMap = NULL;
   }
+}
+
+void treehydra_cp_pre_genericize (struct Dehydra *this, tree fndecl) {
+  jsval process = dehydra_getToplevelFunction(this, "process_cp_pre_genericize");
+  if (process == JSVAL_VOID) return;
+  
+  jsval rval;
+  jsobjMap = pointer_map_create ();   
+
+  jsval fnval =
+    get_existing_or_lazy (this, lazy_tree_node, current_function_decl,
+                          this->globalObj, "current_function_decl");
+  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process,
+                                 1, &fnval, &rval));
+  JS_DeleteProperty (this->cx, this->globalObj, "current_function_decl");
+  pointer_map_destroy (jsobjMap);
+  jsobjMap = NULL;
+
 }
 
 int treehydra_startup (Dehydra *this) {
