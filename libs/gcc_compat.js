@@ -149,6 +149,10 @@ function TYPE_BINFO (node) {
   return TREE_CHECK (node, RECORD_TYPE, UNION_TYPE, QUAL_UNION_TYPE).type.binfo
 }
 
+function BINFO_BASE_ACCESSES(node) {
+  return TREE_CHECK(node, TREE_BINFO).binfo.base_accesses;
+}
+
 // not sure if this will work same way in gcc 4.3
 function TREE_CHAIN (node) {
   if (GIMPLE_TUPLE_P (node))
@@ -209,6 +213,14 @@ function DECL_SAVED_TREE (node) {
 
 function DECL_STRUCT_FUNCTION(node) {
   return  node.function_decl.f
+}
+
+function TREE_PRIVATE(node) {
+  return node.base.private_flag;
+}
+
+function TREE_PROTECTED(node) {
+  return node.base.protected_flag;
 }
 
 function IDENTIFIER_POINTER (node) {
@@ -505,6 +517,17 @@ function CLASSTYPE_DECLARED_CLASS(node) {
 
 function LANG_TYPE_CLASS_CHECK(node) {
   return node.type.lang_specific.u.c;
+}
+
+function LANG_DECL_U2_CHECK (node, tf) {
+  let lt = DECL_LANG_SPECIFIC (node);
+  if (lt.decl_flags.u2sel != tf)
+    throw Error("LANG_DECL_U2_CHECK failed! expected: " + lt + " got: " + lt.decl_flags.u2sel);
+  return lt.decl_flags.u2;
+}
+
+function DECL_ACCESS(node) {
+  return LANG_DECL_U2_CHECK(node, 0).access;
 }
 
 function ANON_AGGRNAME_P(id_node) {

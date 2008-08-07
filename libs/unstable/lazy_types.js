@@ -100,9 +100,19 @@ LazyRecord.prototype.__defineGetter__('bases', function record_bases() {
   if (this.isIncomplete)
     throw Error("Can't get bases of incomplete type " + this.name);
 
-  return [dehydra_convert(BINFO_TYPE(base_binfo))
-	  for each (base_binfo in
-		    VEC_iterate(BINFO_BASE_BINFOS(TYPE_BINFO(this._type))))];
+  let binfo = TYPE_BINFO(this._type);
+                                        
+  // Also: expose .isVirtual on bases
+  let accesses = VEC_iterate(BINFO_BASE_ACCESSES(binfo));
+  let bases = [];
+  let i = 0;
+  for each (base_binfo in
+            VEC_iterate(BINFO_BASE_BINFOS(binfo))) {
+    bases.push({'access': IDENTIFIER_POINTER(accesses[i++]),
+                'type': dehydra_convert(BINFO_TYPE(base_binfo)),
+                'toString': function() { return this.access + ' ' + this.type; }});
+  }
+  return bases;
 });
 LazyRecord.prototype.__defineGetter__('members', function record_members() {
   let members = [];
@@ -269,6 +279,14 @@ LazyDecl.prototype.__defineGetter__('memberOf', function lazydecl_methodof() {
   if (cx && TREE_CODE(cx) == RECORD_TYPE)
     return dehydra_convert(cx);
   return undefined;
+});
+LazyDecl.prototype.__defineGetter__('access', function lazydecl_access() {
+  if (TREE_PRIVATE(this._type))
+    return "private";
+  else if (TREE_PROTECTED(this._type))
+    return "protected";
+
+  return "public";
 });
 LazyDecl.prototype.__defineGetter__('isVirtual', function lazydecl_isvirt() {
   if (!this.isFunction)

@@ -184,7 +184,7 @@ function decl_name (decl, no_context) {
       context = TYPE_NAME (context)
     }
     if (code != FUNCTION_DECL) {
-      str = decl_name (context) + "::"
+      str = (context ? decl_name (context) : '<anonymous?>') + "::"
     }
   }
   var name = DECL_NAME (decl)
