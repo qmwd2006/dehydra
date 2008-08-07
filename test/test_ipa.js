@@ -1,5 +1,5 @@
 // { 'test': 'treehydra', 'input': 'locks_good.cc', 'output': 'unit_test' }
-require({ after_gcc_pass: 'einline_ipa' });
+require({ after_gcc_pass: isGCCApple ? 'einline' : 'einline_ipa' });
 
 ls = ["good1", "good2"]
 function process_cgraph(cgraph) {

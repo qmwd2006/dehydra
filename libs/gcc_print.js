@@ -68,9 +68,11 @@ function isn_display_basic(isn, code) {
   case CALL_EXPR:
     return [ 'void', ':=', expr_display(isn) ];
   case COND_EXPR:
-    return [ 'if', '', expr_display(TREE_OPERAND(isn, 0)) ]
+    return [ 'if', '', expr_display(TREE_OPERAND(isn, 0)) ];
   case SWITCH_EXPR:
-    return [ 'switch', '', expr_display(TREE_OPERAND(isn, 0)) ]
+    return [ 'switch', '', expr_display(TREE_OPERAND(isn, 0)) ];
+  case LABEL_EXPR:
+    return [ decl_name(isn.operands()[0]) + ':', '', '' ];
   default:
     return ['[this tree code not impl]', '', ''];
   }
