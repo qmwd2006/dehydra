@@ -8,7 +8,7 @@ function process_function(f,arr) {
   //print(arr)
 }
 
-function process_var(v) {
+function process_decl(v) {
   if (v.name == "varAttrOnType") {
     var a = v.type.attributes[0]
     if (a.name != "user" || a.value[0] != "value")

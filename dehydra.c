@@ -491,15 +491,15 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
 }
 
 static void dehydra_visitVarDecl (Dehydra *this, tree d) {
-  jsval process_var = dehydra_getToplevelFunction (this, "process_var");
-  if (process_var == JSVAL_VOID) return;
+  jsval process_decl = dehydra_getToplevelFunction (this, "process_decl");
+  if (process_decl == JSVAL_VOID) return;
 
   /* this is a hack,basically does dehydra_rootObject manually*/
   int key = dehydra_getArrayLength (this, this->rootedArgDestArray);
   JSObject *obj = dehydra_addVar (this, d, this->rootedArgDestArray);
   jsval rval, argv[1];
   argv[0] = OBJECT_TO_JSVAL (obj);
-  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_var,
+  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_decl,
                                  sizeof (argv)/sizeof (argv[0]), argv, &rval));
   dehydra_unrootObject (this, key);
 }

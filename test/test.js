@@ -6,7 +6,7 @@ function process_function(f,arr) {
   //print(arr)
 }
 
-function process_var(v) {
+function process_decl(v) {
 //  print(v)
 }
 
