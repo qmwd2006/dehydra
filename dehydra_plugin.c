@@ -32,7 +32,8 @@ void dfs_process_chain(tree t) {
 
 static void process_template_decl (tree td) {
   tree inst;
-  for (inst = DECL_VINDEX (td); inst; inst = TREE_CHAIN (inst)) {
+  // process all of the template instantiations too
+  for (inst = DECL_TEMPLATE_INSTANTIATIONS (td); inst; inst = TREE_CHAIN (inst)) {
     tree record_type = TREE_VALUE (inst);
     process_type (RECORD_TYPE_CHECK (record_type));
   }
@@ -57,7 +58,11 @@ static void process_record_or_union_type (tree c) {
   if (!COMPLETE_TYPE_P (c)) return;
 
   // bug 418170: don't process template specializations
-  if (isGPlusPlus() && CLASSTYPE_USE_TEMPLATE(c) == 2) return;
+  if (isGPlusPlus() && CLASSTYPE_USE_TEMPLATE(c) == 2) {
+    // bug 449428: want all template decls
+    process (TYPE_NAME (c));
+    return;
+  }
   //fprintf(stderr, "class %s\n", type_as_string(c, 0));
 
   /* iterate over base classes to ensure they are visited first */
@@ -95,20 +100,6 @@ static void process_record_or_union_type (tree c) {
 
 static void process_enumeral_type (tree enumeral) {
   dehydra_visitType (&dehydra, enumeral);
-}
-
-static void process_type_decl (tree t) {
-  /*  fprintf(stderr, "Taras:%s: %s, abstract:%d\n", loc(t),
-      decl_as_string(t, TFF_DECL_SPECIFIERS), DECL_ABSTRACT(t));*/
-  if (!DECL_ARTIFICIAL (t)) {
-    // this is a typedef..i think
-  } else {
-    process_type(TREE_TYPE(t));
-  }
-}
-
-static void process_field_decl(tree f) {
-    return process_type(TREE_TYPE(f));
 }
 
 // guard against duplicate visits
@@ -152,20 +143,28 @@ static void process (tree t) {
        && DECL_IS_BUILTIN (t)) {
     return;
   }
+
+  tree tree_type = TREE_TYPE (t);
+  bool is_template_typedef = tree_type
+    && TREE_CODE (tree_type) == RECORD_TYPE
+    && TYPE_TEMPLATE_INFO (tree_type);
+  bool is_artifical = 
+    (TREE_CODE (t) == TYPE_DECL && DECL_IMPLICIT_TYPEDEF_P (t))
+    || DECL_ARTIFICIAL (t) || DECL_IS_BUILTIN (t);
+  // templates actually have useful info in the typedefs
+  if (is_template_typedef || !is_artifical)
+    process_decl (t);
   switch (TREE_CODE (t)) {
   case NAMESPACE_DECL:
     return process_namespace_decl (t);
-  case FUNCTION_DECL:
-  case VAR_DECL:
-    return process_decl (t);
-  case TYPE_DECL:
-    return process_type_decl (t);
-  case FIELD_DECL:
-    return process_field_decl (t);
   case TEMPLATE_DECL:
     return process_template_decl (t);
+  case FIELD_DECL:
   case CONST_DECL:
-    return process_type (TREE_TYPE (t));
+  case TYPE_DECL:
+  case FUNCTION_DECL:
+  case VAR_DECL:
+    return process_type (tree_type);
   default:
     xassert(!DECL_P (t));
     /*error ( "unknown tree element: %s", tree_code_name[TREE_CODE(t)]);*/
