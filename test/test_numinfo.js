@@ -41,7 +41,7 @@ const expected = {
 
 let tested = {}
 
-function process_var(v) {
+function process_decl(v) {
   const e = expected[v.name]
   if (e) {
     tested[v.name] = true;

@@ -3,11 +3,11 @@
 let assert_passes = 0;
 function xassert (t) {
   if (!t)
-    throw new Error("process_var isn't working right");
+    throw new Error("process_decl isn't working right");
   assert_passes++;
 }
 
-function process_var(v) {
+function process_decl(v) {
   if (v.name == "plain_var")
     xassert(v.type.name == "int")
   else if (v.name == "some_typedef")
