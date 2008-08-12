@@ -77,7 +77,10 @@ def unit_test(test, ec, out, err):
     lines = out.split('\n')
     if lines and lines[-1] == '':
         lines = lines[:-1]
-    test.failUnless(lines, "Expected 'OK' output; got empty output")
+    msg = "got empty stdout, stderr"
+    if err != '':
+        msg = "Errors:\n %s" % err
+    test.failUnless(lines, "Expected 'OK' output; %s" % msg)
     last = lines[-1]
     test.failUnless(last.startswith('OK'), "Expected 'OK' output; got '%s'"%last)
 
