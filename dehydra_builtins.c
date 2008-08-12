@@ -81,8 +81,8 @@ JSBool dispatch_require(JSContext *cx, const char *prop_name, jsval prop_val) {
     JS_SetGCZeal(cx, zeal);
 #else
 #ifdef DEBUG
-    JS_ReportWarning(cx, "gczeal not available: xhydra built with a SpiderMonkey version lacking
-JS_SetGCZeal");
+    JS_ReportWarning(cx, "gczeal not available: xhydra built with a SpiderMonkey version"
+                     " lacking JS_SetGCZeal");
 #else
     JS_ReportWarning(cx, "gczeal not available: xhydra built without -DDEBUG");
 #endif //DEBUG

@@ -57,6 +57,22 @@ static const char *FRONTEND = "frontend";
 
 static char *my_dirname (char *path);
 
+JSClass js_type_class = {
+  "DehydraType",  /* name */
+  JSCLASS_CONSTRUCT_PROTOTYPE, /* flags */
+  JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub,
+  JS_EnumerateStub,JS_ResolveStub, JS_ConvertStub, JS_FinalizeStub,
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+};
+
+static JSClass js_decl_class = {
+  "DehydraDecl",  /* name */
+  JSCLASS_CONSTRUCT_PROTOTYPE, /* flags */
+  JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub,
+  JS_EnumerateStub,JS_ResolveStub, JS_ConvertStub, JS_FinalizeStub,
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+};
+
 void dehydra_init(Dehydra *this, const char *file) {
   static JSFunctionSpec shell_functions[] = {
     {"_print",          Print,          0},
@@ -116,6 +132,10 @@ void dehydra_init(Dehydra *this, const char *file) {
   if (aux_base_name) {
     dehydra_defineStringProperty (this, sys, "aux_base_name", aux_base_name);
   }
+  xassert (JS_InitClass(this->cx, this->globalObj, NULL
+                        ,&js_type_class , NULL, 0, NULL, NULL, NULL, NULL));
+  xassert (JS_InitClass(this->cx, this->globalObj, NULL
+                        ,&js_decl_class , NULL, 0, NULL, NULL, NULL, NULL));
 }
 
 int dehydra_startup (Dehydra *this) {
@@ -372,8 +392,8 @@ static void dehydra_setName (Dehydra *this, JSObject *obj, tree v) {
 JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
   if (!parentArray) parentArray = this->destArray;
   unsigned int length = dehydra_getArrayLength (this, parentArray);
-  JSObject *obj = JS_NewObject (this->cx, NULL, NULL, 
-                                      this->globalObj);
+  JSObject *obj = JS_NewObject (this->cx,  &js_decl_class, NULL, 
+                                this->globalObj);
   //append object to array(rooting it)
   JS_DefineElement (this->cx, parentArray, length,
                     OBJECT_TO_JSVAL (obj),

@@ -259,8 +259,8 @@ static jsval dehydra_convert (Dehydra *this, tree type) {
       return OBJECT_TO_JSVAL (obj);
     }
   } else {
-    obj = JS_ConstructObject (this->cx, NULL, NULL, 
-                              this->globalObj);
+    obj = JS_NewObject (this->cx, &js_type_class, NULL,
+                        this->globalObj);
     dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
     *pointer_map_insert (typeMap, type) = obj;
   }

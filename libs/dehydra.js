@@ -410,3 +410,9 @@ function process_type (t) {
     process_class (t)
   }
 }
+
+function DehydraDecl() {
+}
+
+function DehydraType() {
+}
