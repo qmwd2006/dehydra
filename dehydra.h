@@ -50,6 +50,8 @@ extern const char *MIN_VALUE;
 extern const char *MAX_VALUE;
 extern const char *TEMPLATE;
 
+extern JSClass js_type_class;
+
 /* Drop-in replacement for JS_DefineObject, required as a workaround
  * because JS_DefineObject always sets the parent property. */
 JSObject *definePropertyObject (JSContext *cx, JSObject *obj,
