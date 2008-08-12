@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Author: Taras Glek
 # OSX support by Vlad Sukhoy
-import getopt, sys, os.path, os, platform
+import getopt, sys, os.path, os, platform, subprocess
 
 def usage():
     print """
@@ -62,6 +62,21 @@ def getjsdirs(jsname, jslibs, jsheaders):
 
     return (jslibs, jsheaders)
 
+def try_enable_treehydra(config):
+    cxx="g++"
+    try:
+        cxx = os.environ["CXX"]
+    except:
+        pass
+    sys.stdout.write ("Checking if %s accepts -fplugin for building treehydra: " % cxx)
+    p = subprocess.Popen([cxx, '-fplugin=', 'dehydra.c'], stderr=subprocess.PIPE)
+    if p.stderr.read().find("missing argument") != -1:
+        config["CXX"] = cxx
+        config["BUILD_TREEHYDRA"] = "gcc_treehydra.so"
+        print("Yes")
+    else:
+        print("No")
+
 if __name__ == "__main__":
     dynamic_lib_suffix, shared_link_flags = ('.so', '-shared') 
     cflags = ''
@@ -120,17 +135,17 @@ if __name__ == "__main__":
     
     if os.environ.has_key("CFLAGS"):
         cflags += ' ' + os.environ["CFLAGS"]
+    config =dict(GCCDIR=gcc_src, GCCBUILDDIR=gcc_build, 
+              SM_NAME=jsname, SM_SUFFIX=dynamic_lib_suffix,
+              SM_INCLUDE=jsheaders, SM_LIBDIR=jslibs,
+              SHARED_LINK_FLAGS=shared_link_flags, 
+              CONFIGURE_CFLAGS=cflags)
+    try_enable_treehydra(config)
     f = open("config.mk", "w")
-    f.write("""GCCDIR=%s
-GCCBUILDDIR=%s
-SM_NAME=%s
-SM_SUFFIX=%s
-SM_INCLUDE=%s
-SM_LIBDIR=%s
-SHARED_LINK_FLAGS=%s
-CONFIGURE_CFLAGS=%s
-""" % (gcc_src, gcc_build, jsname, dynamic_lib_suffix,
-       jsheaders, jslibs, shared_link_flags, cflags))
+    f.write("""# %s
+%s
+""" % (" ".join(["'" + a + "'" for a in sys.argv]),
+       "\n".join([k + "=" + v for k, v in config.iteritems()])))
     f.close()
     if os.path.exists("Makefile"):
         os.unlink("Makefile")
