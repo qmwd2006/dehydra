@@ -12,7 +12,7 @@
 
 static void dehydra_iterate_statementlist (Dehydra *, tree);
 static tree statement_walker (tree *, int *walk_, void *);
-
+static void dehydra_nextStatement(Dehydra *this, location_t loc);
 
 /* Make a Dehydra variable to represent the value of the given
  * AST expression node. 
@@ -310,6 +310,13 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     }
     /* this isn't magic, but breaks pretty-printing */
   case LABEL_DECL:
+    break;
+  case EXPR_STMT:
+    if (!this->inExpr) {
+      location_t loc = location_of (*tp);
+      if (!loc_is_unknown (loc))
+        dehydra_nextStatement (this, loc);
+    }
     break;
   default:
     if (code != NAMESPACE_DECL && DECL_P(*tp)) {
