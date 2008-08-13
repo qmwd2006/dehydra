@@ -28,6 +28,8 @@ void dehydra_defineStringProperty(struct Dehydra *this, struct JSObject *obj,
                                   char const *name, char const *value);
 struct JSObject *dehydra_defineObjectProperty (struct Dehydra *this, struct JSObject *obj,
                                                char const *name);
+void convert_location_t (struct Dehydra *this, struct JSObject *parent,
+                         const char *propname, location_t loc);
 
 #include "treehydra.h"
 

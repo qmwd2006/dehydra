@@ -1,15 +1,13 @@
 // Code common to Treehydra and Dehydra.
-
+// Location is initialized from C and doesn't actually run
 function Location(_source_location, file, line, col) {
-  this._source_location = _source_location;
-  this.file = file;
-  this.line = line;
-  this.col = col;
 }
 
 Location.prototype.toString = function() {
-  return this.file + ':' + this.line + 
-    (this.col != undefined ? ':' + this.col : '');
+  with (this) {
+    return file + ':' + line + 
+      (this.column != undefined ? ':' + column : '');
+  }
 }
 
 /** Report an error diagnostic in GCC. loc is optional. */

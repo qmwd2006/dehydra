@@ -29,5 +29,6 @@ LocationTestCase.prototype.runTest = function() {
 
 function loc_is_valid(loc) {
   return loc != undefined && typeof loc.file == 'string' && 
-    typeof loc.line == 'number' && typeof loc.column == 'number';
+    typeof loc.line == 'number' && typeof loc.column == 'number' &&
+    loc.toString().split(":").length == 3;
 }
