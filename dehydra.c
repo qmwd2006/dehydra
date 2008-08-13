@@ -302,11 +302,44 @@ void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
   convert_location_t(this, obj, LOC, loc);
 }
 
+#ifndef __APPLE__
+/* On modern GCCs we use a lazy location system to save memory
+ and location lookup*/
+static JSBool ResolveLocation (JSContext *cx, JSObject *obj, jsval id,
+                               uintN flags, JSObject **objp) {
+  *objp = obj;
+  JSBool has_prop;
+  // check if we already unpacked the location
+  JSBool rv = JS_HasProperty(cx, obj, "file", &has_prop);
+  if (rv && has_prop) return JS_TRUE;
+
+  jsval v;
+  JS_GetProperty (cx, obj, "_source_location", &v);
+  location_t loc = JSVAL_TO_INT (v);
+  expanded_location eloc = expand_location(loc);
+  Dehydra *this = JS_GetContextPrivate(cx);
+  dehydra_defineStringProperty (this, obj, "file", eloc.file);
+  dehydra_defineProperty (this, obj, "line", INT_TO_JSVAL(eloc.line));
+  dehydra_defineProperty (this, obj, "column", INT_TO_JSVAL(eloc.column));
+  return JSVAL_TRUE;
+}
+#endif 
+
 static JSClass js_location_class = {
   "Location",  /* name */
-  JSCLASS_CONSTRUCT_PROTOTYPE, /* flags */
+#ifndef __APPLE__
+  JSCLASS_NEW_RESOLVE, /* flags */
+#else
+0
+#endif
   JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub,
-  JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, JS_FinalizeStub,
+  JS_EnumerateStub, 
+#ifndef __APPLE__
+  (JSResolveOp) ResolveLocation, 
+#else
+  JS_ResolveStub,
+#endif
+  JS_ConvertStub, JS_FinalizeStub,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
@@ -317,19 +350,17 @@ void convert_location_t (struct Dehydra *this, struct JSObject *parent,
     dehydra_defineProperty (this, parent, propname, JSVAL_VOID);
     return;
   }
-  expanded_location eloc = expand_location(loc);
-
   // Instead of calling ConstructWithArguments, we simply create the 
   // object and set up the properties because GC rooting is a lot
   // easier this way.
   JSObject *obj = definePropertyObject(this->cx, parent, propname, 
                                        &js_location_class, NULL, 
                                        JSPROP_ENUMERATE);
+#ifdef __APPLE__
+  expanded_location eloc = expand_location(loc);
   dehydra_defineStringProperty (this, obj, "file", eloc.file);
   dehydra_defineProperty (this, obj, "line", INT_TO_JSVAL(eloc.line));
-#ifndef __APPLE__
-  // XXX remove once Apple GCC supports columns
-  dehydra_defineProperty (this, obj, "column", INT_TO_JSVAL(eloc.column));
+#else
   dehydra_defineProperty (this, obj, "_source_location", INT_TO_JSVAL(loc));
 #endif
 }
