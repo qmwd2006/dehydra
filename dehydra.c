@@ -330,7 +330,7 @@ static JSClass js_location_class = {
 #ifndef __APPLE__
   JSCLASS_NEW_RESOLVE, /* flags */
 #else
-0
+  0,
 #endif
   JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub,
   JS_EnumerateStub, 
