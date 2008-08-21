@@ -452,8 +452,8 @@ function resolve_virtual_fun_from_obj_type_ref(ref) {
 /** True if the given FUNCTION_TYPE has stdargs. */
 function stdarg_p(fntype) {
   let last;
-  for (let t in function_type_args(fntype)) {
-    last = t;
+  for (let a = TYPE_ARG_TYPES(fntype); a; a = TREE_CHAIN(a)) {
+    last = TREE_VALUE(a);
   }
   return last != undefined && TREE_CODE(last) != VOID_TYPE;
 }
