@@ -29,17 +29,34 @@ function type_string(type) {
   } else if (code == REFERENCE_TYPE) {
     return type_string(TREE_TYPE(type)) + infix + '&';
   } else if (code == FUNCTION_TYPE) {
-    return type_string(TREE_TYPE(type)) + ' (*)(' +
-      [ type_string(TREE_VALUE(t)) for (t in flatten_chain(TYPE_ARG_TYPES(type))) ].join(', ') + ')';
-      
+    return type_string(TREE_TYPE(type)) + ' (*)(' + type_args_string(type) + ')';
   } else if (code == METHOD_TYPE) {
-    return type_string(TREE_TYPE(type)) + ' (?::*)(' +
-      [ type_string(TREE_VALUE(t)) for (t in flatten_chain(TYPE_ARG_TYPES(type))) ].join(', ') + ')';
+    return type_string(TREE_TYPE(type)) + ' (?::*)(' + type_args_string(type) + ')';
   }
 
   print(TREE_CODE(type).name);
   do_dehydra_dump(type.type, 1, 2);
   throw new Error("unhandled type type");
+}
+
+/** Return a string representation of the args part of a function type,
+  * not including the parens. */
+function type_args_string(type)
+{
+  // GCC specialness: if the last item is void, then the function does
+  // not use stdargs. Otherwise it does.
+  let items = [];
+  let stdarg = true;
+  for (let o = TYPE_ARG_TYPES(type); o; o = TREE_CHAIN(o)) {
+    let t = TREE_VALUE(o);
+    if (TREE_CODE(t) == VOID_TYPE) {
+      stdarg = false;
+      break;
+    }
+    items.push(type_string(t));
+  }
+  if (stdarg) items.push('...');
+  return items.join(', ');
 }
 
 /* Return a display representation of the given CFG instruction. */
