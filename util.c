@@ -1,14 +1,5 @@
 /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-#include <config.h>
-#include <system.h>
-#include <coretypes.h>
-#include <tm.h>
-#include <tree.h>
-#include <cp-tree.h>
-#include <cxx-pretty-print.h>
-#include <tree-iterator.h>
-#include <pointer-set.h>
-#include <toplev.h>
+#include "gcc_compat.h"
 
 #include "xassert.h"
 #include "util.h"

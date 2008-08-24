@@ -2,10 +2,6 @@
 #ifndef DEHYDRA_H
 #define DEHYDRA_H
 
-/* not sure if there is a better place to put these */
-#pragma weak global_namespace
-#pragma weak cp_walk_subtrees
-
 struct Dehydra {
   JSRuntime *rt;
   JSContext *cx;
