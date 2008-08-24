@@ -2,6 +2,10 @@
 #ifndef GCC_COMPAT_H
 #define GCC_COMPAT_H
 
+/* not sure if there is a better place to put these */
+#pragma weak global_namespace
+#pragma weak cp_walk_subtrees
+
 #ifndef TREEHYDRA_GENERATED
 #include <config.h>
 #include <system.h>
