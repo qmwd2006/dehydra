@@ -21,7 +21,7 @@ if (TREE_CODE) {
   include('useful_arrays.js')
 }
 
-if (isGCCApple) {
+if (isGCC42) {
   // try to increase the chances of linux scripts working on osx out of the box
   this.GIMPLE_MODIFY_STMT = MODIFY_EXPR;
   this.POINTER_PLUS_EXPR = PLUS_EXPR;
@@ -48,7 +48,7 @@ GCCNode.prototype.toString = function () {
   return "I am a " + this._struct_name
 }
 
-GCCNode.prototype.tree_code = isGCCApple ?
+GCCNode.prototype.tree_code = isGCC42 ?
   function () { return this.common.code; } :
   function () { return this.base.code; }
 
