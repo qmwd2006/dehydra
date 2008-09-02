@@ -144,6 +144,7 @@ function walk_tree (t, func, guard, stack) {
     {
       for (var decl = BIND_EXPR_VARS (t); decl; decl = TREE_CHAIN (decl))
       {
+        stack.push(decl);
 	/* Walk the DECL_INITIAL and DECL_SIZE.  We don't want to walk
 	       into declarations that are just mentioned, rather than
 	       declared; they don't really belong to this part of the tree.
@@ -152,6 +153,7 @@ function walk_tree (t, func, guard, stack) {
 	WALK_SUBTREE (DECL_INITIAL (decl));
 	WALK_SUBTREE (DECL_SIZE (decl));
 	WALK_SUBTREE (DECL_SIZE_UNIT (decl));
+        stack.pop();
       }
       WALK_SUBTREE (BIND_EXPR_BODY (t));
       break;
