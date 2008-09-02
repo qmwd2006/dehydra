@@ -274,6 +274,16 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
                             dehydra_convertType (this, context));
   }
 
+  int qualifiers = TYPE_QUALS (type);
+  if (qualifiers & TYPE_QUAL_CONST)
+    dehydra_defineProperty (this, obj, "isConst", JSVAL_TRUE);
+  if (qualifiers & TYPE_QUAL_VOLATILE)
+    dehydra_defineProperty (this, obj, "isVolatile", JSVAL_TRUE);
+  if (qualifiers & TYPE_QUAL_RESTRICT)
+    dehydra_defineProperty (this, obj, 
+                            flag_isoc99 ? "restrict" : "__restrict__",
+                            JSVAL_TRUE);  
+
   tree type_decl = TYPE_NAME (type);
   tree next_type = NULL_TREE;
   if (type_decl && TREE_CODE(type_decl) == TYPE_DECL) {
@@ -294,15 +304,6 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
       return OBJECT_TO_JSVAL (obj);
     }
   }
-  int qualifiers = TYPE_QUALS (type);
-  if (qualifiers & TYPE_QUAL_CONST)
-    dehydra_defineProperty (this, obj, "isConst", JSVAL_TRUE);
-  if (qualifiers & TYPE_QUAL_VOLATILE)
-    dehydra_defineProperty (this, obj, "isVolatile", JSVAL_TRUE);
-  if (qualifiers & TYPE_QUAL_RESTRICT)
-    dehydra_defineProperty (this, obj, 
-                            flag_isoc99 ? "restrict" : "__restrict__",
-                            JSVAL_TRUE);  
   switch (TREE_CODE (type)) {
   case POINTER_TYPE:
   case OFFSET_TYPE:
