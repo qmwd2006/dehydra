@@ -13,6 +13,8 @@ class s {
 
 typedef long long __m64 __attribute__ ((__vector_size__ (8), __may_alias__));
 
+const PRInt32 const_PRInt32 = 1;
+
 static __inline __m64
 _mm_setzero_si64 (void)
 {
