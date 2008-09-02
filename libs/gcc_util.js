@@ -118,7 +118,7 @@ function bb_pred_edges(bb) {
 
 /** stmt_list in a bb, may vary on gcc version.
  */
-var bb_stmt_list = isGCCApple ?
+var bb_stmt_list = isGCC42 ?
   function (bb) { return bb.stmt_list; } :
   function (bb) {
     let iltree = bb.il.tree;

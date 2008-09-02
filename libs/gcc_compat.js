@@ -17,7 +17,7 @@ function IS_EXPR_CODE_CLASS (code_class) {
     && code_class.value <= tcc_expression.value
 }
 
-var IS_GIMPLE_STMT_CODE_CLASS = isGCCApple ?
+var IS_GIMPLE_STMT_CODE_CLASS = isGCC42 ?
   function (code_class) { return false; } :
   function (code_class) { return code_class == tcc_gimple_stmt; }
 
@@ -75,7 +75,7 @@ function TREE_OPERAND_LENGTH (node)
     return TREE_CODE_LENGTH (TREE_CODE (node));
 }
 
-var GIMPLE_STMT_P = isGCCApple ?
+var GIMPLE_STMT_P = isGCC42 ?
   function (NODE) { return false; } :
   function (NODE) {
     return TREE_CODE_CLASS (TREE_CODE ((NODE))) == tcc_gimple_stmt
@@ -85,9 +85,10 @@ function TREE_OPERAND (node, i) {
   return node.exp.operands[i]
 }
 
-function GIMPLE_STMT_OPERAND (node, i) {
-  return node.gstmt.operands[i]
-}
+var GIMPLE_STMT_OPERAND = isGCC42 ? TREE_OPERAND :
+  function (node, i) {
+    return node.gstmt.operands[i]
+  }
 
 function GENERIC_TREE_OPERAND (node, i)
 {
@@ -104,12 +105,12 @@ function BIND_EXPR_BODY (node) {
   return TREE_OPERAND (TREE_CHECK (node, BIND_EXPR), 1)
 }
 
-const CALL_EXPR_FN_OPERAND_INDEX = isGCCApple ? 0 : 1;
+const CALL_EXPR_FN_OPERAND_INDEX = isGCC42 ? 0 : 1;
 function CALL_EXPR_FN (node) {
   return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), CALL_EXPR_FN_OPERAND_INDEX)
 }
 
-var call_expr_arg_iterator = isGCCApple ?
+var call_expr_arg_iterator = isGCC42 ?
   function (node) {
     for (let arg_holder = TREE_OPERAND(node, 1); arg_holder;
          arg_holder = TREE_CHAIN(arg_holder))
@@ -121,7 +122,7 @@ var call_expr_arg_iterator = isGCCApple ?
       yield CALL_EXPR_ARG(node, i);
   }
 
-var CALL_EXPR_ARG = isGCCApple ?
+var CALL_EXPR_ARG = isGCC42 ?
   function (node, i) {
     let iter = call_expr_arg_iterator(node);
     for (let j = 0; j < i; ++j)
@@ -132,7 +133,7 @@ var CALL_EXPR_ARG = isGCCApple ?
     return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), i + 3);
   }
 
-var call_expr_nargs = isGCCApple ?
+var call_expr_nargs = isGCC42 ?
   function (node) {
     return [arg for (arg in call_expr_arg_iterator(node))].length;
   } :
@@ -215,11 +216,11 @@ function DECL_STRUCT_FUNCTION(node) {
   return  node.function_decl.f
 }
 
-var TREE_PRIVATE = isGCCApple ?
+var TREE_PRIVATE = isGCC42 ?
   function (node) { return node.common.private_flag; } :
   function (node) { return node.base.private_flag; };
 
-var TREE_PROTECTED = isGCCApple ?
+var TREE_PROTECTED = isGCC42 ?
   function (node) { return node.common.protected_flag; } :
   function (node) { return node.base.protected_flag; };
 
@@ -227,9 +228,9 @@ function IDENTIFIER_POINTER (node) {
   return node.identifier.id.str
 }
 
-function IDENTIFIER_OPNAME_P (node) {
-  return !!node.base.lang_flag_2;
-}
+var IDENTIFIER_OPNAME_P = isGCC42 ?
+  function (node) { return !!node.common.lang_flag_2; } :
+  function (node) { return !!node.base.lang_flag_2; };
 
 function TREE_VEC_LENGTH (node) {
   return TREE_CHECK (node, TREE_VEC).vec.length
@@ -322,7 +323,7 @@ function TYPE_METHODS(node) {
  because it merely returns the vector array and lets
 the client for each it*/
 // undefined is used for empty vectors, so support it nicely here.
-var VEC_iterate = isGCCApple ?
+var VEC_iterate = isGCC42 ?
   function (vec_node) {
     if (!vec_node)
       return [];
@@ -393,9 +394,9 @@ function TYPE_PTRMEMFUNC_P(tree) {
     TYPE_PTRMEMFUNC_FLAG(tree);
 }
 
-function TYPE_READONLY (node) {
-  return node.base.readonly_flag;
-}
+var TYPE_READONLY = isGCC42 ?
+  function (node) { return node.common.readonly_flag; } :
+  function (node) { return node.base.readonly_flag; };
 
 // TODO This doesn't work, need to get lang_specific into Treehydra
 function TYPE_PTRMEMFUNC_FLAG(tree) {

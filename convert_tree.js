@@ -432,7 +432,7 @@ function isUnsignedOrInt (type) {
 
 const stripPrefixRegexp = /([^:]+)$/;
 const arraySizeRegexp = /^(\d)u$/;
-const location_tRegexp = /location_t|source_locus/;
+const location_tRegexp = /location_t|location_s|source_locus/;
 
 /* meaty part of the script
 * Unit is what holds the result
@@ -440,7 +440,7 @@ const location_tRegexp = /location_t|source_locus/;
 * zeroTh(%0), is the outermost aggr type
 * first(%1) is the parent of current type
 */
-const tree_code_name = isGCCApple ? "tree_common::code" : "tree_base::code";
+const tree_code_name = isGCC42 ? "tree_common::code" : "tree_base::code";
 function convert (unit, aggr) {
   if (!aggr || unit.guard(aggr)) {
     return
@@ -522,12 +522,12 @@ function convert (unit, aggr) {
       cast = "char *"
       isPrimitive = true
       lengthExpr = undefined
-    } else if (!isGCCApple && location_tRegexp(m.type.name)) {
+    } else if (location_tRegexp(m.type.name)) {
       // This must appear before isUnsignedOrInt because location_t is an
-      // int (if we are not using Apple GCC), but we want to convert it to a
+      // int (if we are not using gcc 4.2), but we want to convert it to a
       // formatted location.
       type_name = 'location_t';
-      cast = 'location_t';
+      cast = isGCC42 ? 'location_s' : 'location_t';
       isPrimitive = true;
     } else if (isUnsignedOrInt(m.type)) {
       type_name = "int"
