@@ -69,6 +69,13 @@ def stdout_has(*args):
                 test.fail("Expected '%s' in output; not found. stdout:%s"%(e, out))
     return checker
 
+def stdout_has_re(*args):
+    def checker(test, ec, out, err):
+        for e in args:
+            if not re.search(e, out, re.M):
+                test.fail("Expected to find regular expression '%s' in output; not found. stdout:%s"%(e, out))
+    return checker
+
 def stderr_empty(test, ec, out, err):
     test.failUnless(err == '', "Expected no error output, got error output")
 
