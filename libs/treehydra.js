@@ -25,6 +25,7 @@ if (isGCCApple) {
   // try to increase the chances of linux scripts working on osx out of the box
   this.GIMPLE_MODIFY_STMT = MODIFY_EXPR;
   this.POINTER_PLUS_EXPR = PLUS_EXPR;
+  this.FIXED_POINT_TYPE = {};
  }
 
 // Class that the lazyness builds itself around of
