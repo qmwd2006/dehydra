@@ -10,6 +10,8 @@ function callable_arg_function_decl(arg) {
     return arg;
   case OBJ_TYPE_REF:
     return resolve_virtual_fun_from_obj_type_ref(arg);
+  case COMPONENT_REF:
+    return arg.operands()[1];
   case VAR_DECL:
   case PARM_DECL:
     return arg;
