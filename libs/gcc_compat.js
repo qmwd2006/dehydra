@@ -215,13 +215,13 @@ function DECL_STRUCT_FUNCTION(node) {
   return  node.function_decl.f
 }
 
-function TREE_PRIVATE(node) {
-  return node.base.private_flag;
-}
+var TREE_PRIVATE = isGCCApple ?
+  function (node) { return node.common.private_flag; } :
+  function (node) { return node.base.private_flag; };
 
-function TREE_PROTECTED(node) {
-  return node.base.protected_flag;
-}
+var TREE_PROTECTED = isGCCApple ?
+  function (node) { return node.common.protected_flag; } :
+  function (node) { return node.base.protected_flag; };
 
 function IDENTIFIER_POINTER (node) {
   return node.identifier.id.str
