@@ -33,6 +33,7 @@ static const char *PUBLIC = "public";
 static const char *PRIVATE = "private";
 static const char *PROTECTED = "protected";
 static const char *ISTYPENAME = "isTypename";
+static const char *VARIANT = "variantOf";
 
 static struct pointer_map_t *typeMap = NULL;
 
@@ -272,6 +273,12 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   if (context && TYPE_P(context)) {
     dehydra_defineProperty (this, obj, MEMBER_OF,
                             dehydra_convertType (this, context));
+  }
+
+  tree variant = TYPE_MAIN_VARIANT(type);
+  if (variant != type) {
+    dehydra_defineProperty (this, obj, VARIANT,
+                            dehydra_convertType (this, variant));
   }
 
   int qualifiers = TYPE_QUALS (type);
