@@ -54,6 +54,7 @@ static const char *INCLUDE_PATH = "include_path";
 static const char *STD_INCLUDE = "libs";
 static const char *VERSION_STRING = "gcc_version";
 static const char *FRONTEND = "frontend";
+static const char *EXTERN = "isExtern";
 
 static char *my_dirname (char *path);
 
@@ -440,6 +441,15 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
                               dehydra_convertType (this, decl_context));
     }
 
+    if (DECL_EXTERNAL(v)) {
+      /* for non-static member variables, this attribute doesn't make sense */
+      if (TREE_CODE(v) != VAR_DECL ||
+          !decl_context ||
+          TREE_STATIC(v)) {
+        dehydra_defineProperty (this, obj, EXTERN, JSVAL_TRUE);
+      }
+    }
+
     tree typ = TREE_TYPE (v);
     if (TREE_CODE (v) == FUNCTION_DECL ||
         DECL_FUNCTION_TEMPLATE_P (v)) {
@@ -483,8 +493,8 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
         /* static functions */
         || (TREE_CODE (v) == FUNCTION_DECL && !TREE_PUBLIC (v)) 
         /* static class members */
-        || (TREE_CODE (TREE_TYPE(v)) == FUNCTION_TYPE && DECL_CONTEXT (v) 
-            && TREE_CODE (DECL_CONTEXT(v)) == RECORD_TYPE))
+        || (TREE_CODE (TREE_TYPE(v)) == FUNCTION_TYPE && decl_context 
+            && TREE_CODE (decl_context) == RECORD_TYPE))
       dehydra_defineProperty (this, obj, STATIC, JSVAL_TRUE);
   } else if (TREE_CODE(v) == CONSTRUCTOR) {
     /* Special case for this node type */
