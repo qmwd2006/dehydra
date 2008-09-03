@@ -2,8 +2,13 @@
 
 // Extract the FUNCTION_DECL being called from the arg of a call site,
 // or a VAR_DECL/PARM_DECL if the value is a function pointer.
+// If a complex expression is being called (not a declaration), this
+// function will return null.
 function callable_arg_function_decl(arg) {
   switch (TREE_CODE(arg)) {
+  case NOP_EXPR:
+  case NON_LVALUE_EXPR:
+    return null;
   case ADDR_EXPR:
     return callable_arg_function_decl(arg.operands()[0]);
   case FUNCTION_DECL:
@@ -16,7 +21,7 @@ function callable_arg_function_decl(arg) {
   case PARM_DECL:
     return arg;
   default:
-    print(TREE_CODE(arg));
+    error(TREE_CODE(arg), location_of(arg));
     throw new Error("ni");
   }
 }
