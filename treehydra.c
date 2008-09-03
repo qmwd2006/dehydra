@@ -146,9 +146,7 @@ void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
   tree t = (tree)structure;
   const int myseq = ++global_seq;
   dehydra_defineProperty (this, obj, SEQUENCE_N, INT_TO_JSVAL (myseq));
-  enum tree_node_structure_enum i;
   enum tree_code code = TREE_CODE (t);
-  i = tree_node_structure(t);
   /* special case knowledge of non-decl nodes */
 #ifndef __APPLE_CC__
   // no TS_BASE in mac gcc 42 and no easy way to check too
@@ -158,13 +156,22 @@ void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
     {
     convert_tree_node_union (this, TS_COMMON, t, obj);
     }
-  convert_tree_node_union (this, i, t, obj);
-  /* stuff below is empty for non-decls */
-  if (!DECL_P (t)) return;
-  for (i = 0; i < LAST_TS_ENUM;i++) {
-    if (tree_contains_struct[code][i]) {
-      convert_tree_node_union (this, i, t, obj);
+  /* do not do tree_node_structure() for non C types */
+  /* taras: AFAIK This guard is only needed for gcc <= 4.3 */
+  if (code < NUM_TREE_CODES
+      || (isGPlusPlus() 
+          && cp_tree_node_structure ((union lang_tree_node *)t) == TS_CP_GENERIC)) {
+    enum tree_node_structure_enum i = tree_node_structure (t);
+    convert_tree_node_union (this, i, t, obj);
+    /* stuff below is empty for non-decls */
+    if (!DECL_P (t)) return;
+    for (i = 0; i < LAST_TS_ENUM;i++) {
+      if (tree_contains_struct[code][i]) {
+        convert_tree_node_union (this, i, t, obj);
+      }
     }
+  } else {
+    fprintf(stderr, "%s\n", tree_code_name[code]);
   }
 }
 
