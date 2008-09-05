@@ -6,9 +6,6 @@
 // function will return null.
 function callable_arg_function_decl(arg) {
   switch (TREE_CODE(arg)) {
-  case NOP_EXPR:
-  case NON_LVALUE_EXPR:
-    return null;
   case ADDR_EXPR:
     return callable_arg_function_decl(arg.operands()[0]);
   case FUNCTION_DECL:
@@ -21,8 +18,11 @@ function callable_arg_function_decl(arg) {
   case PARM_DECL:
     return arg;
   default:
-    error(TREE_CODE(arg), location_of(arg));
-    throw new Error("ni");
+    if (!EXPR_P(arg))
+      warning("Unexpected argument to a CALL_EXPR: " + TREE_CODE(arg),
+              location_of(arg));
+    
+    return null;
   }
 }
 
