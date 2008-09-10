@@ -78,9 +78,12 @@ static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id,
      * strict mode doesn't always report this condition (see bug 425066). */
     const char *prop_name = JS_GetStringBytes(JSVAL_TO_STRING(id));
     JSBool has_prop;
-    JSBool rv = JS_HasProperty(cx, JS_GetPrototype(cx, obj), 
-                               prop_name, &has_prop);
-    if (rv && has_prop) return JS_TRUE;
+    JSObject *protoObj = JS_GetPrototype(cx, obj);
+    JSBool rv = JS_HasProperty(cx, protoObj, prop_name, &has_prop);
+    if (rv && has_prop) {
+      *objp = protoObj;
+      return JS_TRUE;
+    }
     /* Property not found anywhere: produce the error. */
     jsval unhandled_property_handler = dehydra_getToplevelFunction(
         this, "unhandledLazyProperty");
