@@ -547,6 +547,10 @@ function TREE_STATIC(node) {
   return node.base.static_flag;
 }
 
+function TREE_PUBLIC(node) {
+  return node.base.public_flag;
+}
+
 function DECL_IMPLICIT_TYPEDEF_P(node) {
   return TREE_CODE(node) == TYPE_DECL && DECL_LANG_FLAG_2(node);
 }
