@@ -259,6 +259,9 @@ LazyDecl.prototype.__defineGetter__('type', function lazydecl_type() {
 LazyDecl.prototype.__defineGetter__('name', function lazydecl_name() {
   return decl_name(this._type);
 });
+LazyDecl.prototype.__defineGetter__('shortName', function lazydecl_shortName() {
+  return IDENTIFIER_POINTER(DECL_NAME(this._type));
+});
 LazyDecl.prototype.__defineGetter__('isFunction', function lazydecl_isfunc() {
   return TREE_CODE(this._type) == FUNCTION_DECL;
 });
@@ -299,7 +302,14 @@ LazyDecl.prototype.__defineGetter__('isVirtual', function lazydecl_isvirt() {
     return false;
 });
 LazyDecl.prototype.__defineGetter__('isStatic', function lazydecl_isstatic() {
-  return !!TREE_STATIC(this._type);
+  let code = TREE_CODE(this._type);
+  if (code == VAR_DECL && TREE_STATIC(this._type))
+    return true;
+  if (code == FUNCTION_DECL && !TREE_PUBLIC(this._type))
+    return true;
+  if (TREE_CODE(TREE_TYPE(this._type)) == FUNCTION_TYPE && this.memberOf)
+    return true;
+  return undefined;
 });
 LazyDecl.prototype.toString = function() {
   return this.name;
