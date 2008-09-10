@@ -30,7 +30,8 @@ GLOBAL_DEPS = \
   $(PLUGIN) \
   $(NULL)
 
-check:: check_dehydra
+#do treehydra checks if treehydra is built by default
+check:: check_dehydra $(BUILD_TREEHYDRA:gcc_treehydra.so=check_treehydra)
 	@printf "'make check' only runs the dehydra test suite. To run all tests, run 'make check_both'.\n"
 
 # Unit tests
