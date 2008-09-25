@@ -50,6 +50,9 @@ static void process_namespace_decl (tree ns) {
 }
 
 static void process_decl (tree f) {
+#ifdef TREEHYDRA_PLUGIN
+  treehydra_process_tree_decl (&dehydra, f);
+#endif
   dehydra_visitDecl (&dehydra, f);
 }
 
@@ -278,7 +281,7 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
   
   dehydra_cp_pre_genericize(&dehydra, fndecl, postGlobalNamespace);
 #ifdef TREEHYDRA_PLUGIN
-  treehydra_cp_pre_genericize(&dehydra, fndecl);
+  treehydra_process_cp_pre_genericize(&dehydra, fndecl);
 #endif
 }
 

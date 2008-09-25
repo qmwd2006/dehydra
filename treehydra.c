@@ -294,23 +294,26 @@ void treehydra_plugin_pass (Dehydra *this) {
   }
 }
 
-void treehydra_cp_pre_genericize (struct Dehydra *this, tree fndecl) {
-  jsval process = dehydra_getToplevelFunction(this, "process_cp_pre_genericize");
-  if (process == JSVAL_VOID) return;
-  
-  jsval rval;
-  jsobjMap = pointer_map_create ();   
+#define DEFINE_TREEHYDRA_HANDLER(NAME)                         \
+  void treehydra_##NAME (struct Dehydra *this, tree fndecl) {          \
+    jsval process = dehydra_getToplevelFunction(this, #NAME);           \
+    if (process == JSVAL_VOID) return;                                  \
+                                                                        \
+    jsval rval;                                                         \
+    jsobjMap = pointer_map_create ();                                   \
+                                                                        \
+    jsval fnval =                                                       \
+      get_existing_or_lazy (this, lazy_tree_node, fndecl,               \
+                            this->globalObj, "__treehydra_top_obj");    \
+    xassert (JS_CallFunctionValue (this->cx, this->globalObj, process,  \
+                                   1, &fnval, &rval));                  \
+    JS_DeleteProperty (this->cx, this->globalObj, "__treehydra_top_obj"); \
+    pointer_map_destroy (jsobjMap);                                     \
+    jsobjMap = NULL;                                                    \
+  }                                                                     \
 
-  jsval fnval =
-    get_existing_or_lazy (this, lazy_tree_node, current_function_decl,
-                          this->globalObj, "current_function_decl");
-  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process,
-                                 1, &fnval, &rval));
-  JS_DeleteProperty (this->cx, this->globalObj, "current_function_decl");
-  pointer_map_destroy (jsobjMap);
-  jsobjMap = NULL;
-
-}
+DEFINE_TREEHYDRA_HANDLER(process_cp_pre_genericize)
+DEFINE_TREEHYDRA_HANDLER(process_tree_decl)
 
 int treehydra_startup (Dehydra *this) {
   /* Check conditions that should hold for treehydra_generated.h */

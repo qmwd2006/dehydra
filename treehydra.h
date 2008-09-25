@@ -4,7 +4,7 @@
 
 int treehydra_startup (struct Dehydra *this);
 void treehydra_plugin_pass (struct Dehydra *this);
-void treehydra_cp_pre_genericize (struct Dehydra *this, union tree_node *fndecl);
+void treehydra_process_cp_pre_genericize (struct Dehydra *this, union tree_node *fndecl);
 
 int set_after_gcc_pass(const char *pass);
 
@@ -29,4 +29,5 @@ void convert_tree_node_union (struct Dehydra *this, enum tree_node_structure_enu
 void convert_int (struct Dehydra *this, struct JSObject *parent, const char *propname, int i);
 void convert_char_star (struct Dehydra *this, struct JSObject *parent,
                         const char *propname, const char *str);
+void treehydra_process_tree_decl (struct Dehydra *this, union tree_node *decl);
 #endif
