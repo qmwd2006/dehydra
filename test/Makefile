@@ -56,10 +56,6 @@ warning: test.cc $(GLOBAL_DEPS)
 	$(CXX) -c $< $(PLUGINARG) -fplugin-arg=warning.js -o $@
 	rm -f $@
 
-virtual.o: virtual.cc $(GLOBAL_DEPS)
-	$(CC1PLUS) $(PLUGINARG) -fplugin-arg=print-functions.js -fpreprocessed $< -o $@ 	
-	rm -f $@
-
 tree: tree.js ../gcc_treehydra.so $(GLOBAL_DEPS)
 	$(MAKE) PLUGIN=../gcc_treehydra.so SCRIPT=tree.js $(TEST)
 
