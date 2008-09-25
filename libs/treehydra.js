@@ -224,16 +224,32 @@ function pretty_walk (body, limit) {
     }
     if (DECL_P (t))
       str += " " + decl_name (t);
-    else if (code == STRING_CST) {
-      str += " \"" + TREE_STRING_POINTER(t) + "\""
+    else {
+      switch (code) {
+      case STRING_CST: 
+        str += " \"" + TREE_STRING_POINTER(t) + "\"";
+        break;
+      case INTEGER_CST:
+        str += " " + TREE_INT_CST_LOW(t)
+        break;
+      }
     }
     print (str)
+    if (code == CONSTRUCTOR) {
+      depth.push(CONSTRUCTOR)
+      for each (var ce in VEC_iterate (CONSTRUCTOR_ELTS (t))) {
+        walk_tree (ce.index, code_printer, null, depth); // pretty_walk addition
+        walk_tree (ce.value, code_printer, null, depth)
+      }
+      depth.pop()
+      //indicate we don't need to visit subtrees
+      return false;
+    }
   }
   try {
     walk_tree (body, code_printer)
   } catch (e if e == "done") {
   }
-
 }
 function C_walk_tree_array() {
   return C_walk_tree().split("\n")
