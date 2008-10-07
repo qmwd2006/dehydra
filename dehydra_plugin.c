@@ -287,6 +287,10 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
 
 void gcc_plugin_finish_struct (tree t) {
   dehydra_finishStruct (&dehydra, t);
+#ifdef TREEHYDRA_PLUGIN
+  treehydra_process_tree_type (&dehydra, t);
+#endif
+
   /* It's lame but types are still instantiated after post_parse
     when some of the stuff saved by dehydra_cp_pre_genericize has been 
     freed by GCC */

@@ -30,4 +30,5 @@ void convert_int (struct Dehydra *this, struct JSObject *parent, const char *pro
 void convert_char_star (struct Dehydra *this, struct JSObject *parent,
                         const char *propname, const char *str);
 void treehydra_process_tree_decl (struct Dehydra *this, union tree_node *decl);
+void treehydra_process_tree_type (struct Dehydra *this, union tree_node *ttype);
 #endif
