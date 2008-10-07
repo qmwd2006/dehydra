@@ -314,6 +314,7 @@ void treehydra_plugin_pass (Dehydra *this) {
 
 DEFINE_TREEHYDRA_HANDLER(process_cp_pre_genericize)
 DEFINE_TREEHYDRA_HANDLER(process_tree_decl)
+DEFINE_TREEHYDRA_HANDLER(process_tree_type)
 
 int treehydra_startup (Dehydra *this) {
   /* Check conditions that should hold for treehydra_generated.h */
