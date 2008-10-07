@@ -459,6 +459,16 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
         dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
       }
 
+      if (TREE_CODE(v) == FUNCTION_DECL) {
+        JSObject *arglist = JS_NewArrayObject (this->cx, 0, NULL);
+        dehydra_defineProperty (this, obj, "parameters",
+                                OBJECT_TO_JSVAL (arglist));
+
+        tree args;
+        for (args = DECL_ARGUMENTS(v); args; args = TREE_CHAIN (args))
+          dehydra_addVar(this, args, arglist);
+      }
+
       if (DECL_PURE_VIRTUAL_P (v))
         dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
       else if (DECL_VIRTUAL_P (v))
