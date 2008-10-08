@@ -236,7 +236,7 @@ function pretty_walk (body, limit) {
     }
     print (str)
     if (code == CONSTRUCTOR) {
-      depth.push(CONSTRUCTOR)
+      depth.push(t)
       for each (var ce in VEC_iterate (CONSTRUCTOR_ELTS (t))) {
         walk_tree (ce.index, code_printer, null, depth); // pretty_walk addition
         walk_tree (ce.value, code_printer, null, depth)
