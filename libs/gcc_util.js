@@ -357,3 +357,21 @@ function is_finally_tmp(decl) {
   return s.substr(0, 11) == 'finally_tmp';
 }
 
+function translate_attributes(atts) {
+  return [{'name': IDENTIFIER_POINTER(TREE_PURPOSE(a)),
+	   'value': [translate_attribute_param(TREE_VALUE(arg))
+		     for (arg in flatten_chain(TREE_VALUE(a)))]}
+	  for (a in flatten_chain(atts))];
+}
+
+function translate_attribute_param(param) {
+  switch (param.tree_code()) {
+  case STRING_CST:
+    return TREE_STRING_POINTER(param);
+  case INTEGER_CST:
+    return TREE_INT_CST_LOW(param);
+  case IDENTIFIER_NODE:
+    return IDENTIFIER_POINTER(param);
+  }
+}
+
