@@ -104,6 +104,7 @@ function expr_display(expr) {
   case ADDR_EXPR:
     return '&' + expr_display(TREE_OPERAND(expr, 0));
   case PLUS_EXPR:
+  case POINTER_PLUS_EXPR:
     return expr_display(TREE_OPERAND(expr, 0)) + ' +  ' +
       expr_display(TREE_OPERAND(expr, 1));
   case NE_EXPR:
@@ -112,6 +113,9 @@ function expr_display(expr) {
   case EQ_EXPR:
     return expr_display(TREE_OPERAND(expr, 0)) + ' == ' +
       expr_display(TREE_OPERAND(expr, 1));
+  case CONVERT_EXPR:
+    return '(' + type_string(TREE_TYPE(expr)) + ') ' +
+      expr_display(expr.operands()[0]);
   case CALL_EXPR:
     let ans = '';
     let name = TREE_OPERAND(expr, 1);
