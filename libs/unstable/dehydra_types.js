@@ -297,19 +297,6 @@ function attach_attributes(a, typeobj)
   }
 }
 
-function translate_attributes(a) {
-  let attrs = [];
-  for (; a; a = TREE_CHAIN (a)) {
-    let name = IDENTIFIER_POINTER (TREE_PURPOSE (a));
-    for (let v = TREE_VALUE(a); v; v = TREE_CHAIN (v)) {
-      let value = TREE_STRING_POINTER (TREE_VALUE (v));
-      attrs.push({'name': name,
-                  'value': value});
-    }
-  }
-  return attrs;
-}
-
 function dehydra_setLoc(obj, t) {
   let loc = location_of(t);
   if (!loc) return;

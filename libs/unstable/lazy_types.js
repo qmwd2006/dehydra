@@ -411,13 +411,6 @@ function convert_template_arg(arg) {
   return "??";
 }
 
-function translate_attributes(atts) {
-  return [{'name': IDENTIFIER_POINTER(TREE_PURPOSE(a)),
-	   'value': [TREE_STRING_POINTER(TREE_VALUE(arg))
-		     for (arg in flatten_chain(TREE_VALUE(a)))]}
-	  for (a in flatten_chain(atts))];
-}
-
 // This is a rough port of the GCC function meant for the use of this
 // module only.
 function type_as_string(t) {
