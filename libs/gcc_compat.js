@@ -154,6 +154,10 @@ function BINFO_BASE_ACCESSES(node) {
   return TREE_CHECK(node, TREE_BINFO).binfo.base_accesses;
 }
 
+function BINFO_VIRTUAL_P(node) {
+  return TREE_CHECK(node, TREE_BINFO).base.static_flag;
+}
+
 // not sure if this will work same way in gcc 4.3
 function TREE_CHAIN (node) {
   if (GIMPLE_TUPLE_P (node))

@@ -32,6 +32,7 @@ static const char *ACCESS = "access";
 static const char *PUBLIC = "public";
 static const char *PRIVATE = "private";
 static const char *PROTECTED = "protected";
+static const char *ISVIRTUAL = "isVirtual";
 static const char *ISTYPENAME = "isTypename";
 static const char *VARIANT = "variantOf";
 
@@ -115,6 +116,8 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
       jsval base_type = 
         OBJECT_TO_JSVAL (dehydra_convert(this, BINFO_TYPE(base_binfo)));
       dehydra_defineProperty (this, obj, TYPE, base_type);
+      if (BINFO_VIRTUAL_P(base_binfo))
+        dehydra_defineProperty (this, obj, ISVIRTUAL, JSVAL_TRUE);
     }
   
   destArray = JS_NewArrayObject(this->cx, 0, NULL);

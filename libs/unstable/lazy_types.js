@@ -110,6 +110,7 @@ LazyRecord.prototype.__defineGetter__('bases', function record_bases() {
             VEC_iterate(BINFO_BASE_BINFOS(binfo))) {
     bases.push({'access': IDENTIFIER_POINTER(accesses[i++]),
                 'type': dehydra_convert(BINFO_TYPE(base_binfo)),
+                'isVirtual': BINFO_VIRTUAL_P(base_binfo),
                 'toString': function() { return this.access + ' ' + this.type; }});
   }
   return bases;
