@@ -400,7 +400,15 @@ Analysis.prototype.run = function() {
     }
     bb.ready = false;
     readyCount -= 1;
-    if (this.trace) print("update bb: " + bb_label(this.cfg, bb));
+    if (this.trace) {
+      let loc
+      for each (let isn in bb_isn_iterator(bb)) {
+        loc = location_of(isn)
+        if (loc)
+          break;
+      }
+      print("update bb: " + bb_label(this.cfg, bb), loc);
+    }
 
     // Process bb
     if (bb != this.cfg.x_entry_block_ptr) {
