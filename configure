@@ -64,6 +64,8 @@ def getjsdirs(jsname, jslibs, jsheaders):
 
 def try_enable_treehydra(config):
     cxx="g++"
+    if platform.system() == 'Darwin':
+        cxx = "g++-4.2"
     try:
         cxx = os.environ["CXX"]
     except:
