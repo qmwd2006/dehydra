@@ -118,16 +118,16 @@ function expr_display(expr) {
       expr_display(expr.operands()[0]);
   case CALL_EXPR:
     let ans = '';
-    let name = TREE_OPERAND(expr, 1);
+    let name = CALL_EXPR_FN(expr);
     ans += call_name_display(name);
 
     ans += '(';
-    let operand_count = TREE_INT_CST(TREE_OPERAND(expr, 0)).low;
-    let arg_count = operand_count - 3;
-    for (let i = 0; i < arg_count; ++i) {
-      let operand_index = i + 3;
-      let operand = TREE_OPERAND(expr, operand_index);
-      if (i != 0) ans += ', ';
+    let first = true;
+    for (let operand in call_arg_iterator(expr)) {
+      if (first)
+        first = false;
+      else
+        ans += ', ';
       ans += expr_display(operand);
     }
     ans += ')';
