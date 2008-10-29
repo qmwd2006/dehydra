@@ -33,7 +33,7 @@ function GCCNode () {
 }
 
 GCCNode.prototype.toString = function () {
-  if (!this._struct_name)
+  if (!this._struct_name) {
     if (this.common) {
       let ls = ["{tree_code:" + this.tree_code()]
       let name = this.toCString()
@@ -45,6 +45,9 @@ GCCNode.prototype.toString = function () {
       ls.push ("}")
       return ls.join(" ")
     }
+  } else if (this._struct_name == 'location_s') {
+    return this.file + ':' + this.line
+  }
   return "I am a " + this._struct_name
 }
 
