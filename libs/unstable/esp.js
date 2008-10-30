@@ -107,6 +107,23 @@ let ESP = function() {
     return next_meet(v1, v2)
   }
 
+  function join(v1, v2, next_join) {
+    if (v1 === v2) return v1;
+    if (v1 === ESP.TOP) return v1;
+    if (v2 === ESP.TOP) return v2;
+    return next_join(v1, v2);
+  }
+
+  /** Return an abstract value, the union of all possible values of vbl
+   * here. */
+  State.prototype.get = function (vbl) {
+    let v = ESP.NOT_REACHED;
+    for (let ss in this.substates.getValues()) {
+      v = join(v, ss.get(vbl), this.factory.join);
+    }
+    return v;
+  }
+
   /** Apply a filter to the state, which keeps substates only where
    * vbl == val. More formally, set the state to be the conjunction
    * of itself and the given condition vbl == val. */

@@ -201,3 +201,9 @@ function meet (v1, v2) {
   if (v1 == v2) return v2
   return ESP.NOT_REACHED
 }
+
+function join(v1, v2) {
+  // Here we can assume that v1 != v2 and neither is TOP or NOT_REACHED.
+  if (v1 == 0 || v2 == 0) return ESP.TOP;
+  return Lattice.NONZERO;
+}
