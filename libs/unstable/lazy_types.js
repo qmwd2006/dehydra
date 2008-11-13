@@ -7,21 +7,6 @@ let TRACE = 0;
 
 let typeMap = new Map();
 
-// Return a Dehydra type object corresponding to the given GCC type.
-function dehydra_convert(type) {
-  if (TRACE) print("dehydra_convert " + type_as_string(type));
-  let v = typeMap.get(type);
-  if (v) {
-    // For now, Treehydra should never produce incomplete types, so
-    // that code has been removed.
-    return v;
-  }
-
-  v = dehydra_convert2(type);
-  typeMap.put(type, v);
-  return v;
-}
-
 function LazyType() {
 }
 LazyType.prototype.__defineGetter__('loc', function type_loc() {
@@ -258,7 +243,14 @@ LazyDecl.prototype.__defineGetter__('type', function lazydecl_type() {
   return dehydra_convert(TREE_TYPE(this._type));
 });
 LazyDecl.prototype.__defineGetter__('name', function lazydecl_name() {
-  return decl_name(this._type);
+  let n = decl_name(this._type);
+  if (this.isFunction) {
+    let plist = this.type.parameters;
+    if (this.memberOf)
+      plist.unshift(); // remove "this"
+    n += "(" + [p.toString() for each (p in plist)].join(", ") + ")";
+  }
+  return n;
 });
 LazyDecl.prototype.__defineGetter__('shortName', function lazydecl_shortName() {
   return IDENTIFIER_POINTER(DECL_NAME(this._type));
@@ -332,9 +324,8 @@ LazyConstructor.prototype.toString = function() {
 }
 
 // Convert the given GCC type object to a lazy Dehydra type
-// Users should call dehydra_convert.
-function dehydra_convert2(type) {
-  if (TRACE) print("dehydra_convert2 " + type_as_string(type));
+function dehydra_convert(type) {
+  if (TRACE) print("dehydra_convert " + type_as_string(type));
 
   if (TYPE_P(type)) {
     let type_decl = TYPE_NAME(type);
