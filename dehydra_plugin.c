@@ -50,10 +50,10 @@ static void process_namespace_decl (tree ns) {
 }
 
 static void process_decl (tree f) {
+  dehydra_visitDecl (&dehydra, f);
 #ifdef TREEHYDRA_PLUGIN
   treehydra_call_js (&dehydra, "process_tree_decl", f);
 #endif
-  dehydra_visitDecl (&dehydra, f);
 }
 
 static void process_record_or_union_type (tree c) {
@@ -264,6 +264,9 @@ int gcc_plugin_post_parse() {
   while(tree_queue_head) {
     tree_queue *q = tree_queue_head;
     process_type (q->t);
+#ifdef TREEHYDRA_PLUGIN
+    treehydra_call_js (&dehydra, "process_tree_type", q->t);
+#endif
     tree_queue_head = q->next;
     free(q);
   }
@@ -287,15 +290,15 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
 
 void gcc_plugin_finish_struct (tree t) {
   dehydra_finishStruct (&dehydra, t);
-#ifdef TREEHYDRA_PLUGIN
-  treehydra_call_js (&dehydra, "process_tree_type", t);
-#endif
 
   /* It's lame but types are still instantiated after post_parse
     when some of the stuff saved by dehydra_cp_pre_genericize has been 
     freed by GCC */
   if (postGlobalNamespace) {
     process_type (t);
+#ifdef TREEHYDRA_PLUGIN
+    treehydra_call_js (&dehydra, "process_tree_type", t);
+#endif
     return;
   }
   /* Appending stuff to the queue instead of 

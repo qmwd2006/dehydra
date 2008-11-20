@@ -196,9 +196,25 @@ void convert_char_star (struct Dehydra *this, struct JSObject *parent,
 }
 
 void convert_int (struct Dehydra *this, struct JSObject *parent,
-                  const char *propname, int i) {
-  jsval v = INT_TO_JSVAL (i);
+                  const char *propname, HOST_WIDE_INT i) {
+
+  jsval v;
+  JS_NewNumberValue(this->cx, (jsdouble) i, &v);
   dehydra_defineProperty (this, parent, propname, v);
+
+  /* because 64-bit ints can overflow a jsdouble, do the same representation,
+     unsigned, in string form */
+  static char buf[32];
+  sprintf(buf, "%llx", (unsigned long long) i);
+
+  int len = strlen(propname);
+  char *unsignedprop = xmalloc(len + 5);
+  strcpy(unsignedprop, propname);
+  strcpy(unsignedprop + len, "_str");
+
+  dehydra_defineStringProperty (this, parent, unsignedprop, buf);
+
+  free(unsignedprop);
 }
 
 /* END Functions for treehydra_generated */
