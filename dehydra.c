@@ -559,6 +559,7 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
   dehydra_unrootObject (this, key);
   dehydra_unrootObject (this, fnkey);
   this->statementHierarchyArray = NULL;
+  this->destArray = NULL;
 }
 
 static void dehydra_visitVarDecl (Dehydra *this, tree d) {
