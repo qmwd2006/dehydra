@@ -354,8 +354,8 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   case BOOLEAN_TYPE:
     {
       JSObject *tmp = this->destArray;
-      if (!tmp)
-        this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+      this->destArray = JS_NewArrayObject (this->cx, 0, NULL);
+      int key = dehydra_rootObject(this, OBJECT_TO_JSVAL (this->destArray));
       tree type_min = TYPE_MIN_VALUE (type);
       // min/max may be missing in typecast expressions
       if (type_min)
@@ -363,6 +363,7 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
       tree type_max = TYPE_MAX_VALUE (type);
       if (type_max)
         dehydra_makeVar(this, type_max, MAX_VALUE, obj);
+      dehydra_unrootObject (this, key);
       this->destArray = tmp;
     }
   case REAL_TYPE:
