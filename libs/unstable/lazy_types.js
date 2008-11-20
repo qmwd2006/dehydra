@@ -1,6 +1,8 @@
 include('gcc_print.js');
 include('gcc_util.js');
 
+include('unstable/BigInt.js');
+
 // dehydra_types.c port
 
 let TRACE = 0;
@@ -13,38 +15,54 @@ LazyType.prototype.__defineGetter__('loc', function type_loc() {
   return location_of(this._type);
 });
 LazyType.prototype.__defineGetter__('isConst', function type_const() {
-  return TYPE_READONLY(this._type);
+  return TYPE_READONLY(this._type) ? true : undefined;
 });
 LazyType.prototype.__defineGetter__('isVolatile', function type_volatile() {
-  return TYPE_VOLATILE(this._type);
+  return TYPE_VOLATILE(this._type) ? true : undefined;
 });
 LazyType.prototype.__defineGetter__('restrict', function type_restrict() {
-  return TYPE_RESTRICT(this._type);
+  return TYPE_RESTRICT(this._type) ? true : undefined;
 });
 LazyType.prototype.__defineGetter__('attributes', function type_atts() {
   return translate_attributes(TYPE_ATTRIBUTES(this._type));
 });
+LazyType.prototype.__defineGetter__('variantOf', function type_variant() {
+  let variant = TYPE_MAIN_VARIANT(this._type);
+  if (variant === this._type)
+    return undefined;
+  return dehydra_convert(variant);
+});
+LazyType.prototype.getQuals = function type_getquals() {
+  let q = [];
+  // if (this.isConst)
+  //   q.push('const ');
+  if (this.isVolatile)
+    q.push('volatile ');
+  if (this.restrict)
+    q.push('restrict ');
+  return q.join('');
+}
 LazyType.prototype.toString = function() {
-  return "LazyType Object";
+  throw new Error("Must be subclassed!");
 };
 
-function LazyTypedef(typedecl, originaltype)
+function LazyTypedef(type, decl)
 {
-  this._type = typedecl;
-  this._originaltype = originaltype;
+  this._type = type;
+  this._decl = decl;
 }
 LazyTypedef.prototype = new LazyType();
 LazyTypedef.prototype.__defineGetter__('typedef', function get_typedef() {
-  return dehydra_convert(this._originaltype);
+  return dehydra_convert(DECL_ORIGINAL_TYPE(this._decl));
 });
 LazyTypedef.prototype.__defineGetter__('name', function typedef_name() {
-  return decl_name(this._type);
+  return decl_name(this._decl);
 });
 LazyTypedef.prototype.__defineGetter__('attributes', function typedef_atts() {
-  return translate_attributes(DECL_ATTRIBUTES(this._type));
+  return translate_attributes(DECL_ATTRIBUTES(this._decl));
 });
 LazyTypedef.prototype.toString = function() {
-  return "typedef " + this.name;
+  return this.getQuals() + "typedef " + this.name;
 };
 
 /* A type which has a .type subtype accessible via TREE_TYPE */
@@ -60,8 +78,11 @@ function LazyPointer(type) {
 }
 LazyPointer.prototype = new LazySubtype();
 LazyPointer.prototype.isPointer = true;
+LazyPointer.prototype.__defineGetter__('precision', function pointer_prec() {
+  return TYPE_PRECISION(this._type);
+});
 LazyPointer.prototype.toString = function() {
-  return this.type + " *";
+  return this.type + "*";
 };
 
 function LazyReference(type) {
@@ -69,14 +90,18 @@ function LazyReference(type) {
 }
 LazyReference.prototype = new LazySubtype();
 LazyReference.prototype.isReference = true;
+LazyReference.prototype.__defineGetter__('precision', function ref_prec() {
+  return TYPE_PRECISION(this._type);
+});
 LazyReference.prototype.toString = function () {
-  return this.type + " &";
+  return this.type + "&";
 };
 
 function LazyRecord(type) {
   this._type = type;
   this.kind = class_key_or_enum_as_string(type);
-  if (!isAnonymousStruct(type)) this.name = decl_name(TYPE_NAME(type));
+  if (!isAnonymousStruct(type))
+    this.name = this.getQuals() + decl_name(TYPE_NAME(type));
   if (!COMPLETE_TYPE_P(type))
     this.isIncomplete = true;
 }
@@ -95,7 +120,7 @@ LazyRecord.prototype.__defineGetter__('bases', function record_bases() {
             VEC_iterate(BINFO_BASE_BINFOS(binfo))) {
     bases.push({'access': IDENTIFIER_POINTER(accesses[i++]),
                 'type': dehydra_convert(BINFO_TYPE(base_binfo)),
-                'isVirtual': BINFO_VIRTUAL_P(base_binfo),
+                'isVirtual': BINFO_VIRTUAL_P(base_binfo) ? true : undefined,
                 'toString': function() { return this.access + ' ' + this.type; }});
   }
   return bases;
@@ -166,7 +191,7 @@ LazyRecord.prototype.__defineGetter__('template', function record_args() {
   return template;
 });
 LazyRecord.prototype.toString = function() {
-  return this.kind + " " + this.name;
+  return this.name;
 };
 
 function LazyEnum(type) {
@@ -187,8 +212,8 @@ LazyEnum.prototype.toString = function() {
 };
 
 function LazyNumber(type, type_decl) {
+  this._type = type;
   if (!type_decl) {
-    this.precision = TYPE_PRECISION(type);
     type_decl = TYPE_NAME(type);
   }
   if (type_decl)
@@ -196,6 +221,32 @@ function LazyNumber(type, type_decl) {
   else
     this.name = type_as_string(type);
 };
+LazyNumber.prototype.__defineGetter__('isUnsigned', function number_unsigned() {
+  return TYPE_UNSIGNED(this._type) ? true : undefined;
+});
+LazyNumber.prototype.__defineGetter__('isSigned', function number_signed() {
+  return TYPE_UNSIGNED(this._type) ? undefined : true;
+});
+LazyNumber.prototype.__defineGetter__('bitfieldBits', function number_bf() {
+  return TYPE_PRECISION(this._type);
+});
+LazyNumber.prototype.__defineGetter__('min', function number_min() {
+  let min = TYPE_MIN_VALUE(this._type);
+  if (!min)
+    return undefined;
+                                        
+  return dehydra_convert(min);
+});
+LazyNumber.prototype.__defineGetter__('max', function number_max() {
+  let max = TYPE_MAX_VALUE(this._type);
+  if (!max)
+    return undefined;
+                                        
+  return dehydra_convert(max);
+});
+LazyNumber.prototype.__defineGetter__('precision', function number_prec() {
+  return TYPE_PRECISION(this._type);
+});
 LazyNumber.prototype.toString = function() {
   return this.name;
 };
@@ -204,6 +255,7 @@ function LazyArray(type) {
   this._type = type;
 }
 LazyArray.prototype = new LazySubtype();
+LazyArray.prototype.isArray = true;
 LazyArray.prototype.__defineGetter__('size', function array_size() {
   if (TYPE_DOMAIN(this._type)) {
     let dtype = TYPE_DOMAIN(this._type);
@@ -230,6 +282,65 @@ LazyFunctionType.prototype.toString = function() {
   return this.type + " (*)(" + this.parameters.join(', ') + ")";
 };
 
+const hexMap = [];
+hexMap[48] = 102; // 0 -> f
+hexMap[49] = 101;
+hexMap[50] = 100;
+hexMap[51] = 99;
+hexMap[52] = 98;
+hexMap[53] = 97;
+hexMap[54] = 57;
+hexMap[55] = 56;
+hexMap[56] = 55;
+hexMap[57] = 54;
+hexMap[97] = 53;
+hexMap[98] = 52;
+hexMap[99] = 51;
+hexMap[100] = 50;
+hexMap[101] = 49;
+hexMap[102] = 48;
+
+function bitwiseNot(hexString)
+{
+  return String.fromCharCode.apply(null,
+                                   [hexMap[hexString.charCodeAt(i)]
+                                    for (i in hexString)]);
+}
+
+function tree_to_bigint(t)
+{
+  switch (TREE_CODE(t)) {
+  case INTEGER_CST:
+    let cst = TREE_INT_CST(t);
+
+    let v = new BigInt('0x' + cst.high_str + cst.low_str);
+    
+    if (tree_int_cst_sign(t) < 0) {
+      // manually do ~val + 1 arithmetic
+
+      let nc = cst.high_str.length * 2;
+      function ncrange() { for (let i = 0; i < nc; ++i) yield i; }
+      let maxval = new BigInt('0x' + ['f' for (i in ncrange())].join(''));
+      
+      return bigint_uminus(bigint_plus(bigint_minus(maxval, v), 1));
+    }
+    return v;
+    
+  default:
+    throw Error("Unhandled number type: " + TREE_CODE(t));
+  }
+}
+
+function LazyLiteral(type) {
+  this._type = type;
+  this.value = tree_to_bigint(type);
+}
+LazyLiteral.prototype.__defineGetter__('type', function lazyliteral_type() {
+  let t = TREE_TYPE(this._type);
+  if (t !== undefined)
+    return dehydra_convert(t);
+  return undefined;
+});
 function LazyDecl(type) {
   this._type = type;
 }
@@ -304,6 +415,22 @@ LazyDecl.prototype.__defineGetter__('isStatic', function lazydecl_isstatic() {
     return true;
   return undefined;
 });
+LazyDecl.prototype.__defineGetter__('isExtern', function lazydecl_isextern() {
+  let code = TREE_CODE(this._type);
+  if (code != VAR_DECL ||
+      this.memberOf === undefined ||
+      TREE_STATIC(this._type))
+    return true;
+                                      
+  return undefined;
+});
+LazyDecl.prototype.__defineGetter__('parameters', function lazydecl_params() {
+  if (TREE_CODE(this._type) != FUNCTION_DECL)
+    return undefined;
+                                      
+  return [dehydra_convert(t)
+          for (t in flatten_chain(DECL_ARGUMENTS(this._type)))];
+});
 LazyDecl.prototype.toString = function() {
   return this.name;
 }
@@ -332,7 +459,7 @@ function dehydra_convert(type) {
     if (type_decl != undefined) {
       let original_type = DECL_ORIGINAL_TYPE (type_decl);
       if (original_type)
-	return new LazyTypedef(type_decl, original_type);
+	return new LazyTypedef(type, type_decl);
     }
   }
 
@@ -366,6 +493,8 @@ function dehydra_convert(type) {
     return new LazyFunctionType(type);
   case CONSTRUCTOR:
     return new LazyConstructor(type);
+  case INTEGER_CST:
+    return new LazyLiteral(type);
   };
 
   if (DECL_P(type))

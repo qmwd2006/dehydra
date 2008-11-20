@@ -23,7 +23,7 @@ struct JSObject *dehydra_defineArrayProperty (struct Dehydra *this,
 
 void convert_tree_node_union (struct Dehydra *this, enum tree_node_structure_enum code,
                               union tree_node *var, struct JSObject *obj);
-void convert_int (struct Dehydra *this, struct JSObject *parent, const char *propname, int i);
+void convert_int (struct Dehydra *this, struct JSObject *parent, const char *propname, HOST_WIDE_INT i);
 void convert_char_star (struct Dehydra *this, struct JSObject *parent,
                         const char *propname, const char *str);
 void treehydra_call_js (struct Dehydra *this, const char *callback,

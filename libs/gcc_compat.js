@@ -63,6 +63,24 @@ function TREE_INT_CST_LOW (node) {
   return TREE_INT_CST (node).low
 }
 
+function TREE_INT_CST_HIGH (node) {
+  return TREE_INT_CST (node).high;
+}
+
+function tree_int_cst_sign(t) {
+  if (TREE_INT_CST_LOW(t) == 0 &&
+      TREE_INT_CST_HIGH(t) == 0)
+    return 0;
+  
+  if (TYPE_UNSIGNED(TREE_TYPE(t)))
+      return 1;
+  
+  if (TREE_INT_CST_HIGH(t) < 0)
+    return -1;
+  
+  return 1;
+}
+
 function VL_EXP_OPERAND_LENGTH (node) {
   return (TREE_INT_CST_LOW ((TREE_CLASS_CHECK (node, tcc_vl_exp).exp.operands[0])))
 }
@@ -264,6 +282,14 @@ function TYPE_PRECISION (node) {
 
 function TYPE_P (node) {
   return TREE_CODE_CLASS (TREE_CODE (node)) == tcc_type
+}
+
+function TYPE_CHECK (node) {
+  return TREE_CLASS_CHECK(node, tcc_type);
+}
+
+function TYPE_MODE(node) {
+  return node.type.mode;
 }
 
 function TYPE_LANG_SPECIFIC (node) {
@@ -578,7 +604,7 @@ function TYPE_MAIN_DECL(NODE) {
 let TYPE_STUB_DECL = TREE_CHAIN;
 
 function TYPE_MAIN_VARIANT(node) {
-  return node.type.main_variant;
+  return TYPE_CHECK(node).type.main_variant;
 }
 
 function DECL_CLONED_FUNCTION_P(node) {
@@ -666,3 +692,42 @@ function loc_as_string(loc) {
   return loc.file + ':' + loc.line + ':' + loc.column;
 }
 
+function TYPE_UNSIGNED(t) {
+  return t.base.unsigned_flag;
+}
+
+/* The following globals are functions because they are tree nodes which must
+ * not be held past the current treehydra callback.
+ */
+
+function char_type_node() sys.treehydra.gcc.integer_types[itk_char.value];
+function signed_char_type_node() sys.treehydra.gcc.integer_types[itk_signed_char.value];
+function unsigned_char_type_node() sys.treehydra.gcc.integer_types[itk_unsigned_char.value];
+function short_integer_type_node() sys.treehydra.gcc.integer_types[itk_short.value];
+function short_unsigned_type_node() sys.treehydra.gcc.integer_types[itk_unsigned_short.value];
+function integer_type_node() sys.treehydra.gcc.integer_types[itk_int.value];
+function unsigned_type_node() sys.treehydra.gcc.integer_types[itk_unsigned_int.value];
+function long_integer_type_node() sys.treehydra.gcc.integer_types[itk_long.value];
+function long_unsigned_type_node() sys.treehydra.gcc.integer_types[itk_unsigned_long.value];
+function long_long_integer_type_node() sys.treehydra.gcc.integer_types[itk_long_long.value];
+function long_long_unsigned_type_node() sys.treehydra.gcc.integer_types[itk_unsigned_long_long.value];
+
+function c_common_type_for_mode (mode, unsignedp)
+{
+  if (TYPE_MODE(integer_type_node()) == mode)
+    return unsignedp ? unsigned_type_node() : integer_type_node();
+  
+  if (TYPE_MODE(signed_char_type_node()) == mode)
+    return unsignedp ? unsigned_char_type_node() : signed_char_type_node();
+  
+  if (TYPE_MODE(short_integer_type_node()) == mode)
+    return unsignedp ? short_unsigned_type_node() : short_integer_type_node();
+  
+  if (TYPE_MODE(long_integer_type_node()) == mode)
+    return unsignedp ? long_unsigned_type_node() : long_integer_type_node();
+  
+  if (TYPE_MODE(long_long_integer_type_node()) == mode)
+    return unsignedp ? long_long_unsigned_type_node() : long_long_integer_type_node();
+  
+  throw new Error("Haven't ported the rest of this very long function.");
+}

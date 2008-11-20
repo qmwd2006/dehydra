@@ -1,4 +1,6 @@
-include ("util.js")
+include ("util.js");
+include ("gcc_compat.js");
+
 /* Functions for printing GCC objects as strings. */
 
 /** Return a string representation of the given TYPE. */
@@ -9,17 +11,48 @@ function type_string(type) {
     return ptrmemfunc_type_string(type);
   }
 
-  let prefix = TYPE_READONLY(type) ? "const " : "";
-  let infix = TYPE_READONLY(type) ? " const " : "";
+  let quals = [];
+  if (TYPE_READONLY(type))
+    quals.push('const ');
+  if (TYPE_VOLATILE(type))
+    quals.push('volatile ');
+  if (TYPE_RESTRICT(type))
+    quals.push('restrict ');
+  
+  let prefix = quals.join('');
+  let infix = quals.length ? ' ' + prefix : '';
 
   let code = TREE_CODE(type);
   if (code == INTEGER_TYPE || code == REAL_TYPE || code == BOOLEAN_TYPE ||
       code == RECORD_TYPE || code == ENUMERAL_TYPE || code == UNION_TYPE) {
-    if (TYPE_NAME(type) == undefined) {
-      // Seems to happen for pointer to member types
-      return "UNKNOWN";
+    if (TYPE_NAME(type))
+      return prefix + decl_name_string(TYPE_NAME(type));
+    
+    let prec = TYPE_PRECISION(type);
+    type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
+    if (TYPE_NAME(type)) {
+      let r = prefix + decl_name_string(TYPE_NAME(type));
+      if (TYPE_PRECISION(type) != prec) {
+        r += ":" + prec;
+      }
+      return r;
     }
-    return prefix + decl_name_string(TYPE_NAME(type));
+    
+    let r;
+    switch (code) {
+    case INTEGER_TYPE:
+      r = TYPE_UNSIGNED(type) ? "<unnamed-unsigned:" : "<unnamed-signed:";
+      break;
+    case REAL_TYPE:
+      r = "<unnamed-float:";
+      break;
+    case FIXED_POINT_TYPE:
+      r = "<unnamed-fixed:";
+      break;
+    default:
+      throw new Error("Unexpected code path");
+    }
+    return r + prec + ">";
   } else if (code == VOID_TYPE) {
     return 'void';
   } else if (code == POINTER_TYPE) {

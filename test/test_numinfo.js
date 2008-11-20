@@ -27,13 +27,13 @@ NuminfoTestCase.prototype.runTest = function () {
 
 const expected = {
   'int8var':   [ false,  8,                 '-128',                     '127' ],
-  'int16var':  [ false, 16,                 '-32768',                 '32767' ],
-  'int32var':  [ false, 32,            '-2147483648',            '2147483647' ],
-  'int64var':  [ false, 64, '-9223372036854775808ll', '9223372036854775807ll' ],
+  'int16var':  [ false, 16,               '-32768',                   '32767' ],
+  'int32var':  [ false, 32,          '-2147483648',              '2147483647' ],
+  'int64var':  [ false, 64, '-9223372036854775808',     '9223372036854775807' ],
   'uint8var':  [  true,  8,                   '0u',                    '255u' ],
   'uint16var': [  true, 16,                   '0u',                  '65535u' ],
   'uint32var': [  true, 32,                   '0u',             '4294967295u' ],
-  'uint64var': [  true, 64,                 '0ull', '18446744073709551615ull' ],
+  'uint64var': [  true, 64,                   '0u',   '18446744073709551615u' ],
   'floatvar':  [ false, 32,              undefined,                 undefined ],
   'doublevar': [ false, 64,              undefined,                 undefined ],
   'boolvar':   [  true,  1,                   '0u',                      '1u' ]

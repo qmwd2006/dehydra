@@ -531,7 +531,7 @@ function convert (unit, aggr) {
       isPrimitive = true;
     } else if (isUnsignedOrInt(m.type)) {
       type_name = "int"
-      cast = "int"
+      cast = "HOST_WIDE_INT"
       isPrimitive = true
     } else {
       print("Unhandled " + type_name + " " +  m.name + " " + m.loc)

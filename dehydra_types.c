@@ -143,7 +143,7 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
     dehydra_addClassMember (this, field, destArray);
   }
   dehydra_defineProperty (this, objClass, "size_of", 
-                          INT_TO_JSVAL (host_integerp (TYPE_SIZE_UNIT (record_type), 1)));
+                          INT_TO_JSVAL (tree_low_cst (TYPE_SIZE_UNIT (record_type), 1)));
 }
 
 static bool isAnonymousStruct(tree t) {
@@ -378,25 +378,55 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
 #ifdef FIXED_POINT_TYPE_CHECK
   case FIXED_POINT_TYPE:
 #endif
-    if (!type_decl)
-      {
-        int prec = TYPE_PRECISION (type);
-        dehydra_defineProperty (this, obj, BITFIELD, INT_TO_JSVAL (prec));
+    /* The following code is ported from GCC c-pretty-print.c:pp_c_type_specifier */
+    if (type_decl) {
+      dehydra_defineStringProperty (this, obj, NAME, IDENTIFIER_POINTER(TREE_CODE(type_decl) == TYPE_DECL ?
+                                                                        DECL_NAME(type_decl) : type_decl));
+    }
+    else {
+      int prec = TYPE_PRECISION (type);
+      dehydra_defineProperty (this, obj, BITFIELD, INT_TO_JSVAL (prec));
+
 #ifdef ALL_FIXED_POINT_MODE_P
-        if (ALL_FIXED_POINT_MODE_P (TYPE_MODE (type)))
-          type = c_common_type_for_mode (TYPE_MODE (type), TYPE_SATURATING (type));
-        else
+      if (ALL_FIXED_POINT_MODE_P (TYPE_MODE (type)))
+        type = c_common_type_for_mode (TYPE_MODE (type), TYPE_SATURATING (type));
+      else
 #endif
-          type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
-        type_decl = TYPE_NAME (type);
+        type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
+
+      if (TYPE_NAME(type)) {
+        const char *typeName = IDENTIFIER_POINTER(DECL_NAME(TYPE_NAME(type)));
+        if (TYPE_PRECISION(type) != prec) {
+          char *buf = xmalloc(strlen(typeName) + 40);
+          sprintf(buf, "%s:%i", typeName, prec);
+          dehydra_defineStringProperty(this, obj, NAME, buf);
+          free(buf);
+        }
+        else {
+          dehydra_defineStringProperty(this, obj, NAME, typeName);
+        }
       }
-    char const *realName;
-    if (type_decl)
-      realName = IDENTIFIER_POINTER(TREE_CODE (type_decl) == TYPE_DECL ?
-                                    DECL_NAME(type_decl) : type_decl);
-    else
-      realName = type_as_string(type, 0xff);
-    dehydra_defineStringProperty (this, obj, NAME, realName);
+      else {
+        const char *typeName;
+        char buf[100];
+        switch (TREE_CODE(type)) {
+        case INTEGER_TYPE:
+          typeName = TYPE_UNSIGNED(type) ? "unnamed-unsigned" : "unnamed-signed";
+          break;
+        case REAL_TYPE:
+          typeName = "unnamed-float";
+          break;
+        case FIXED_POINT_TYPE:
+          typeName = "unnamed-fixed";
+          break;
+        default:
+          gcc_unreachable();
+        }
+        sprintf(buf, "<%s:%i>", typeName, prec);
+        dehydra_defineStringProperty(this, obj, NAME, buf);
+      }
+    }
+
     break;
   case COMPLEX_TYPE:
   case VECTOR_TYPE:

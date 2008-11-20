@@ -16,6 +16,9 @@ function process_type(t) {
   print("class " + t.name + " : " +
         [b.access + " " + (b.isVirtual? "virtual ": "")
             + b.type.name for each (b in t.bases)].join(","))
+
+  print("t.bases[0].isVirtual: " + t.bases[0].isVirtual);
+
   assert(! t.bases[0].isVirtual);
   assert(t.bases[1].isVirtual);
 
