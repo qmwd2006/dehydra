@@ -2,9 +2,10 @@
 require({ after_gcc_pass: isGCC42 ? 'einline' : 'einline_ipa' });
 
 ls = ["good1", "good2"]
-function process_cgraph(cgraph) {
+function process_tree() {
+  
   //only go into functions with bodies
-  for (var f = cgraph_nodes; f; f = f.next)
+  for (var f = sys.treehydra.gcc.cgraph_nodes; f; f = f.next)
     if (DECL_STRUCT_FUNCTION(f.decl))
       ls.splice(ls.indexOf(decl_name(f.decl)), 1)
 }

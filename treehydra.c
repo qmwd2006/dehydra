@@ -28,11 +28,12 @@
 #if JS_VERSION < 180
 #error "Need SpiderMonkey 1.8 or higher. Treehydra does not support older spidermonkeys due to lack of JS_AlreadyHasOwnProperty"
 #endif
-/* The entries in the map should be transitively rooted by 
+/* The entries in the map should be transitively rooted by
    this->globalObj's current_function_decl property */
 static struct pointer_map_t *jsobjMap = NULL;
 /* this helps correlate js nodes to their C counterparts */
 static int global_seq = 0;
+static JSObject *dehydraSysObj = NULL;
 
 typedef struct {
   treehydra_handler handler;
@@ -71,7 +72,7 @@ static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id,
     }
     /* The lazy handler has already been called. Standard behavior would
      * be to let the interpreter to continue searching the scope chain.
-     * Instead, we're going to check it first so that we can return an 
+     * Instead, we're going to check it first so that we can return an
      * error if and only if the property doesn't exist.
      *
      * A better way to do this would be to simply set strict mode, but
@@ -111,8 +112,8 @@ jsval get_lazy (Dehydra *this, treehydra_handler handler, void *v,
   JSObject *obj;
   jsval jsvalObj;
   xassert (parent && propname);
-    
-  obj = 
+
+  obj =
     definePropertyObject(
         this->cx, parent, propname, &js_tree_class, NULL,
         JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT);
@@ -140,7 +141,7 @@ jsval get_existing_or_lazy (Dehydra *this, treehydra_handler handler, void *v,
   }
 
   const jsval jsret = get_lazy (this, handler, v, parent, propname);
- 
+
   *pointer_map_insert (jsobjMap, v) = (void*) jsret;
   return jsret;
 }
@@ -154,7 +155,7 @@ void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
 #ifndef __APPLE_CC__
   // no TS_BASE in mac gcc 42 and no easy way to check too
   convert_tree_node_union (this, TS_BASE, t, obj);
-  if (!GIMPLE_TUPLE_P (t)) 
+  if (!GIMPLE_TUPLE_P (t))
 #endif
     {
     convert_tree_node_union (this, TS_COMMON, t, obj);
@@ -162,7 +163,7 @@ void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
   /* do not do tree_node_structure() for non C types */
   /* taras: AFAIK This guard is only needed for gcc <= 4.3 */
   if (code < NUM_TREE_CODES
-      || (isGPlusPlus() 
+      || (isGPlusPlus()
           && cp_tree_node_structure ((union lang_tree_node *)t) == TS_CP_GENERIC)) {
     enum tree_node_structure_enum i = tree_node_structure (t);
     convert_tree_node_union (this, i, t, obj);
@@ -188,7 +189,7 @@ jsval get_enum_value (struct Dehydra *this, const char *name) {
   return val;
 }
 
-void convert_char_star (struct Dehydra *this, struct JSObject *parent, 
+void convert_char_star (struct Dehydra *this, struct JSObject *parent,
                         const char *propname, const char *str) {
   jsval v = STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, str));
   dehydra_defineProperty (this, parent, propname, v);
@@ -257,69 +258,58 @@ JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
   return JS_TRUE;
 }
 
-void treehydra_plugin_pass (Dehydra *this) {
-  xassert (!jsobjMap);
-  /* the map is per-invocation 
-   to cope with gcc mutating things */
-  jsval rval;
-  if (current_function_decl) {
-    jsval process_tree = dehydra_getToplevelFunction(this, "process_tree");
-    if (process_tree == JSVAL_VOID) return;
-
-    jsobjMap = pointer_map_create ();   
-
-    jsval fnval = 
-      get_existing_or_lazy (this, lazy_tree_node, current_function_decl,
-                            this->globalObj, "current_function_decl");
-    xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_tree,
-                                   1, &fnval, &rval));
-    JS_DeleteProperty (this->cx, this->globalObj, "current_function_decl");
-  } else if (cgraph_nodes) {
-    jsval process_cgraph = dehydra_getToplevelFunction(this, "process_cgraph");
-    if (process_cgraph == JSVAL_VOID) return;
-    
-    jsobjMap = pointer_map_create ();   
-
-    jsval cgraphval =
-      get_existing_or_lazy (this, lazy_cgraph_node, cgraph_nodes,
-                            this->globalObj, "cgraph_nodes");
-    xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_cgraph,
-                                   1, &cgraphval, &rval));
-
-    JS_DeleteProperty (this->cx, this->globalObj, "cgraph_nodes");
-  }
-  if (jsobjMap) {
-    pointer_map_destroy (jsobjMap);
-    jsobjMap = NULL;
+static void lazy_integer_types (Dehydra *this, void *structure, JSObject *obj) {
+  int i;
+  char buf[8];
+  for (i = 0;i < sizeof(integer_types)/sizeof(integer_types[0]);++i) {
+    sprintf(buf, "%d", i);
+    get_existing_or_lazy (this, lazy_tree_node, integer_types[i], obj, buf);
   }
 }
 
-#define DEFINE_TREEHYDRA_HANDLER(NAME)                         \
-  void treehydra_##NAME (struct Dehydra *this, tree fndecl) {          \
-    jsval process = dehydra_getToplevelFunction(this, #NAME);           \
-    if (process == JSVAL_VOID) return;                                  \
-                                                                        \
-    jsval rval;                                                         \
-    jsobjMap = pointer_map_create ();                                   \
-                                                                        \
-    jsval fnval =                                                       \
-      get_existing_or_lazy (this, lazy_tree_node, fndecl,               \
-                            this->globalObj, "__treehydra_top_obj");    \
-    xassert (JS_CallFunctionValue (this->cx, this->globalObj, process,  \
-                                   1, &fnval, &rval));                  \
-    JS_DeleteProperty (this->cx, this->globalObj, "__treehydra_top_obj"); \
-    pointer_map_destroy (jsobjMap);                                     \
-    jsobjMap = NULL;                                                    \
-  }                                                                     \
+static void lazy_gcc_globals (Dehydra *this, void *structure, JSObject *obj) {
+  get_existing_or_lazy (this, lazy_cgraph_node, cgraph_nodes, obj,
+                        "cgraph_nodes");
+  get_lazy (this, lazy_integer_types, NULL, obj, "integer_types");
+}
 
-DEFINE_TREEHYDRA_HANDLER(process_cp_pre_genericize)
-DEFINE_TREEHYDRA_HANDLER(process_tree_decl)
-DEFINE_TREEHYDRA_HANDLER(process_tree_type)
+static void lazy_treehydra_globals (Dehydra *this, void *structure, JSObject *obj) {
+  get_lazy (this, lazy_gcc_globals, NULL, obj, "gcc");
+}
+
+void treehydra_call_js (struct Dehydra *this, const char *callback, tree treeval) {
+  jsval process = dehydra_getToplevelFunction(this, callback);
+  if (process == JSVAL_VOID) return;
+
+  jsval rval;
+  xassert (!jsobjMap);
+  jsobjMap = pointer_map_create ();
+
+  get_lazy (this, lazy_treehydra_globals, NULL, dehydraSysObj,
+            "treehydra");
+  jsval fnval =
+    get_existing_or_lazy (this, lazy_tree_node, treeval,
+                          this->globalObj, "__treehydra_top_obj");
+  xassert (JS_CallFunctionValue (this->cx, this->globalObj, process,
+                                 1, &fnval, &rval));
+  JS_DeleteProperty (this->cx, dehydraSysObj, "treehydra");
+  JS_DeleteProperty (this->cx, this->globalObj,
+                       "__treehydra_top_obj");
+
+  pointer_map_destroy (jsobjMap);
+  jsobjMap = NULL;
+}
 
 int treehydra_startup (Dehydra *this) {
   /* Check conditions that should hold for treehydra_generated.h */
   xassert (NULL == JSVAL_NULL && sizeof (void*) == sizeof (jsval));
-  xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree", 
+  jsval sys_val = JSVAL_VOID;
+
+  JS_GetProperty(this->cx, this->globalObj, SYS, &sys_val);
+  xassert (sys_val != JSVAL_VOID);
+  dehydraSysObj = JSVAL_TO_OBJECT (sys_val);
+
+  xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree",
                               JS_C_walk_tree, 0, 0));
 
   xassert (JS_InitClass(this->cx, this->globalObj, NULL
