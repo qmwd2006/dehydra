@@ -51,7 +51,7 @@ static void process_namespace_decl (tree ns) {
 
 static void process_decl (tree f) {
 #ifdef TREEHYDRA_PLUGIN
-  treehydra_process_tree_decl (&dehydra, f);
+  treehydra_call_js (&dehydra, "process_tree_decl", f);
 #endif
   dehydra_visitDecl (&dehydra, f);
 }
@@ -237,7 +237,7 @@ void gcc_plugin_pass (void) {
     after_gcc_pass = 0;
   }
 
-  treehydra_plugin_pass (&dehydra);
+  treehydra_call_js (&dehydra, "process_tree", current_function_decl);
 }
 #endif
 
@@ -281,14 +281,14 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
   
   dehydra_cp_pre_genericize(&dehydra, fndecl, postGlobalNamespace);
 #ifdef TREEHYDRA_PLUGIN
-  treehydra_process_cp_pre_genericize(&dehydra, fndecl);
+  treehydra_call_js (&dehydra, "process_cp_pre_genericize", fndecl);
 #endif
 }
 
 void gcc_plugin_finish_struct (tree t) {
   dehydra_finishStruct (&dehydra, t);
 #ifdef TREEHYDRA_PLUGIN
-  treehydra_process_tree_type (&dehydra, t);
+  treehydra_call_js (&dehydra, "process_tree_type", t);
 #endif
 
   /* It's lame but types are still instantiated after post_parse

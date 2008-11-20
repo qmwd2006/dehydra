@@ -591,6 +591,9 @@ function convert (unit, aggr) {
 }
 
 function process_type(type) {
+  while (type.variantOf)
+    type = type.variantOf
+
   if (type.name == "tree_code") {
     // needed because doing enumType foo:1
     // makes gcc loose enum info in the bitfield
@@ -604,13 +607,15 @@ function process_type(type) {
     this.tree_code_class = type
   } else if (type.name == "cplus_tree_code") {
     this.cplus_tree_code = type
+  } else if (type.name == "integer_type_kind") {
+    this.integer_type_kind = type
   }
 }
 
 function input_end () {
   // got all the ingradients, time to cook
   if (!(this.tree_code_class && this.tree_code
-      && this.cgraph_node)) {
+      && this.cgraph_node && this.integer_type_kind)) {
     print ("Dehydra didn't find required types needed to generate Treehydra")
     return
   }
@@ -620,6 +625,11 @@ function input_end () {
   for each (var m in this.tree_code_class.members) {
     unit.registerEnumValue (m.name, m.value)
   }
+
+  for each (var m in this.integer_type_kind.members) {
+    unit.registerEnumValue (m.name, m.value)
+  }
+  
   convert(unit, this.cgraph_node)
   var str = unit.toString()
   var fname = "treehydra_generated.c";

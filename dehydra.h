@@ -45,6 +45,7 @@ extern const char *SIGNED;
 extern const char *MIN_VALUE;
 extern const char *MAX_VALUE;
 extern const char *TEMPLATE;
+extern const char *SYS;
 
 extern JSClass js_type_class;
 
