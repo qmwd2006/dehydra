@@ -270,15 +270,19 @@ function LazyArray(type) {
 }
 LazyArray.prototype = new LazySubtype();
 LazyArray.prototype.isArray = true;
-LazyArray.prototype.__defineGetter__('size', function array_size() {
-  if (TYPE_DOMAIN(this._type)) {
-    let dtype = TYPE_DOMAIN(this._type);
-    let min_t = TYPE_MIN_VALUE(dtype);
-    let max_t = TYPE_MAX_VALUE(dtype);
-    if (TREE_CODE(min_t) == INTEGER_CST && TREE_CODE(max_t) == INTEGER_CST)
-      return TREE_INT_CST_LOW(max_t) - TREE_INT_CST_LOW(min_t) + 1;
-  }
-  return undefined;
+LazyArray.prototype.__defineGetter__('max', function array_max() {
+  let d = TYPE_DOMAIN(this._type);
+  if (d === undefined)
+    return undefined;
+
+  let max = TYPE_MAX_VALUE(d);
+  if (max === undefined || TREE_CODE(max) != INTEGER_CST)
+    return undefined;
+                                       
+  return tree_to_bigint(max);
+});
+LazyArray.prototype.__defineGetter__('variableLength', function array_vlength() {
+  return this.max === undefined;
 });
 LazyArray.prototype.toString = function() {
   return this.type + " [" + (this.size === undefined ? "" : this.size) + "]";

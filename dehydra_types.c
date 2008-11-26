@@ -445,15 +445,15 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
     break;
   case ARRAY_TYPE:
     dehydra_defineProperty (this, obj, ARRAY, JSVAL_TRUE);
-    if (TYPE_DOMAIN (type))
-      {
-        tree dtype = TYPE_DOMAIN (type);
-        tree max = TYPE_MAX_VALUE (dtype);
-        dehydra_defineStringProperty (this, obj, SIZE,
-                                      (max && TREE_CODE(max) == INTEGER_CST 
-                                       ? dehydra_intCstToString (max)
-                                       : expr_as_string (max, 0)));
-      }
+    if (TYPE_DOMAIN (type) &&
+        TYPE_MAX_VALUE (TYPE_DOMAIN (type)) &&
+        TREE_CODE (TYPE_MAX_VALUE (TYPE_DOMAIN (type))) == INTEGER_CST) {
+      dehydra_defineStringProperty (this, obj, MAX_VALUE,
+                                    dehydra_intCstToString (TYPE_MAX_VALUE (TYPE_DOMAIN(type))));
+    }
+    else {
+      dehydra_defineProperty (this, obj, "variableLength", JSVAL_TRUE);
+    }
     next_type = TREE_TYPE (type);
     break;
   default:

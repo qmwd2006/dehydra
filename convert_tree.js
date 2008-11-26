@@ -416,7 +416,7 @@ function isCharStar (type) {
   while (type.typedef)
     type = type.typedef
 
-  if (!(type.isPointer || (type.isArray && type.size == "0u"))) return false
+  if (!(type.isPointer || (type.isArray && type.max == "0u"))) return false
   type = type.type
   while (type.typedef)
     type = type.typedef
@@ -467,7 +467,7 @@ function convert (unit, aggr) {
     var tag = undefined
     var lengthExpr = undefined
     /* Extract size if type is an array */
-    var lengthResults = arraySizeRegexp.exec (m.type.size);
+    var lengthResults = arraySizeRegexp.exec (m.type.max);
     var unionResolver = undefined
     var subf = undefined
     /* arrays of size 1 are actually funky var length arrays */
