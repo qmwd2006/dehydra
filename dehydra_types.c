@@ -395,6 +395,9 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
         type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
 
       if (TYPE_NAME(type)) {
+        dehydra_defineProperty(this, obj, "bitfieldOf",
+                               dehydra_convert(this, type));
+
         const char *typeName = IDENTIFIER_POINTER(DECL_NAME(TYPE_NAME(type)));
         if (TYPE_PRECISION(type) != prec) {
           char *buf = xmalloc(strlen(typeName) + 40);

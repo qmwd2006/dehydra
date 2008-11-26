@@ -228,7 +228,21 @@ LazyNumber.prototype.__defineGetter__('isSigned', function number_signed() {
   return TYPE_UNSIGNED(this._type) ? undefined : true;
 });
 LazyNumber.prototype.__defineGetter__('bitfieldBits', function number_bf() {
+  let parent = c_common_type_for_mode(TYPE_MODE(this._type),
+                                      TYPE_UNSIGNED(this._type));
+  if (parent === this.type)
+    return undefined;
+  
   return TYPE_PRECISION(this._type);
+});
+LazyNumber.prototype.__defineGetter__('bitfieldOf', function numbef_bfof() {
+  let parent = c_common_type_for_mode(TYPE_MODE(this._type),
+                                      TYPE_UNSIGNED(this._type));
+                                        
+  if (parent === this._type)
+    return undefined;
+
+  return dehydra_convert(parent);
 });
 LazyNumber.prototype.__defineGetter__('min', function number_min() {
   let min = TYPE_MIN_VALUE(this._type);
