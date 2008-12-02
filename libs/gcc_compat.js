@@ -728,6 +728,6 @@ function c_common_type_for_mode (mode, unsignedp)
   
   if (TYPE_MODE(long_long_integer_type_node()) == mode)
     return unsignedp ? long_long_unsigned_type_node() : long_long_integer_type_node();
-  
-  throw new Error("Haven't ported the rest of this very long function.");
+
+  return undefined;
 }

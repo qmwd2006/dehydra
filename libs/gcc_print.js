@@ -30,6 +30,9 @@ function type_string(type) {
     
     let prec = TYPE_PRECISION(type);
     type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
+    if (!type)
+      return "UNKNOWN";
+
     if (TYPE_NAME(type)) {
       let r = prefix + decl_name_string(TYPE_NAME(type));
       if (TYPE_PRECISION(type) != prec) {
