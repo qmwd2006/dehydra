@@ -419,9 +419,11 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
         case REAL_TYPE:
           typeName = "unnamed-float";
           break;
+#ifdef FIXED_POINT_TYPE_CHECK
         case FIXED_POINT_TYPE:
           typeName = "unnamed-fixed";
           break;
+#endif
         default:
           gcc_unreachable();
         }
