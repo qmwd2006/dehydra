@@ -172,9 +172,9 @@ function BINFO_BASE_ACCESSES(node) {
   return TREE_CHECK(node, TREE_BINFO).binfo.base_accesses;
 }
 
-function BINFO_VIRTUAL_P(node) {
-  return TREE_CHECK(node, TREE_BINFO).base.static_flag;
-}
+var BINFO_VIRTUAL_P = isGCC42 ?
+  function (node) { return TREE_CHECK(node, TREE_BINFO).common.static_flag; } :
+  function (node) { return TREE_CHECK(node, TREE_BINFO).base.static_flag; }
 
 // not sure if this will work same way in gcc 4.3
 function TREE_CHAIN (node) {
@@ -534,9 +534,9 @@ function COMPLETE_TYPE_P (node) {
   return TYPE_SIZE(node) != undefined;
 }
 
-function TYPE_VOLATILE (node) {
-  return node.base.volatile_flag;
-}
+var TYPE_VOLATILE = isGCC42 ?
+  function (node) { return node.common.volatile_flag; } :
+  function (node) { return node.base.volatile_flag; };
 
 function TYPE_RESTRICT (node) {
   return node.type.restrict_flag;
@@ -573,13 +573,13 @@ function DECL_ARTIFICIAL(node) {
   return node.decl_common.artificial_flag;
 }
 
-function TREE_STATIC(node) {
-  return node.base.static_flag;
-}
+var TREE_STATIC = isGCC42 ?
+  function (node) { return node.common.static_flag; } :
+  function (node) { return node.base.static_flag; };
 
-function TREE_PUBLIC(node) {
-  return node.base.public_flag;
-}
+var TREE_PUBLIC = isGCC42 ?
+  function (node) { return node.common.public_flag; } :
+  function (node) { return node.base.public_flag; };
 
 function DECL_IMPLICIT_TYPEDEF_P(node) {
   return TREE_CODE(node) == TYPE_DECL && DECL_LANG_FLAG_2(node);
@@ -692,9 +692,9 @@ function loc_as_string(loc) {
   return loc.file + ':' + loc.line + ':' + loc.column;
 }
 
-function TYPE_UNSIGNED(t) {
-  return t.base.unsigned_flag;
-}
+var TYPE_UNSIGNED = isGCC42 ?
+  function (t) { return t.common.unsigned_flag; } :
+  function (t) { return t.base.unsigned_flag; };
 
 /* The following globals are functions because they are tree nodes which must
  * not be held past the current treehydra callback.
