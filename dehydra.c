@@ -90,6 +90,10 @@ void dehydra_init(Dehydra *this, const char *file) {
   this->rt = JS_NewRuntime (0x9000000L);
   this->cx = JS_NewContext (this->rt, 8192);
 
+#ifdef JSOPTION_JIT
+  JS_SetOptions(this->cx, JS_GetOptions(this->cx) | JSOPTION_JIT);
+#endif
+
   JS_SetContextPrivate (this->cx, this);
   
   this->globalObj = JS_NewObject (this->cx, NULL, 0, 0);
