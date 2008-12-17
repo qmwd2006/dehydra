@@ -117,11 +117,20 @@ let ESP = function() {
   /** Return an abstract value, the union of all possible values of vbl
    * here. */
   State.prototype.get = function (vbl) {
-    let v = ESP.NOT_REACHED;
+    let first = true;
+    let v;
     for (let ss in this.substates.getValues()) {
-      v = join(v, ss.get(vbl), this.factory.join);
+      // We try to avoid exposing users directly to any NOT_REACHED values
+      // so we avoid calling join on the first element. 
+      if (first) {
+        first = false;
+        v = ss.get(vbl);
+      } else {
+        v = join(v, ss.get(vbl), this.factory.join);
+      }
     }
-    return v;
+    // Here we don't have a choice: the empty set would have no value.
+    return first ? ESP.NOT_REACHED : v;
   }
 
   /** Apply a filter to the state, which keeps substates only where
