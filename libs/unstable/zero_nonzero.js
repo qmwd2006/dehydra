@@ -82,6 +82,21 @@ Zero_NonZero.prototype.processAssign = function(isn, state) {
         state.assignValue(lhs, ESP.TOP, isn);
       }
       break;
+
+    case TRUTH_NOT_EXPR:
+      let not_operand = rhs.operands()[0];
+      if (DECL_P(not_operand)) {
+        state.assignMapped(lhs, function(ss) {
+          if (ss.get(not_operand) == 0)
+            return 1;
+          else
+            return 0;
+        }, isn);
+      } else {
+        state.remove(lhs, isn);
+      }
+      break;
+
       // Stuff we don't analyze -- just kill the LHS info
     case EQ_EXPR: 
     case ADDR_EXPR:
@@ -97,7 +112,6 @@ Zero_NonZero.prototype.processAssign = function(isn, state) {
     case STRING_CST:
 
     case CONVERT_EXPR:
-    case TRUTH_NOT_EXPR:
     case TRUTH_XOR_EXPR:
     case BIT_FIELD_REF:
       state.remove(lhs);
