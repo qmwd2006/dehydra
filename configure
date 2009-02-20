@@ -95,8 +95,8 @@ if __name__ == "__main__":
         print str(err) # will print something like "option -a not recognized"
         usage()
         sys.exit(2)
-    jsname = "js"
-    jsnamels = [jsname, "mozjs"]
+    jsname = "mozjs"
+    jsnamels = [jsname, "js"]
     jslibs = None
     jsheaders = None
     gcc_build = "../gcc-build"
