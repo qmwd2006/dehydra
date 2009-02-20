@@ -272,6 +272,10 @@ function TREE_TYPE (node) {
   return node.common.type
 }
 
+function TYPE_OFFSET_BASETYPE(node) {
+  return node.type.maxval
+}
+
 function TYPE_NAME (node) {
   return node.type.name
 }
