@@ -68,6 +68,9 @@ function type_string(type) {
     return type_string(TREE_TYPE(type)) + ' (*)(' + type_args_string(type) + ')';
   } else if (code == METHOD_TYPE) {
     return type_string(TREE_TYPE(type)) + ' (?::*)(' + type_args_string(type) + ')';
+  } else if (code == OFFSET_TYPE) {
+    return type_string(TREE_TYPE(type)) + " "
+      + type_string(TYPE_OFFSET_BASETYPE(type))+ "::*"
   }
 
   print(TREE_CODE(type).name);
