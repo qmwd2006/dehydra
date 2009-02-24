@@ -282,6 +282,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   case COMPLEX_CST:
   case VECTOR_CST:
   case STRING_CST:
+  case PTRMEM_CST:
     {
       tree type = TREE_TYPE (*tp);
       JSObject *obj = dehydra_addVar (this, NULL_TREE, NULL);
