@@ -15,14 +15,24 @@ function NuminfoTestCase(type, unsigned, prec, min, max) {
 NuminfoTestCase.prototype = new TestCase();
 
 NuminfoTestCase.prototype.runTest = function () {
+  /*deals with gcc using ll suffix on 32bit*/
+  function llcompare(val, expected) {
+    let r= new RegExp("^"+expected+"(ll)?$");
+    ret = r.test(val);
+    if (!ret) {
+      error("Expected '"+expected+"', got '"+val+"'");
+    }
+    return ret;
+  }
+  
   let type = this.type;
   if (this.unsigned)
     this.assertEquals(type.isUnsigned, true);
   else
     this.assertEquals(type.isSigned, true);
   this.assertEquals(type.precision, this.prec);
-  this.assertEquals(type['min'] ? type.min.value : type['min'], this.min);
-  this.assertEquals(type['max'] ? type.max.value : type['max'], this.max);
+  this.assertTrue(llcompare(type['min'] ? type.min.value : type['min'], this.min));
+  this.assertTrue(llcompare(type['max'] ? type.max.value : type['max'], this.max));
 }
 
 const expected = {
