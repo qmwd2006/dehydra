@@ -438,7 +438,7 @@ Analysis.prototype.run = function() {
 
     // Process bb
     if (bb != this.cfg.x_entry_block_ptr) {
-      if (!this.mergeStateIn(bb)) {
+      if (!this.mergeStateIn(bb) && bb.pass_count > 0) {
         if (this.trace) print("  in state unchanged");
         continue;
       }
