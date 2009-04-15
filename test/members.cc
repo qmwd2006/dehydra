@@ -13,4 +13,7 @@ class Outer {
   static void sfoo();
 
   enum { DO_IT = 1 };
+  int Outer::* ptrto_mem() {
+    return &Outer::a;
+  }
 };

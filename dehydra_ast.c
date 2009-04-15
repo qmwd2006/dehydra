@@ -319,8 +319,15 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     }
     break;
   default:
-    if (code != NAMESPACE_DECL && DECL_P(*tp)) {
-      dehydra_addVar (this, *tp, NULL);
+    {
+      tree maybe_decl = *tp;
+      if (code == PTRMEM_CST) {
+        maybe_decl = PTRMEM_CST_MEMBER (maybe_decl);
+        code = TREE_CODE (maybe_decl);
+      }
+      if (code != NAMESPACE_DECL && DECL_P(maybe_decl)) {
+        dehydra_addVar (this, maybe_decl, NULL);
+      }
     }
     break;
   }
