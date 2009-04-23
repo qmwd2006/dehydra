@@ -458,6 +458,17 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
     }
     next_type = TREE_TYPE (type);
     break;
+  case BOUND_TEMPLATE_TEMPLATE_PARM:
+  case TEMPLATE_TEMPLATE_PARM:
+    { // TODO: do something with TEMPLATE_TEMPLATE_PARM_TEMPLATE_INFO
+      tree type_name = TYPE_NAME (type);
+      if (type_name) {
+        // what the hell else would a template be?
+        xassert (DECL_P (type_name));
+        dehydra_defineStringProperty (this, obj, NAME, decl_as_string (type_name, 0));
+        break;
+      }
+    }
   default:
     warning (1, "Unhandled %s: %s", tree_code_name[TREE_CODE(type)],
            type_as_string (type, TFF_CHASE_TYPEDEF));
