@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Author: Taras Glek
 # OSX support by Vlad Sukhoy
-import getopt, sys, os.path, os, platform, subprocess
+import getopt, sys, os.path, os, platform, popen2
 
 def usage():
     print """
@@ -71,8 +71,8 @@ def try_enable_treehydra(config):
     except:
         pass
     sys.stdout.write ("Checking if %s accepts -fplugin for building treehydra: " % cxx)
-    p = subprocess.Popen([cxx, '-fplugin=', 'dehydra.c'], stderr=subprocess.PIPE)
-    if p.stderr.read().find("missing argument") != -1:
+    cout, cin, cerr = popen2.popen3([cxx, '-fplugin=', 'dehydra.c'])
+    if cerr.read().find("missing argument") != -1:
         config["CXX"] = cxx
         config["BUILD_TREEHYDRA"] = "gcc_treehydra.so"
         print("Yes")
