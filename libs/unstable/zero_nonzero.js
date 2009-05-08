@@ -87,10 +87,14 @@ Zero_NonZero.prototype.processAssign = function(isn, state) {
       let not_operand = rhs.operands()[0];
       if (DECL_P(not_operand)) {
         state.assignMapped(lhs, function(ss) {
-          if (ss.get(not_operand) == 0)
+          switch (ss.get(not_operand)) {
+          case undefined:
+            return undefined;
+          case 0:
             return 1;
-          else
+          default:
             return 0;
+          }
         }, isn);
       } else {
         state.remove(lhs, isn);
