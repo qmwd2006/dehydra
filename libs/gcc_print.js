@@ -142,6 +142,8 @@ function expr_display(expr) {
     return '*' + expr_display(expr.exp.operands[0]);
   case ADDR_EXPR:
     return '&' + expr_display(TREE_OPERAND(expr, 0));
+  case TRUTH_NOT_EXPR:
+    return '!' + expr_display(TREE_OPERAND(expr, 0));
   case PLUS_EXPR:
   case POINTER_PLUS_EXPR:
     return expr_display(TREE_OPERAND(expr, 0)) + ' +  ' +
