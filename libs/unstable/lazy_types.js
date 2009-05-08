@@ -24,6 +24,8 @@ LazyType.prototype.__defineGetter__('restrict', function type_restrict() {
   return TYPE_RESTRICT(this._type) ? true : undefined;
 });
 LazyType.prototype.__defineGetter__('attributes', function type_atts() {
+  if (!TYPE_P(this._type))
+    throw new Error("code " + TREE_CODE(this._type) + " is not a type!");
   return translate_attributes(TYPE_ATTRIBUTES(this._type));
 });
 LazyType.prototype.__defineGetter__('variantOf', function type_variant() {
@@ -46,10 +48,10 @@ LazyType.prototype.toString = function() {
   throw new Error("Must be subclassed!");
 };
 
-function LazyTypedef(type, decl)
+function LazyTypedef(type)
 {
   this._type = type;
-  this._decl = decl;
+  this._decl = TYPE_NAME(type).tree_check(TYPE_DECL);
 }
 LazyTypedef.prototype = new LazyType();
 LazyTypedef.prototype.__defineGetter__('typedef', function get_typedef() {
@@ -297,7 +299,7 @@ LazyFunctionType.prototype.__defineGetter__('parameters', function fntype_parame
 	  for (arg_type in function_type_args(this._type))];
 });
 LazyFunctionType.prototype.toString = function() {
-  return this.type + " (*)(" + this.parameters.join(', ') + ")";
+  return this.type + " ()(" + this.parameters.join(', ') + ")";
 };
 
 const hexMap = [];
@@ -474,13 +476,10 @@ function dehydra_convert(type) {
 
   if (TYPE_P(type)) {
     let type_decl = TYPE_NAME(type);
-    if (type_decl != undefined) {
-      let original_type = DECL_ORIGINAL_TYPE (type_decl);
-      if (original_type)
-	return new LazyTypedef(type, type_decl);
-    }
+    if (type_decl && TREE_CODE(type_decl) == TYPE_DECL)
+      return new LazyTypedef(type);
   }
-
+  
   switch (TREE_CODE(type)) {
   case POINTER_TYPE:
   case OFFSET_TYPE:
@@ -515,6 +514,9 @@ function dehydra_convert(type) {
     return new LazyLiteral(type);
   };
 
+  if (TREE_CODE(type) == TYPE_DECL && DECL_ORIGINAL_TYPE(type) !== undefined)
+      return new LazyTypedef(TREE_TYPE(type));
+  
   if (DECL_P(type))
     return new LazyDecl(type);
 
