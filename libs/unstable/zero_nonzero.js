@@ -80,6 +80,14 @@ Zero_NonZero.prototype.processAssign = function(isn, state) {
         state.assign(lhs, call_args(rhs)[0], isn);
       } else {
         state.assignValue(lhs, ESP.TOP, isn);
+        for (let arg in call_arg_iterator(rhs)) {
+          if (arg.tree_code() == ADDR_EXPR) {
+            let vbl = arg.operands()[0];
+            if (DECL_P(vbl)) {
+              state.assignValue(vbl, ESP.TOP, isn);
+            }
+          }
+        }
       }
       break;
 
