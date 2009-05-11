@@ -483,12 +483,12 @@ function convert (unit, aggr) {
     case "tree_type::symtab":
     case "emit_status::x_regno_reg_rtx":
     case "ssa_use_operand_d::use":
-      print ("Skipping " + m.name + "because it causes issues I don't feel like dealing with")
+      print ("Skipping " + m.name + " because it causes issues I don't feel like dealing with")
       continue;
     default:
       if (m.name != "lang_type::lang_type_u::h"
           && (isSkip(m.attributes) || isSkip(m.type.attributes))) {
-          print ("Skipping " + m.name + ". ");
+          print ("Harmless: skipping " + m.name + ". ");
           continue;
       }
     }
@@ -504,7 +504,7 @@ function convert (unit, aggr) {
         || (type_kind == "union" && type.name.indexOf("::") != -1)) {
       isAddrOf = !isPointer(m.type)
       if (type.isIncomplete) {
-        print (m.name + "' type is incomplete. Skipping.");
+        print ("Harmless: "+m.name + "' type is incomplete");
         continue;
       }
       subf = convert (unit, type, isUnion)
@@ -534,7 +534,7 @@ function convert (unit, aggr) {
       cast = "HOST_WIDE_INT"
       isPrimitive = true
     } else {
-      print("Unhandled " + type_name + " " +  m.name + " " + m.loc)
+      print("Likely harmless: unhandled " + type_name + " " +  m.name + " " + m.loc)
       continue
     }
     if (isSpecial (m.attributes)) {
