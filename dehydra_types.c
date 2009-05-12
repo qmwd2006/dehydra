@@ -26,7 +26,6 @@ static const char *REFERENCE = "isReference";
 static const char *KIND = "kind";
 static const char *TYPEDEF = "typedef";
 static const char *ARRAY = "isArray";
-static const char *SIZE = "size";
 static const char *INCOMPLETE = "isIncomplete";
 static const char *ACCESS = "access";
 static const char *PUBLIC = "public";
@@ -113,8 +112,7 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
       dehydra_defineStringProperty (this, obj, ACCESS, IDENTIFIER_POINTER(access));
       
       tree base_binfo = BINFO_BASE_BINFO (binfo, i);
-      jsval base_type = 
-        OBJECT_TO_JSVAL (dehydra_convert(this, BINFO_TYPE(base_binfo)));
+      jsval base_type = dehydra_convert(this, BINFO_TYPE(base_binfo));
       dehydra_defineProperty (this, obj, TYPE, base_type);
       if (BINFO_VIRTUAL_P(base_binfo))
         dehydra_defineProperty (this, obj, ISVIRTUAL, JSVAL_TRUE);
