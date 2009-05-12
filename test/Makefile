@@ -3,9 +3,15 @@ include ../config.mk
 CXX = $(GCCBUILDDIR)/gcc/g++
 CC1PLUS = $(GCCBUILDDIR)/gcc/cc1plus -quiet -O1 -ftest-coverage
 PLUGIN = ../gcc_dehydra.so
-PLUGINARG = -fplugin=$(PLUGIN)
+GCCPLUGIN = -fplugin=$(PLUGIN)
 SCRIPT=test.js
-CXXFLAGS = $(PLUGINARG) -fplugin-arg=$(SCRIPT)
+# deal with the commandline syntax changes in the official plugin spec
+ifdef PLUGINS_MOZ
+PLUGIN_ARG=-fplugin-arg
+else
+PLUGIN_ARG=-fplugin-arg-gcc_dehydra-
+endif
+CXXFLAGS = $(GCCPLUGIN) $(PLUGIN_ARG)=$(SCRIPT)
 
 DEHYDRA_OBJECTS = \
   test.o \
@@ -36,13 +42,13 @@ check:: check_dehydra $(BUILD_TREEHYDRA:gcc_treehydra.so=check_treehydra)
 
 # Unit tests
 check_both: $(OBJECTS)
-	python unit_test_harness.py both "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null -fplugin-arg=%s %s"
+	python unit_test_harness.py both "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null $(PLUGIN_ARG)=%s %s"
 
 check_dehydra: $(OBJECTS)
-	python unit_test_harness.py dehydra "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null -fplugin-arg=%s %s"
+	python unit_test_harness.py dehydra "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null $(PLUGIN_ARG)=%s %s"
 
 check_treehydra:
-	python unit_test_harness.py treehydra "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null -fplugin-arg=%s %s"
+	python unit_test_harness.py treehydra "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null $(PLUGIN_ARG)=%s %s"
 
 %.o: %.cc $(PLUGIN) $(GLOBAL_DEPS)
 	$(CC1PLUS) $(CXXFLAGS) $< -o /dev/null
@@ -53,7 +59,7 @@ pipe: destr_order.cc $(GLOBAL_DEPS)
 	rm $@
 
 warning: test.cc $(GLOBAL_DEPS)
-	$(CXX) -c $< $(PLUGINARG) -fplugin-arg=warning.js -o $@
+	$(CXX) -c $< $(GCCPLUGIN) $(PLUGIN_ARG)=warning.js -o $@
 	rm -f $@
 
 tree: tree.js ../gcc_treehydra.so $(GLOBAL_DEPS)
