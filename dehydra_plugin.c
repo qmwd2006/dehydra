@@ -1,4 +1,5 @@
 /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+#include "config.h"
 #include "gcc_cp_headers.h"
 
 /*js*/
@@ -15,6 +16,13 @@ static int init_finished = 0;
 
 /* Plugin pass position. This is kept here so that JS can set it. */
 static char *after_gcc_pass = 0;
+#endif
+
+#ifndef CFG_PLUGINS_MOZ
+#include "gcc-plugin.h"
+#define PLUGIN_HANDLER_RETURN return
+#else
+#define PLUGIN_HANDLER_RETURN return 0
 #endif
 
 static int processed = 0;
@@ -256,8 +264,13 @@ typedef struct tree_queue {
 static tree_queue *tree_queue_head = NULL;
 static tree_queue *tree_queue_tail = NULL;
 
-int gcc_plugin_post_parse() {
-  if (processed || errorcount) return 0;
+#ifdef CFG_PLUGINS_MOZ
+int gcc_plugin_post_parse()
+#else
+static void gcc_plugin_post_parse(void*_, void*_2) 
+#endif
+{
+  if (processed || errorcount) PLUGIN_HANDLER_RETURN;
   processed = 1;
   
   /* first visit recorded structs */
@@ -275,10 +288,15 @@ int gcc_plugin_post_parse() {
     process(global_namespace);
 
   postGlobalNamespace = 1;
-  return 0;
+  PLUGIN_HANDLER_RETURN;
 }
 
-void gcc_plugin_cp_pre_genericize(tree fndecl) {
+#ifdef CFG_PLUGINS_MOZ
+void gcc_plugin_cp_pre_genericize(tree fndecl)
+#else
+static void gcc_plugin_cp_pre_genericize(tree fndecl, void *_)
+#endif
+{
   if (DECL_CLONED_FUNCTION_P (fndecl)) return;
   if (DECL_ARTIFICIAL(fndecl)) return;
   
@@ -288,7 +306,15 @@ void gcc_plugin_cp_pre_genericize(tree fndecl) {
 #endif
 }
 
-void gcc_plugin_finish_struct (tree t) {
+#ifdef CFG_PLUGINS_MOZ
+int gcc_plugin_finish_struct (tree t)
+#else
+static void gcc_plugin_finish_struct (tree t, void *_)
+#endif
+{
+  // gcc trunk gives us error_mark for some reason
+  if (TREE_CODE(t) != RECORD_TYPE)
+    PLUGIN_HANDLER_RETURN;
   dehydra_finishStruct (&dehydra, t);
 
   /* It's lame but types are still instantiated after post_parse
@@ -299,7 +325,7 @@ void gcc_plugin_finish_struct (tree t) {
 #ifdef TREEHYDRA_PLUGIN
     treehydra_call_js (&dehydra, "process_tree_type", t);
 #endif
-    return;
+    PLUGIN_HANDLER_RETURN;
   }
   /* Appending stuff to the queue instead of 
      processing immediately is because gcc is overly
@@ -314,12 +340,54 @@ void gcc_plugin_finish_struct (tree t) {
   else if (!tree_queue_head)
     tree_queue_head = q;
   tree_queue_tail = q;
+  PLUGIN_HANDLER_RETURN;
 }
 
-void gcc_plugin_finish () {
+#ifdef CFG_PLUGINS_MOZ
+int gcc_plugin_finish ()
+#else
+static void gcc_plugin_finish (void *_, void *_2)
+#endif
+{
   pointer_set_destroy (pset);
   pset = NULL;
   pointer_set_destroy (type_pset);
   type_pset = NULL;
   dehydra_input_end (&dehydra);
+  PLUGIN_HANDLER_RETURN;
 }
+
+#ifndef CFG_PLUGINS_MOZ
+static tree
+handle_user_attribute (tree *node, tree name, tree args,
+			int flags, bool *no_add_attrs)
+{
+  return NULL_TREE;
+}
+
+static struct attribute_spec user_attr =
+  { "user", 1, 1, false,  false, false, handle_user_attribute };
+
+// commented out attribute support until it lands on trunk
+static void gcc_plugin_attributes(void *_, void *_2) {
+  //register_attribute (&user_attr);
+}
+
+int plugin_init (const char *plugin_name, struct plugin_gcc_version *version, int argc, struct plugin_argument *argv) {
+  if (!argc)
+    return 1;
+
+  char *arg = argv[0].value;
+  int ret = gcc_plugin_init (plugin_name, arg, NULL);
+  if (!ret) {
+    register_callback (plugin_name, PLUGIN_FINISH_UNIT, gcc_plugin_post_parse, NULL);
+    register_callback (plugin_name, PLUGIN_CXX_CP_PRE_GENERICIZE, 
+                       (plugin_callback_func) gcc_plugin_cp_pre_genericize, NULL);
+    register_callback (plugin_name, PLUGIN_FINISH_TYPE, 
+                       (plugin_callback_func) gcc_plugin_finish_struct, NULL);
+    register_callback (plugin_name, PLUGIN_FINISH, gcc_plugin_finish, NULL);
+    //register_callback (plugin_name, PLUGIN_ATTRIBUTES, gcc_plugin_attributes, NULL);
+  }
+  return ret;
+}
+#endif
