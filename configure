@@ -37,10 +37,24 @@ def get_gcc_srcdir(build_dir):
     except:
         error("Invalid gcc build dir " + build_dir)
 
-def check_gcc_srcdir(gcc_src):
-    print "Checking if GCC plugin patch is applied"
-    if not os.path.isfile (os.path.join (gcc_src, "gcc/tree-plugin-pass.c")):
-        error("GCC sources in "  + gcc_src + " do not have plugin patch applied")
+PLUGINS_NONE = 0
+PLUGINS_OFFICIAL = 1
+PLUGINS_MOZ = 2
+
+def check_gcc_srcdir(config, gcc_src):
+    msg = "Checking if GCC supports plugins(via mozilla patch or official): "
+    ret = PLUGINS_NONE
+    if os.path.isfile (os.path.join (gcc_src, "gcc/plugin.c")):
+        msg += ("GCC plugin framework")
+        ret = PLUGINS_OFFICIAL
+    elif os.path.isfile (os.path.join (gcc_src, "gcc/tree-plugin-pass.c")):
+        msg += ("Mozilla plugin framework patch")
+        ret = PLUGINS_MOZ
+        config["PLUGINS_MOZ"] = "Using Mozilla's patch to pre-plugin GCCs'"
+    print(msg)
+    if ret == PLUGINS_NONE:
+        error("GCC sources in %s do not have the plugin patch applied" % gcc_src)
+    return ret
 
 def getjsdirs(jsname, jslibs, jsheaders):
     if jslibs == None:
@@ -133,7 +147,6 @@ if __name__ == "__main__":
         error("Must indicate javascript library directory with --js-libs=")
     if jsheaders == None:
         error("Must indicate javascript header directory with --js-headers=")
-    check_gcc_srcdir(gcc_src)
     
     if os.environ.has_key("CFLAGS"):
         cflags += ' ' + os.environ["CFLAGS"]
@@ -142,6 +155,7 @@ if __name__ == "__main__":
               SM_INCLUDE=jsheaders, SM_LIBDIR=jslibs,
               SHARED_LINK_FLAGS=shared_link_flags, 
               CONFIGURE_CFLAGS=cflags)
+    check_gcc_srcdir(config, gcc_src)
     try_enable_treehydra(config)
     f = open("config.mk", "w")
     f.write("""# %s
@@ -149,6 +163,15 @@ if __name__ == "__main__":
 """ % (" ".join(["'" + a + "'" for a in sys.argv]),
        "\n".join([k + "=" + v for k, v in config.iteritems()])))
     f.close()
+    f = open("config.h", "w")
+    f.write("""#ifndef DEHYDRA_CONFIG_H
+#define DEHYDRA_CONFIG_H
+%s
+#endif
+""" % ("\n".join(["#define CFG_%s \"%s\"" % (k,v.replace('"','\\"')) 
+                  for k, v in config.iteritems()])))
+    f.close()
+
     if os.path.exists("Makefile"):
         os.unlink("Makefile")
     os.symlink ("Makefile.in", "Makefile")
