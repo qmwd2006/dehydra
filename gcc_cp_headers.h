@@ -30,7 +30,6 @@
 #include <toplev.h>
 
 #include <pointer-set.h>
-#include <errors.h>
 #include <diagnostic.h>
 /*C++ headers*/
 #include <cp-tree.h>
