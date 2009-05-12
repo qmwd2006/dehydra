@@ -4,6 +4,8 @@
 #include "xassert.h"
 #include "util.h"
 
+#include <inttypes.h>
+
 static char locationbuf[PATH_MAX];
 
 /* stolen from gcc/cp/error.h */
@@ -102,7 +104,7 @@ const char *dehydra_intCstToString(tree int_cst)
   int is_unsigned = TYPE_UNSIGNED(type);
 #if HOST_BITS_PER_WIDE_INT > 32
   // TREE_INT_CST_LOW(int_cst) is a 64-bit integer here
-  sprintf(buf, is_unsigned ? "%lluu" : "%lld",
+  sprintf(buf, is_unsigned ? "%"PRIu64"u" : "%"PRId64,
           TREE_INT_CST_LOW(int_cst));
 #else
   int high = TREE_INT_CST_HIGH(int_cst);
