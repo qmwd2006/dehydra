@@ -182,7 +182,8 @@ JSBool Diagnostic(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
 
   if (!JS_ConvertArguments(cx, argc, argv, "bs/o", &is_error, &msg, &loc_obj))
     return JS_FALSE;
-  diagnostic_func diag = is_error ? error : warning0;
+  // GCC 4.4 got rid of warning0
+  diagnostic_func diag = is_error ? error : sorry;
   if (loc_obj) {
     location_t loc;
 #if defined(__APPLE__)
