@@ -617,8 +617,7 @@ jsval dehydra_getRootedObject (Dehydra *this, int pos) {
 
 void dehydra_visitDecl (Dehydra *this, tree d) {
   dehydra_visitVarDecl (this, d);
-  if (TREE_CODE (d) == FUNCTION_DECL
-      && DECL_SAVED_TREE(d)) {
+  if (TREE_CODE (d) == FUNCTION_DECL) { 
     dehydra_visitFunctionDecl (this, d);
   } 
 }

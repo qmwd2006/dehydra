@@ -76,6 +76,9 @@ static void dehydra_attachEnumStuff (Dehydra *this, JSObject *objEnum, tree enum
       dehydra_defineStringProperty (this, obj, NAME, 
                                     IDENTIFIER_POINTER (TREE_PURPOSE (tv)));
       tree v = TREE_VALUE (tv);
+      // GCC 4.4 switched to consts for enum values
+      if (TREE_CODE (v) == CONST_DECL)
+        v = DECL_INITIAL (v);
       int value = TREE_INT_CST_LOW (v);
       dehydra_defineProperty (this, obj, VALUE,
                               INT_TO_JSVAL (value));
