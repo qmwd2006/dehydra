@@ -182,7 +182,6 @@ JSBool Diagnostic(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
 
   if (!JS_ConvertArguments(cx, argc, argv, "bs/o", &is_error, &msg, &loc_obj))
     return JS_FALSE;
-  diagnostic_func diag = is_error ? error : warning0;
   if (loc_obj) {
     location_t loc;
 #if defined(__APPLE__)
@@ -196,12 +195,20 @@ JSBool Diagnostic(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
     if (JS_GetProperty(cx, loc_obj, "_source_location", &jsloc)) {
       loc = JSVAL_TO_INT(jsloc);
 #endif
-      diag ("%H%s", &loc, msg);
+      if (is_error) {
+        error ("%H%s", &loc, msg);
+      } else {
+        warning (0, "%H%s", &loc, msg);
+      }
       return TRUE;
     }
   }
 
-  diag ("%s", msg);
+  if (is_error) {
+    error ("%s", msg);
+  } else {
+    warning (0, "%s", msg);
+  }
   return JS_TRUE;
 }
 
