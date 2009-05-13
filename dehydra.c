@@ -442,7 +442,7 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
     tree decl_context = DECL_CONTEXT(v);
     if (decl_context && TREE_CODE(decl_context) == RECORD_TYPE) {
       dehydra_defineProperty (this, obj, MEMBER_OF, 
-                              dehydra_convertType (this, decl_context));
+                              dehydra_convert_type (this, decl_context));
     }
 
     if (DECL_EXTERNAL(v)) {
@@ -493,7 +493,7 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
       }
     }
     dehydra_defineProperty (this, obj, TYPE, 
-                            dehydra_convertType (this, typ));
+                            dehydra_convert_type (this, typ));
     tree attributes = DECL_ATTRIBUTES (v);
     if (attributes) {
       JSObject *tmp = JS_NewArrayObject (this->cx, 0, NULL);
@@ -518,7 +518,7 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
                                  name);
     dehydra_defineProperty(this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
     dehydra_defineProperty(this, obj, MEMBER_OF, 
-                           dehydra_convertType(this, type));
+                           dehydra_convert_type(this, type));
   } else {
     /* Invalid argument tree code */
     xassert(0);
@@ -533,7 +533,7 @@ int dehydra_visitType (Dehydra *this, tree t) {
   if (process_type == JSVAL_VOID) return true;
   
   jsval rval, argv[1];
-  argv[0] = dehydra_convertType (this, t);
+  argv[0] = dehydra_convert_type (this, t);
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_type,
                                  1, argv, &rval));
   return true;

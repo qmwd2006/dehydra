@@ -12,8 +12,6 @@ function type_string(type) {
   }
 
   let quals = [];
-  if (TYPE_READONLY(type))
-    quals.push('const ');
   if (TYPE_VOLATILE(type))
     quals.push('volatile ');
   if (TYPE_RESTRICT(type))
@@ -22,11 +20,13 @@ function type_string(type) {
   let prefix = quals.join('');
   let infix = quals.length ? ' ' + prefix : '';
 
+  let type_decl = TYPE_NAME (type);
+  if (type_decl && TREE_CODE(type_decl) == TYPE_DECL)
+    return prefix + decl_name_string(type_decl);
+  
   let code = TREE_CODE(type);
   if (code == INTEGER_TYPE || code == REAL_TYPE || code == BOOLEAN_TYPE ||
       code == RECORD_TYPE || code == ENUMERAL_TYPE || code == UNION_TYPE) {
-    if (TYPE_NAME(type))
-      return prefix + decl_name_string(TYPE_NAME(type));
     
     let prec = TYPE_PRECISION(type);
     type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));

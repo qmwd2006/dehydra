@@ -58,10 +58,19 @@ static void process_namespace_decl (tree ns) {
 }
 
 static void process_decl (tree f) {
-  dehydra_visitDecl (&dehydra, f);
+  if (TREE_CODE(f) == TYPE_DECL && DECL_ORIGINAL_TYPE(f)) {
+    f = TREE_TYPE(f);
+    dehydra_visitType (&dehydra, f);
 #ifdef TREEHYDRA_PLUGIN
-  treehydra_call_js (&dehydra, "process_tree_decl", f);
+    treehydra_call_js (&dehydra, "process_tree_type", f);
 #endif
+  }
+  else {
+    dehydra_visitDecl (&dehydra, f);
+#ifdef TREEHYDRA_PLUGIN
+    treehydra_call_js (&dehydra, "process_tree_decl", f);
+#endif
+  }
 }
 
 static void process_record_or_union_type (tree c) {

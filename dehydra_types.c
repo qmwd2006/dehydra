@@ -38,8 +38,7 @@ static const char *VARIANT = "variantOf";
 static struct pointer_map_t *typeMap = NULL;
 
 static const char *dehydra_typeString(tree type);
-static jsval dehydra_convert (Dehydra *this, tree type);
-static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj);
+static jsval dehydra_convert_type_cached (Dehydra *this, tree type, JSObject *obj);
 
 void dehydra_attachTypeAttributes (Dehydra *this, JSObject *obj, tree type) {
   JSObject *destArray = JS_NewArrayObject (this->cx, 0, NULL);
@@ -60,6 +59,21 @@ void dehydra_attachTypeAttributes (Dehydra *this, JSObject *obj, tree type) {
   /* drop the attributes array if there are none */
   if (! dehydra_getArrayLength (this, destArray)) {
     JS_DeleteProperty (this->cx, obj, ATTRIBUTES);
+  }
+}
+
+static void dehydra_attachTypeTypedef(Dehydra *this, JSObject *obj, tree type) {
+  tree type_decl = TYPE_NAME (type);
+  if (!type_decl || TREE_CODE(type_decl) != TYPE_DECL)
+    return;
+
+  tree original_type = DECL_ORIGINAL_TYPE (type_decl);
+  if (original_type) {
+    dehydra_defineStringProperty (this, obj, NAME,
+                                  IDENTIFIER_POINTER(DECL_NAME(type_decl)));
+    jsval subval = dehydra_convert_type (this, original_type);
+    dehydra_defineProperty (this, obj, TYPEDEF, subval);
+    dehydra_setLoc (this, obj, type_decl);
   }
 }
 
@@ -115,7 +129,7 @@ static void dehydra_attachClassStuff (Dehydra *this, JSObject *objClass, tree re
       dehydra_defineStringProperty (this, obj, ACCESS, IDENTIFIER_POINTER(access));
       
       tree base_binfo = BINFO_BASE_BINFO (binfo, i);
-      jsval base_type = dehydra_convert(this, BINFO_TYPE(base_binfo));
+      jsval base_type = dehydra_convert_type(this, BINFO_TYPE(base_binfo));
       dehydra_defineProperty (this, obj, TYPE, base_type);
       if (BINFO_VIRTUAL_P(base_binfo))
         dehydra_defineProperty (this, obj, ISVIRTUAL, JSVAL_TRUE);
@@ -197,7 +211,7 @@ static void dehydra_attachTemplateStuff (Dehydra *this, JSObject *parent, tree t
     tree arg = TREE_VEC_ELT (args, ix);
     jsval val = JSVAL_VOID;
     if (TYPE_P (arg)) {
-      val = dehydra_convert (this, arg);
+      val = dehydra_convert_type (this, arg);
     } else {
       JSString *str = JS_NewStringCopyZ (this->cx, expr_as_string (arg, 0));
       val = STRING_TO_JSVAL (str);
@@ -224,14 +238,14 @@ static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tre
 
   /* return type */
   dehydra_defineProperty (this, obj, TYPE, 
-                          dehydra_convert (this, TREE_TYPE (type)));  
+                          dehydra_convert_type (this, TREE_TYPE (type)));  
   JSObject *params = JS_NewArrayObject (this->cx, 0, NULL);
   dehydra_defineProperty (this, obj, PARAMETERS, OBJECT_TO_JSVAL (params));
   int i = 0;
   while (arg_type && (arg_type != void_list_node))
     {
       JS_DefineElement(this->cx, params, i++,
-                       dehydra_convert (this, TREE_VALUE (arg_type)),      
+                       dehydra_convert_type (this, TREE_VALUE (arg_type)),      
                        NULL, NULL, JSPROP_ENUMERATE);
       arg_type = TREE_CHAIN (arg_type);
     }
@@ -247,42 +261,23 @@ void dehydra_finishStruct (Dehydra *this, tree type) {
   if (incomplete != JSVAL_TRUE) return;
   JS_DeleteProperty (this->cx, obj, INCOMPLETE);
   /* complete the type */
-  dehydra_convert2 (this, type, obj);
+  dehydra_convert_type_cached (this, type, obj);
 }
 
-static jsval dehydra_convert (Dehydra *this, tree type) {
-  void **v = pointer_map_contains(typeMap, type);
-  JSObject *obj = NULL;
-  if (v) {
-    jsval incomplete = JSVAL_VOID;
-    obj = (JSObject*) *v;
-    JS_GetProperty(this->cx, obj, INCOMPLETE, &incomplete);
-    /* add missing stuff to the type if is now COMPLETE_TYPE_P */
-    if (incomplete == JSVAL_TRUE && COMPLETE_TYPE_P (type)) {
-      JS_DeleteProperty (this->cx, obj, INCOMPLETE);
-    } else {
-      return OBJECT_TO_JSVAL (obj);
-    }
-  } else {
-    obj = JS_NewObject (this->cx, &js_type_class, NULL,
-                        this->globalObj);
-    dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
-    *pointer_map_insert (typeMap, type) = obj;
-  }
-  return dehydra_convert2 (this, type, obj);
-}
+static jsval dehydra_convert_type_cached (Dehydra *this, tree type,
+                                          JSObject *obj) {
+  xassert (TYPE_P(type));
 
-static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
   tree context = TYPE_CONTEXT(type);
   if (context && TYPE_P(context)) {
     dehydra_defineProperty (this, obj, MEMBER_OF,
-                            dehydra_convertType (this, context));
+                            dehydra_convert_type (this, context));
   }
 
   tree variant = TYPE_MAIN_VARIANT(type);
   if (variant != type) {
     dehydra_defineProperty (this, obj, VARIANT,
-                            dehydra_convertType (this, variant));
+                            dehydra_convert_type (this, variant));
   }
 
   int qualifiers = TYPE_QUALS (type);
@@ -295,26 +290,7 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
                             flag_isoc99 ? "restrict" : "__restrict__",
                             JSVAL_TRUE);  
 
-  tree type_decl = TYPE_NAME (type);
   tree next_type = NULL_TREE;
-  if (type_decl && TREE_CODE(type_decl) == TYPE_DECL) {
-    tree original_type = DECL_ORIGINAL_TYPE (type_decl);
-    if (original_type) {
-      //dehydra_defineStringProperty (this, obj, NAME, 
-      //decl_as_string (type_decl, 0));
-      dehydra_defineStringProperty (this, obj, NAME, 
-                                    IDENTIFIER_POINTER(DECL_NAME(type_decl)));
-      jsval subval = dehydra_convert (this, original_type);
-      dehydra_defineProperty (this, obj, TYPEDEF, subval);
-      dehydra_setLoc (this, obj, type_decl);
-      tree attributes = DECL_ATTRIBUTES (type_decl);
-      if (attributes) {
-        JSObject *tmp = dehydra_defineArrayProperty (this, obj, ATTRIBUTES, 0);
-        dehydra_addAttributes (this, tmp, attributes);
-      }
-      return OBJECT_TO_JSVAL (obj);
-    }
-  }
   switch (TREE_CODE (type)) {
   case POINTER_TYPE:
   case OFFSET_TYPE:
@@ -379,61 +355,64 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
 #ifdef FIXED_POINT_TYPE_CHECK
   case FIXED_POINT_TYPE:
 #endif
-    /* The following code is ported from GCC c-pretty-print.c:pp_c_type_specifier */
-    if (type_decl) {
-      dehydra_defineStringProperty (this, obj, NAME, IDENTIFIER_POINTER(TREE_CODE(type_decl) == TYPE_DECL ?
-                                                                        DECL_NAME(type_decl) : type_decl));
-    }
-    else {
-      int prec = TYPE_PRECISION (type);
-      dehydra_defineProperty (this, obj, BITFIELD, INT_TO_JSVAL (prec));
-
-#ifdef ALL_FIXED_POINT_MODE_P
-      if (ALL_FIXED_POINT_MODE_P (TYPE_MODE (type)))
-        type = c_common_type_for_mode (TYPE_MODE (type), TYPE_SATURATING (type));
-      else
-#endif
-        type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
-
-      if (TYPE_NAME(type)) {
-        dehydra_defineProperty(this, obj, "bitfieldOf",
-                               dehydra_convert(this, type));
-
-        const char *typeName = IDENTIFIER_POINTER(DECL_NAME(TYPE_NAME(type)));
-        if (TYPE_PRECISION(type) != prec) {
-          char *buf = xmalloc(strlen(typeName) + 40);
-          sprintf(buf, "%s:%i", typeName, prec);
-          dehydra_defineStringProperty(this, obj, NAME, buf);
-          free(buf);
-        }
-        else {
-          dehydra_defineStringProperty(this, obj, NAME, typeName);
-        }
+    {
+      /* The following code is ported from GCC c-pretty-print.c:pp_c_type_specifier */
+      tree type_decl = TYPE_NAME (type);
+      if (type_decl) {
+        dehydra_defineStringProperty (this, obj, NAME, IDENTIFIER_POINTER(TREE_CODE(type_decl) == TYPE_DECL ?
+                                                                          DECL_NAME(type_decl) : type_decl));
       }
       else {
-        const char *typeName;
-        char buf[100];
-        switch (TREE_CODE(type)) {
-        case INTEGER_TYPE:
-          typeName = TYPE_UNSIGNED(type) ? "unnamed-unsigned" : "unnamed-signed";
-          break;
-        case REAL_TYPE:
-          typeName = "unnamed-float";
-          break;
-#ifdef FIXED_POINT_TYPE_CHECK
-        case FIXED_POINT_TYPE:
-          typeName = "unnamed-fixed";
-          break;
-#endif
-        default:
-          gcc_unreachable();
-        }
-        sprintf(buf, "<%s:%i>", typeName, prec);
-        dehydra_defineStringProperty(this, obj, NAME, buf);
-      }
-    }
+        int prec = TYPE_PRECISION (type);
+        dehydra_defineProperty (this, obj, BITFIELD, INT_TO_JSVAL (prec));
 
-    break;
+#ifdef ALL_FIXED_POINT_MODE_P
+        if (ALL_FIXED_POINT_MODE_P (TYPE_MODE (type)))
+          type = c_common_type_for_mode (TYPE_MODE (type), TYPE_SATURATING (type));
+        else
+#endif
+          type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
+
+        if (TYPE_NAME(type)) {
+          dehydra_defineProperty(this, obj, "bitfieldOf",
+                                 dehydra_convert_type(this, type));
+
+          const char *typeName = IDENTIFIER_POINTER(DECL_NAME(TYPE_NAME(type)));
+          if (TYPE_PRECISION(type) != prec) {
+            char *buf = xmalloc(strlen(typeName) + 40);
+            sprintf(buf, "%s:%i", typeName, prec);
+            dehydra_defineStringProperty(this, obj, NAME, buf);
+            free(buf);
+          }
+          else {
+            dehydra_defineStringProperty(this, obj, NAME, typeName);
+          }
+        }
+        else {
+          const char *typeName;
+          char buf[100];
+          switch (TREE_CODE(type)) {
+          case INTEGER_TYPE:
+            typeName = TYPE_UNSIGNED(type) ? "unnamed-unsigned" : "unnamed-signed";
+            break;
+          case REAL_TYPE:
+            typeName = "unnamed-float";
+            break;
+#ifdef FIXED_POINT_TYPE_CHECK
+          case FIXED_POINT_TYPE:
+            typeName = "unnamed-fixed";
+            break;
+#endif
+          default:
+            gcc_unreachable();
+          }
+          sprintf(buf, "<%s:%i>", typeName, prec);
+          dehydra_defineStringProperty(this, obj, NAME, buf);
+        }
+      }
+
+      break;
+    }
   case COMPLEX_TYPE:
   case VECTOR_TYPE:
     /* maybe should add an isTemplateParam? */
@@ -477,20 +456,40 @@ static jsval dehydra_convert2 (Dehydra *this, tree type, JSObject *obj) {
     break;
   }
   dehydra_attachTypeAttributes (this, obj, type);
+  dehydra_attachTypeTypedef (this, obj, type);
   if (next_type != NULL_TREE) {
-    dehydra_defineProperty (this, obj, TYPE, dehydra_convert (this, next_type));
+    dehydra_defineProperty (this, obj, TYPE, dehydra_convert_type (this, next_type));
   }
   return OBJECT_TO_JSVAL (obj);
 }
 
-jsval dehydra_convertType (Dehydra *this, tree type) {
+jsval dehydra_convert_type (Dehydra *this, tree type) {
   /* Not allowed to pass in NULLs
      this prevents nodes without types from haivng undefined .type*/
   xassert (type);
   if (!typeMap) {
     typeMap = pointer_map_create ();
   }
-  return dehydra_convert (this, type);
+
+  void **v = pointer_map_contains(typeMap, type);
+  JSObject *obj = NULL;
+  if (v) {
+    jsval incomplete = JSVAL_VOID;
+    obj = (JSObject*) *v;
+    JS_GetProperty(this->cx, obj, INCOMPLETE, &incomplete);
+    /* add missing stuff to the type if it is now COMPLETE_TYPE_P */
+    if (incomplete == JSVAL_TRUE && COMPLETE_TYPE_P (type)) {
+      JS_DeleteProperty (this->cx, obj, INCOMPLETE);
+    } else {
+      return OBJECT_TO_JSVAL (obj);
+    }
+  } else {
+    obj = JS_NewObject (this->cx, &js_type_class, NULL,
+                        this->globalObj);
+    dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
+    *pointer_map_insert (typeMap, type) = obj;
+  }
+  return dehydra_convert_type_cached (this, type, obj);
 }
 
 /* Return a string name for the given type to be used as the NAME property.

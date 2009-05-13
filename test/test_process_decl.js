@@ -26,7 +26,9 @@ function process_decl(v) {
 }
 
 function input_end() {
-  if (assert_passes == 6)
+  if (assert_passes == 5)
     print("OK")
+  else
+    print("FAIL: expected 5 decls, got " + assert_passes);
 }
 

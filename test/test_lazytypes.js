@@ -27,6 +27,7 @@ function JSMatchesTestCase(d, lazy)
 {
   this._d = d;
   this._lazy = lazy;
+  this.name = "JSMatchesTestCase<" + d.name + ">";
 }
 JSMatchesTestCase.prototype = new TestCase();
 JSMatchesTestCase.prototype.runTest = function() {

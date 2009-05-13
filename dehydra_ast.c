@@ -291,7 +291,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
                                     dehydra_intCstToString(*tp) : expr_as_string(*tp, 0));
       if (type) {
         dehydra_defineProperty (this, obj, TYPE,
-                                dehydra_convertType(this, type));
+                                dehydra_convert_type(this, type));
       }
     }
     break;

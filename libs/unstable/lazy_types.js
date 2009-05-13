@@ -9,7 +9,8 @@ let TRACE = 0;
 
 let typeMap = new Map();
 
-function LazyType() {
+function LazyType(type) {
+  this._type = type;
 }
 LazyType.prototype.__defineGetter__('loc', function type_loc() {
   return location_of(this._type);
@@ -34,6 +35,18 @@ LazyType.prototype.__defineGetter__('variantOf', function type_variant() {
     return undefined;
   return dehydra_convert(variant);
 });
+LazyType.prototype.__defineGetter__('typedef', function type_typedef() {
+  let type_decl = TYPE_NAME (this._type);
+  if (type_decl && TREE_CODE(type_decl) == TYPE_DECL) {
+    let original_type = DECL_ORIGINAL_TYPE(type_decl);
+    if (original_type)
+      return dehydra_convert(original_type);
+  }
+  return undefined;
+});
+LazyType.prototype.__defineGetter__('name', function type_name() {
+  return type_string(this._type);
+});
 LazyType.prototype.getQuals = function type_getquals() {
   let q = [];
   // if (this.isConst)
@@ -45,26 +58,7 @@ LazyType.prototype.getQuals = function type_getquals() {
   return q.join('');
 }
 LazyType.prototype.toString = function() {
-  throw new Error("Must be subclassed!");
-};
-
-function LazyTypedef(type)
-{
-  this._type = type;
-  this._decl = TYPE_NAME(type).tree_check(TYPE_DECL);
-}
-LazyTypedef.prototype = new LazyType();
-LazyTypedef.prototype.__defineGetter__('typedef', function get_typedef() {
-  return dehydra_convert(DECL_ORIGINAL_TYPE(this._decl));
-});
-LazyTypedef.prototype.__defineGetter__('name', function typedef_name() {
-  return decl_name(this._decl);
-});
-LazyTypedef.prototype.__defineGetter__('attributes', function typedef_atts() {
-  return translate_attributes(DECL_ATTRIBUTES(this._decl));
-});
-LazyTypedef.prototype.toString = function() {
-  return this.getQuals() + "typedef " + this.name;
+  return this.name;
 };
 
 /* A type which has a .type subtype accessible via TREE_TYPE */
@@ -102,8 +96,6 @@ LazyReference.prototype.toString = function () {
 function LazyRecord(type) {
   this._type = type;
   this.kind = class_key_or_enum_as_string(type);
-  if (!isAnonymousStruct(type))
-    this.name = this.getQuals() + decl_name(TYPE_NAME(type));
   if (!COMPLETE_TYPE_P(type))
     this.isIncomplete = true;
 }
@@ -198,7 +190,6 @@ LazyRecord.prototype.toString = function() {
 
 function LazyEnum(type) {
   this._type = type;
-  if (!isAnonymousStruct(type)) this.name = decl_name(TYPE_NAME(type));
   if (!COMPLETE_TYPE_P(type))
     this.isIncomplete = true;
 }
@@ -218,11 +209,8 @@ function LazyNumber(type, type_decl) {
   if (!type_decl) {
     type_decl = TYPE_NAME(type);
   }
-  if (type_decl)
-    this.name = IDENTIFIER_POINTER(DECL_NAME(type_decl));
-  else
-    this.name = type_as_string(type);
 };
+LazyNumber.prototype = new LazyType();
 LazyNumber.prototype.__defineGetter__('isUnsigned', function number_unsigned() {
   return TYPE_UNSIGNED(this._type) ? true : undefined;
 });
@@ -474,11 +462,8 @@ LazyConstructor.prototype.toString = function() {
 function dehydra_convert(type) {
   if (TRACE) print("dehydra_convert " + type_as_string(type));
 
-  if (TYPE_P(type)) {
-    let type_decl = TYPE_NAME(type);
-    if (type_decl && TREE_CODE(type_decl) == TYPE_DECL)
-      return new LazyTypedef(type);
-  }
+  if (TREE_CODE(type) == TYPE_DECL && DECL_ORIGINAL_TYPE(type) !== undefined)
+      type = TREE_TYPE(type);
   
   switch (TREE_CODE(type)) {
   case POINTER_TYPE:
@@ -504,7 +489,7 @@ function dehydra_convert(type) {
     /* maybe should add an isTemplateParam? */
   case TEMPLATE_TYPE_PARM:
   case TYPENAME_TYPE:
-    return {'name': decl_name(TYPE_NAME(type))};
+    return new LazyType(type);
   case FUNCTION_TYPE:
   case METHOD_TYPE:
     return new LazyFunctionType(type);
@@ -514,19 +499,10 @@ function dehydra_convert(type) {
     return new LazyLiteral(type);
   };
 
-  if (TREE_CODE(type) == TYPE_DECL && DECL_ORIGINAL_TYPE(type) !== undefined)
-      return new LazyTypedef(TREE_TYPE(type));
-  
   if (DECL_P(type))
     return new LazyDecl(type);
 
   throw new Error("Unknown type. TREE_CODE: " + TREE_CODE(type));
-}
-
-function isAnonymousStruct(t) {
-  let name = TYPE_NAME(t);
-  if (name) name = DECL_NAME(name);
-  return !name || ANON_AGGRNAME_P(name);
 }
 
 function isDestructor(fndecl) {

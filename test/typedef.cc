@@ -11,6 +11,8 @@ class s {
   TypedefTypedef tt;
 };
 
+typedef s stype;
+
 typedef long long __m64 __attribute__ ((__vector_size__ (8), __may_alias__));
 
 const PRInt32 const_PRInt32 = 1;
