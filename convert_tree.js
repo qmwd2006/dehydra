@@ -270,10 +270,10 @@ function makeStructBody (fields, indent, isTopmost) {
       var lls = ["{", "size_t i;"]
       lls.push ("char buf[128];")
       lls.push ("const size_t len = " + f.arrayLengthExpr + ";")
-      lls.push ("struct JSObject *destArray =  dehydra_defineArrayProperty (this, obj, \"" 
+      lls.push ("struct JSObject *destArray =  dehydra_defineArrayProperty (this, obj, \""
                 + f.name + "\", len);")
       lls.push ("for (i = 0; i < len; i++) {");
-      lls.push ("  sprintf (buf, \"%d\", i);")
+      lls.push ("  sprintf (buf, \"%zd\", i);")
       lls.push ("  " + callGetExistingOrLazy (f.type, f.name, f.isAddrOf, f.cast, f.isPrimitive, true, isTopmost) + ";")
       lls.push ("}")
       ls.push (lls.join("\n" + indent + "  ") + "\n" + indent+ "}")
