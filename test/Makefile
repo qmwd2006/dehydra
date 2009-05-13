@@ -5,12 +5,6 @@ CC1PLUS = $(GCCBUILDDIR)/gcc/cc1plus -quiet -O1 -ftest-coverage
 PLUGIN = ../gcc_dehydra.so
 GCCPLUGIN = -fplugin=$(PLUGIN)
 SCRIPT=test.js
-# deal with the commandline syntax changes in the official plugin spec
-ifdef PLUGINS_MOZ
-PLUGIN_ARG=-fplugin-arg
-else
-PLUGIN_ARG=-fplugin-arg-gcc_dehydra-
-endif
 CXXFLAGS = $(GCCPLUGIN) $(PLUGIN_ARG)=$(SCRIPT)
 
 DEHYDRA_OBJECTS = \
