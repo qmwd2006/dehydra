@@ -146,6 +146,16 @@ jsval get_existing_or_lazy (Dehydra *this, treehydra_handler handler, void *v,
   return jsret;
 }
 
+#if !defined (__APPLE_CC__) // 4.2 on OSX
+#define TREE_HAS_TSCOMMON(t) 1
+#elif defined(GIMPLE_TUPLE_P) // 4.3
+#define TREE_HAS_TSCOMMON(t) (!GIMPLE_TUPLE_P(t))
+#else
+#define TREE_HAS_TSCOMMON(t) 0 // post 4.3
+#endif
+
+/* This code is ugly because it deals with low level representation 
+ * if gcc's tree union */
 void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
   tree t = (tree)structure;
   const int myseq = ++global_seq;
@@ -155,11 +165,10 @@ void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
 #ifndef __APPLE_CC__
   // no TS_BASE in mac gcc 42 and no easy way to check too
   convert_tree_node_union (this, TS_BASE, t, obj);
-  if (!GIMPLE_TUPLE_P (t))
 #endif
-    {
+  if (TREE_HAS_TSCOMMON (t)) {
     convert_tree_node_union (this, TS_COMMON, t, obj);
-    }
+  }
   /* do not do tree_node_structure() for non C types */
   /* taras: AFAIK This guard is only needed for gcc <= 4.3 */
   if (code < NUM_TREE_CODES
