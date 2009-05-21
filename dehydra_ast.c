@@ -395,7 +395,7 @@ void dehydra_cp_pre_genericize(Dehydra *this, tree fndecl, bool callJS) {
                         OBJECT_TO_JSVAL (this->statementHierarchyArray));
   
   *pointer_map_insert (this->fndeclMap, fndecl) = 
-    (void*) key;
+    (void*)(intptr_t) key;
   
   dehydra_nextStatement (this, location_of (fndecl));
 

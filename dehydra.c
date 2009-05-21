@@ -547,7 +547,7 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
   if (!v) {
     return;
   }
-  int key = (int) *v;
+  int key = (int)(intptr_t) *v;
   this->statementHierarchyArray = 
     JSVAL_TO_OBJECT (dehydra_getRootedObject (this, key));
   *v = NULL;
