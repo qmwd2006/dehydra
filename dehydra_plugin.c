@@ -20,6 +20,7 @@ static char *after_gcc_pass = 0;
 
 #ifndef CFG_PLUGINS_MOZ
 #include "gcc-plugin.h"
+#include "plugin.h"
 #define PLUGIN_HANDLER_RETURN return
 #else
 #define PLUGIN_HANDLER_RETURN return 0
@@ -379,23 +380,23 @@ static struct attribute_spec user_attr =
 
 // commented out attribute support until it lands on trunk
 static void gcc_plugin_attributes(void *_, void *_2) {
-  //register_attribute (&user_attr);
+  register_attribute (&user_attr);
 }
 
-int plugin_init (const char *plugin_name, struct plugin_gcc_version *version, int argc, struct plugin_argument *argv) {
-  if (!argc)
+int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version *version) {
+  if (!plugin_info->argc)
     return 1;
 
-  char *arg = argv[0].value;
-  int ret = gcc_plugin_init (plugin_name, arg, NULL);
+  char *arg = plugin_info->argv[0].value;
+  int ret = gcc_plugin_init (plugin_info->full_name, arg, NULL);
   if (!ret) {
-    register_callback (plugin_name, PLUGIN_FINISH_UNIT, gcc_plugin_post_parse, NULL);
-    register_callback (plugin_name, PLUGIN_CXX_CP_PRE_GENERICIZE, 
+    register_callback (plugin_info->base_name, PLUGIN_FINISH_UNIT, gcc_plugin_post_parse, NULL);
+    register_callback (plugin_info->base_name, PLUGIN_CXX_CP_PRE_GENERICIZE, 
                        (plugin_callback_func) gcc_plugin_cp_pre_genericize, NULL);
-    register_callback (plugin_name, PLUGIN_FINISH_TYPE, 
+    register_callback (plugin_info->base_name, PLUGIN_FINISH_TYPE, 
                        (plugin_callback_func) gcc_plugin_finish_struct, NULL);
-    register_callback (plugin_name, PLUGIN_FINISH, gcc_plugin_finish, NULL);
-    //register_callback (plugin_name, PLUGIN_ATTRIBUTES, gcc_plugin_attributes, NULL);
+    register_callback (plugin_info->base_name, PLUGIN_FINISH, gcc_plugin_finish, NULL);
+    register_callback (plugin_info->base_name, PLUGIN_ATTRIBUTES, gcc_plugin_attributes, NULL);
   }
   return ret;
 }
