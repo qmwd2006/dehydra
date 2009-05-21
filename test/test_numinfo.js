@@ -17,14 +17,14 @@ NuminfoTestCase.prototype = new TestCase();
 NuminfoTestCase.prototype.runTest = function () {
   /*deals with gcc using ll suffix on 32bit*/
   function llcompare(val, expected) {
-    let r= new RegExp("^"+expected+"(ll)?$");
+    let r= new RegExp("^"+expected+"(ll?)?$");
     ret = r.test(val);
     if (!ret) {
       error("Expected '"+expected+"', got '"+val+"'");
     }
     return ret;
   }
-  
+
   let type = this.type;
   if (this.unsigned)
     this.assertEquals(type.isUnsigned, true);
