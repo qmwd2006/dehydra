@@ -1,4 +1,5 @@
 /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+#include "config.h"
 #include <jsapi.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -115,7 +116,6 @@ void dehydra_init(Dehydra *this, const char *file) {
                     NULL, NULL, JSPROP_ENUMERATE);
   JS_SetVersion (this->cx, (JSVersion) 170);
 
-
   /* Initialize namespace for plugin system stuff. */
   JSObject *sys = dehydra_defineObjectProperty (this, this->globalObj, SYS);
   /* Set version info */
@@ -133,14 +133,23 @@ void dehydra_init(Dehydra *this, const char *file) {
   free(libdir);
   free(filename_copy);
 
-  /* Output filename info */
-  if (aux_base_name) {
-    dehydra_defineStringProperty (this, sys, "aux_base_name", aux_base_name);
-  }
   xassert (JS_InitClass(this->cx, this->globalObj, NULL
                         ,&js_type_class , NULL, 0, NULL, NULL, NULL, NULL));
   xassert (JS_InitClass(this->cx, this->globalObj, NULL
                         ,&js_decl_class , NULL, 0, NULL, NULL, NULL, NULL));
+#ifdef CFG_PLUGINS_MOZ
+  dehydra_setFilename(this);
+#endif
+}
+
+void dehydra_setFilename(Dehydra *this) {
+  if (aux_base_name) {
+    /* provide filename info */
+    jsval sys_val;
+    JS_GetProperty(this->cx, this->globalObj, SYS, &sys_val);
+    dehydra_defineStringProperty (this, JSVAL_TO_OBJECT(sys_val),
+                                  "aux_base_name", aux_base_name);
+  }
 }
 
 int dehydra_startup (Dehydra *this) {
