@@ -10,6 +10,7 @@
 #include "dehydra_types.h"
 #ifdef TREEHYDRA_PLUGIN
 #include "treehydra.h"
+#include "tree-pass.h"
 
 /* True if initialization has been completed. */
 static int init_finished = 0;
@@ -257,6 +258,7 @@ void gcc_plugin_pass (void) {
 
   treehydra_call_js (&dehydra, "process_tree", current_function_decl);
 }
+
 #endif
 
 /* template instations happen late
@@ -370,6 +372,31 @@ static void gcc_plugin_finish (void *_, void *_2)
 }
 
 #ifndef CFG_PLUGINS_MOZ
+#ifdef TREEHYDRA_PLUGIN
+static unsigned int execute_treehydra_pass (void)
+{
+  gcc_plugin_pass();
+  return 0;
+}
+
+static struct opt_pass treehydra_pass =
+{
+  .type                 = GIMPLE_PASS,
+  .name                 = "treehydra",
+  .gate                 = NULL,
+  .execute              = execute_treehydra_pass,
+  .sub                  = NULL,
+  .next                 = NULL,
+  .static_pass_number   = 0,
+  .tv_id                = 0,
+  .properties_required  = PROP_gimple_any,
+  .properties_provided  = 0,
+  .properties_destroyed = 0,
+  .todo_flags_start     = 0,
+  .todo_flags_finish    = 0
+};
+#endif
+
 static tree
 handle_user_attribute (tree *node, tree name, tree args,
 			int flags, bool *no_add_attrs)
@@ -380,18 +407,33 @@ handle_user_attribute (tree *node, tree name, tree args,
 static struct attribute_spec user_attr =
   { "user", 1, 1, false,  false, false, handle_user_attribute };
 
-// commented out attribute support until it lands on trunk
 static void gcc_plugin_attributes(void *_, void *_2) {
   register_attribute (&user_attr);
 }
 
-int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version *version) {
+int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version *version)
+{
+  char *pass_name = 0;
+
   if (!plugin_info->argc)
     return 1;
 
-  char *arg = plugin_info->argv[0].value;
-  int ret = gcc_plugin_init (plugin_info->full_name, arg, NULL);
+  char *script_name = plugin_info->argv[0].value;
+  int ret = gcc_plugin_init (plugin_info->full_name, script_name, &pass_name);
+
   if (!ret) {
+#ifdef TREEHYDRA_PLUGIN
+    struct plugin_pass pass_info;
+    pass_info.pass = &treehydra_pass;
+    if (pass_name) {
+      pass_info.reference_pass_name = pass_name;
+    } else {
+      pass_info.reference_pass_name = "useless";
+    }
+    pass_info.ref_pass_instance_number = 0;
+    pass_info.pos_op = PASS_POS_INSERT_AFTER;
+    register_callback (plugin_info->base_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
+#endif
     register_callback (plugin_info->base_name, PLUGIN_FINISH_UNIT, gcc_plugin_post_parse, NULL);
     register_callback (plugin_info->base_name, PLUGIN_CXX_CP_PRE_GENERICIZE, 
                        (plugin_callback_func) gcc_plugin_cp_pre_genericize, NULL);
