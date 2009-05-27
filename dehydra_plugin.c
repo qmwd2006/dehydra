@@ -409,6 +409,9 @@ static struct attribute_spec user_attr =
 
 static void gcc_plugin_attributes(void *_, void *_2) {
   register_attribute (&user_attr);
+  // hack, plugin_init is called before aux_base_name is set
+  // but it should be set by attribute registration
+  dehydra_setFilename(&dehydra);
 }
 
 int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version *version)

@@ -86,4 +86,5 @@ void dehydra_appendToPath (Dehydra *this, const char *dir);
 void dehydra_appendDirnameToPath (Dehydra *this, const char *filename);
 FILE *dehydra_searchPath (Dehydra *this, const char *filename, char **realname);
 bool isGPlusPlus ();
+void dehydra_setFilename(Dehydra *this);
 #endif

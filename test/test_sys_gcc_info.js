@@ -12,11 +12,10 @@ SysTest.prototype.runTest = function()
   this.assertEquals(sys.aux_base_name, "empty");
 }
 
-var r = new TestResults()
-new SysTest().run(r);
-
 function input_end()
 {
+  var r = new TestResults()
+  new SysTest().run(r);
   r.list();
 }
 
