@@ -307,8 +307,9 @@ void gcc_plugin_cp_pre_genericize(tree fndecl)
 static void gcc_plugin_cp_pre_genericize(tree fndecl, void *_)
 #endif
 {
-  if (DECL_CLONED_FUNCTION_P (fndecl)) return;
-  if (DECL_ARTIFICIAL(fndecl)) return;
+  if (errorcount
+      || DECL_CLONED_FUNCTION_P (fndecl)
+      || DECL_ARTIFICIAL(fndecl)) return;
   
   dehydra_cp_pre_genericize(&dehydra, fndecl, postGlobalNamespace);
 #ifdef TREEHYDRA_PLUGIN
@@ -323,7 +324,7 @@ static void gcc_plugin_finish_struct (tree t, void *_)
 #endif
 {
   // gcc trunk gives us error_mark for some reason
-  if (TREE_CODE(t) != RECORD_TYPE)
+  if (errorcount || TREE_CODE(t) != RECORD_TYPE)
     PLUGIN_HANDLER_RETURN;
   dehydra_finishStruct (&dehydra, t);
 
@@ -363,7 +364,8 @@ static void gcc_plugin_finish (void *_, void *_2)
   pset = NULL;
   pointer_set_destroy (type_pset);
   type_pset = NULL;
-  dehydra_input_end (&dehydra);
+  if (!errorcount)
+    dehydra_input_end (&dehydra);
   PLUGIN_HANDLER_RETURN;
 }
 
