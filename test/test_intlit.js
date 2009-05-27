@@ -1,12 +1,13 @@
 // { 'test': 'dehydra', 'input': 'intlit.cc', 'output': 'unit_test' }
 
-// Test that 'const' is handled correctly.
+// Test that integer literals are handled correctly.
 
 include('unit_test.js');
 
 let r = new TestResults();
 
-// Test is constructed so all function types should have 2 args.
+// v comes from the intlic.cc body[] values, exp comes from our
+// expected[] values
 function MyTestCase(v, exp) {
   this.v = v;
   this.exp = exp;
@@ -48,7 +49,7 @@ function process_function(decl, body) {
 
 function input_end() {
   if (r.testsRun != expected.length) {
-    print("Error: must be 1 tests run, instead ran " + r.testsRun);
+    print("Error: must be " + expected.length + " tests run, instead ran " + r.testsRun);
   } else {
     r.list();
   }
