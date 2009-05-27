@@ -210,7 +210,7 @@ function makeUnion (fields, type_name, type_code_name, subFunctions, fn_level) {
                        bodyFunc, subFunctions)
 }
 
-function makeEnum (unit, fields, type_name, enum_inherit, fn_level) {
+function makeEnum (unit, fields, type_name, type_prefix, enum_inherit, fn_level) {
   var ls = []
   const enumNames = {}
   ls.push ("jsval v;");
@@ -240,7 +240,8 @@ function makeEnum (unit, fields, type_name, enum_inherit, fn_level) {
     return extra + "\n" + indent + ls.join ("\n" + indent)
   }
   return new Function (fn_level, "convert_" + type_name,
-                       "(struct Dehydra *this, struct JSObject *parent, const char *propname, enum " + type_name + " var)",
+                       "(struct Dehydra *this, struct JSObject *parent, const char *propname, " +
+                       type_prefix + " " + type_name + " var)",
                        bodyFunc);
 }
 
@@ -313,7 +314,7 @@ function getPrefix (aggr) {
   if (sys.frontend == "GNU C") 
     return aggr.kind
   
-  if (aggr.kind != "struct")
+  if (aggr.kind != "struct" && aggr.kind != "enum")
     return aggr.kind + " "
   var file = aggr.loc.file;
   var line = aggr.loc.line;
@@ -578,7 +579,7 @@ function convert (unit, aggr) {
       convert (unit, this.cplus_tree_code)
       enum_inherit = this.cplus_tree_code.name
     }
-    ret = makeEnum (unit, aggr.members, aggr_name, enum_inherit,
+    ret = makeEnum (unit, aggr.members, aggr_name, getPrefix(aggr), enum_inherit,
                     isToplevelType ? FN_STATIC : FN_NESTED)
   } 
   if (ret) {
