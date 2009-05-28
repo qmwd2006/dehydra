@@ -129,3 +129,10 @@ const char *dehydra_intCstToString(tree int_cst)
 
   return buf;
 }
+
+// compatability shim
+enum cp_tree_node_structure_enum
+cp_tree_node_structure (union lang_tree_node *_) {
+  xassert(false);
+  return LAST_TS_ENUM;
+}
