@@ -44,15 +44,16 @@ const tests = {
   'stype': new TypedefCheck('stype', function(got) {
     this.assertEquals(got.typedef.name, 's');
   }),
-  
+
   /**
+   * sizetype isn't even seen by gcc <=4.3
    * GCC bug: typedefs decls in class context don't have DECL_ORIGINAL_CONTEXT,
    * so we don't think they are typedefs. Yuck.
-  's::size_type': new TypedefCheck(function(got) {
+   */
+  'size_type': new TypedefCheck('size_type', function(got) {
     this.assertEquals(got.typedef.name, 'PRUint32');
-    this.assertEquals(got.memberOf.name, 's');
   }),
-  */
+ 
   
   '__m64': new TypedefCheck('__m64', function(got) {}),
 };
@@ -90,9 +91,11 @@ function process_tree_type(t)
 
 function input_end()
 {
-  for (let testname in tests)
-    if (tests[testname].treehydra === null)
-      r.addError(tests[testname], "Declaration not processed: " + testname);
-  
+  for (let testname in tests) {
+    let t = tests[testname]
+    // warn about typedefs processed by dehydra but not treehydra
+    if (t.dehydra && t.treehydra === null)
+      r.addError(t, "Declaration not processed: " + testname);
+  }
   r.list();
 }
