@@ -31,6 +31,13 @@ TestResults.prototype.list = function () {
   }
 };
 
+TestResults.prototype.verifyExpectedTestsRun = function(expected) {
+  if (this.testsRun != expected)
+    error("Must be " + expected  + " tests run, instead ran " + this.testsRun);
+  else
+    r.list();
+};
+
 function TestCase() {
   this.results = undefined;
   this.name = "TestCase";

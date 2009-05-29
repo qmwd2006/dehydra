@@ -48,9 +48,5 @@ function process_function(decl, body) {
 }
 
 function input_end() {
-  if (r.testsRun != expected.length) {
-    print("Error: must be " + expected.length + " tests run, instead ran " + r.testsRun);
-  } else {
-    r.list();
-  }
+  r.verifyExpectedTestsRun(expected.length)
 }
