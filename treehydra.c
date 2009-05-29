@@ -35,6 +35,7 @@
 #ifndef __APPLE_CC__ // checking for __APPLE_CC__ just checking for 4.2
 //4.4 and onwards
 #include "gimple.h"
+#define TREEHYDRA_GIMPLE_TUPLES
 #endif
 #endif
 
