@@ -159,11 +159,6 @@ var call_expr_nargs = isGCC42 ?
     return TREE_INT_CST_LOW(TREE_OPERAND(node, 0)) - 3;
   }
 
-
-function GIMPLE_TUPLE_P (node) {
-  return GIMPLE_STMT_P (node) || TREE_CODE (node) == PHI_NODE
-}
-
 function TYPE_BINFO (node) {
   return TREE_CHECK (node, RECORD_TYPE, UNION_TYPE, QUAL_UNION_TYPE).type.binfo
 }
@@ -178,8 +173,6 @@ var BINFO_VIRTUAL_P = isGCC42 ?
 
 // not sure if this will work same way in gcc 4.3
 function TREE_CHAIN (node) {
-  if (GIMPLE_TUPLE_P (node))
-    throw new Error ("TREE_CHAIN refuses to accept GIMPLE_TUPLE_P() stuff")
   return node.common.chain
 }
 
@@ -267,8 +260,6 @@ function CONSTRUCTOR_ELTS (node) {
 }
 
 function TREE_TYPE (node) {
-  if (GIMPLE_TUPLE_P (node))
-    throw new Error ("Don't be passing GIMPLE stuff to TREE_TYPE")
   return node.common.type
 }
 
