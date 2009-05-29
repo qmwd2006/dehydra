@@ -21,8 +21,5 @@ function process_decl(d)
 }
 
 function input_end() {
-  if (r.testsRun != 1)
-    error('Must be 1 tests run, instead ran ' + r.testsRun);
-  else
-    r.list();
+  r.verifyExpectedTestsRun(1)
 }

@@ -28,9 +28,5 @@ function process_type(type) {
 }
 
 function input_end() {
-  if (r.testsRun != 4) {
-    print("Error: must be 4 tests run, instead ran " + r.testsRun);
-  } else {
-    r.list();
-  }
+  r.verifyExpectedTestsRun(4)
 }

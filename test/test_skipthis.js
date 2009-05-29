@@ -30,9 +30,5 @@ function process_function(decl, body) {
 }
 
 function input_end() {
-  if (r.testsRun != 3) {
-    print("Error: must be 3 tests run, instead ran " + r.testsRun);
-  } else {
-    r.list();
-  }
+  r.verifyExpectedTestsRun(3)
 }

@@ -61,10 +61,5 @@ function process_type(t)
 
 function input_end()
 {
-  if (r.testsRun != tests.length) {
-    throw new Error("Error: no tests were run!");
-  }
-  else {
-    r.list();
-  }
+  r.verifyExpectedTestsRun(tests.length)
 }

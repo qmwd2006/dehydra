@@ -54,8 +54,5 @@ function input_end()
 {
   let testCount = tests.length + 2;
 
-  if (r.testsRun != testCount)
-    print("Error: expected " + testCount  + " tests run, instead ran " + r.testsRun);
-  else
-    r.list();
+  r.verifyExpectedTestsRun(testCount);
 }
