@@ -93,10 +93,8 @@ Function.prototype.toString = function (indent, outerindent) {
 
 function Unit () {
   this.functions = []
-  // tglek: could combine functionNames, functions, guarded into a singl 
-  // data structure but it wouldn't make a big perf difference so I didn't bother.
-  // this hardcodes a func that is implemented in C
-  this.functionNames = {lazy_tree_node:{}}
+  // Preinitialized with funcs that are implemented in C
+  this.functionNames = {lazy_tree_node:{}, lazy_gimple_statement_d:{}}
   this.guarded = new Map()
   this.enumValues = {}
 }
@@ -126,6 +124,12 @@ Unit.prototype.addFunction = function (f) {
 
 Unit.prototype.registerEnumValue = function (name, value) {
   this.enumValues[name] = value
+}
+
+Unit.prototype.registerEnum = function (enum_type) {
+  for each (let m in enum_type.members) {
+    this.registerEnumValue(m.name, m.value);
+  }
 }
 
 Unit.prototype.saveEnums = function (fname) {
@@ -475,9 +479,15 @@ function convert (unit, aggr) {
     if (lengthResults && lengthResults[1] != "u")
       lengthExpr = lengthResults[1]*1 + 1
     var cast = undefined
+    // when an enum is used as a bitfield, then gcc calls it an unsigned 
+    // :(..restore enum info here
     if (m.name == tree_code_name) {
       type_kind = "enum"
       type = this.tree_code
+      type_name = type.name
+    } else if (m.name == "gimple_statement_base::code") {
+      type_kind = "enum"
+      type = this.gimple_code
       type_name = type.name
     }
     switch (m.name) {
@@ -501,8 +511,11 @@ function convert (unit, aggr) {
         tag = getUnionTag (m.type.attributes)
     }
     
-    if (type_kind == "struct" || type.name == "tree_node"
-        || (type_kind == "union" && type.name.indexOf("::") != -1)) {
+    if (type_kind == "struct" 
+        // Allow anonymous unions and 2 whitelisted unions
+        || (type_kind == "union"
+            && ((type.name == "tree_node" || type.name == "gimple_statement_d")
+                || type.name.indexOf("::") != -1))) {
       isAddrOf = !isPointer(m.type)
       if (type.isIncomplete) {
         print ("Harmless: "+m.name + "' type is incomplete");
@@ -535,7 +548,7 @@ function convert (unit, aggr) {
       cast = "HOST_WIDE_INT"
       isPrimitive = true
     } else {
-      print("Likely harmless: unhandled " + type_name + " " +  m.name + " " + m.loc)
+      print("Likely harmless: unhandled " +type_kind+" "+ type_name + " " +  m.name + " " + m.loc)
       continue
     }
     if (isSpecial (m.attributes)) {
@@ -610,7 +623,14 @@ function process_type(type) {
     this.cplus_tree_code = type
   } else if (type.name == "integer_type_kind") {
     this.integer_type_kind = type
-  }
+  } else if (type.name == "gimple_code") { 
+    // make gimple_code a soft dependency to keep working with 4.3
+    this.gimple_code = type
+  } else
+    return
+   // all of the enums mentioned above, should be registered
+  if (type.kind == "enum")
+    unit.registerEnum (type);  
 }
 
 function input_end () {
@@ -623,14 +643,6 @@ function input_end () {
   if (!this.cplus_tree_code)
     this.cplus_tree_code = this.tree_code
 
-  for each (var m in this.tree_code_class.members) {
-    unit.registerEnumValue (m.name, m.value)
-  }
-
-  for each (var m in this.integer_type_kind.members) {
-    unit.registerEnumValue (m.name, m.value)
-  }
-  
   convert(unit, this.cgraph_node)
   var str = unit.toString()
   var fname = "treehydra_generated.c";
