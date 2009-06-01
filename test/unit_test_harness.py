@@ -34,7 +34,7 @@ class PluginTestCase(TestCase):
 
     def getCommand(self):
         command = CC1PLUS + " -fplugin=../gcc_" + self.plugin + ".so -o /dev/null"
-        if (config_opts["PLUGINS_OFFICIAL"]) :
+        if ("PLUGINS_OFFICIAL" in config_opts) :
             command += " -fplugin-arg-gcc_" + self.plugin + "-=" + self.jsfile
         else :
             command += " -fplugin-arg=" + self.jsfile
