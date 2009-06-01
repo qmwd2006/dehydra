@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Author: Taras Glek
 # OSX support by Vlad Sukhoy
 import getopt, sys, os.path, os, platform, popen2
@@ -46,13 +47,14 @@ def check_gcc_srcdir(config, gcc_src):
     ret = PLUGINS_NONE
     if os.path.isfile (os.path.join (gcc_src, "gcc/plugin.c")):
         msg += ("GCC plugin framework")
+        config["PLUGINS_OFFICIAL"] = "Using GCC 4.5 or later plugin system"
         config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-"
         ret = PLUGINS_OFFICIAL
     elif os.path.isfile (os.path.join (gcc_src, "gcc/tree-plugin-pass.c")):
         msg += ("Mozilla plugin framework patch")
-        ret = PLUGINS_MOZ
         config["PLUGINS_MOZ"] = "Using Mozilla's patch to pre-plugin GCCs'"
         config["PLUGIN_ARG"] = "-fplugin-arg"
+        ret = PLUGINS_MOZ
     print(msg)
     if ret == PLUGINS_NONE:
         error("GCC sources in %s do not have the plugin patch applied" % gcc_src)
