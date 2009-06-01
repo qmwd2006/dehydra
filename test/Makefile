@@ -36,13 +36,13 @@ check:: check_dehydra $(BUILD_TREEHYDRA:gcc_treehydra.so=check_treehydra)
 
 # Unit tests
 check_both: $(OBJECTS)
-	python unit_test_harness.py both "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null $(PLUGIN_ARG)=%s %s"
+	python unit_test_harness.py both "$(CC1PLUS)"
 
 check_dehydra: $(OBJECTS)
-	python unit_test_harness.py dehydra "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null $(PLUGIN_ARG)=%s %s"
+	python unit_test_harness.py dehydra "$(CC1PLUS)"
 
 check_treehydra:
-	python unit_test_harness.py treehydra "$(CC1PLUS) -fplugin=../gcc_%s.so -o /dev/null $(PLUGIN_ARG)=%s %s"
+	python unit_test_harness.py treehydra "$(CC1PLUS)"
 
 %.o: %.cc $(PLUGIN) $(GLOBAL_DEPS)
 	$(CC1PLUS) $(CXXFLAGS) $< -o /dev/null
@@ -63,4 +63,4 @@ finalizer: finalizers.cc finalizers.js $(GLOBAL_DEPS)
 	$(MAKE) PLUGIN=../gcc_treehydra.so SCRIPT=finalizers.js finalizers.o
 
 clean:
-	rm -f *.o *~ a.out
+	rm -f *.o *~ a.out *.gcno

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Test Harness
 
 Specify a test by a JS file in this directory with the first line
@@ -32,7 +33,13 @@ class PluginTestCase(TestCase):
         self.checker(self, 0, out, err)
 
     def getCommand(self):
-        return TREEHYDRA_CMD_FORMAT%(self.plugin, self.jsfile, self.ccfile)
+        command = CC1PLUS + " -fplugin=../gcc_" + self.plugin + ".so -o /dev/null"
+        if (config_opts["PLUGINS_OFFICIAL"]) :
+            command += " -fplugin-arg-gcc_" + self.plugin + "-=" + self.jsfile
+        else :
+            command += " -fplugin-arg=" + self.jsfile
+        command += " " + self.ccfile
+        return command
 
     def __str__(self):
         return '%-10s %-18s %-16s %s'%(
@@ -125,6 +132,19 @@ def extractTests(filename):
     return [ PluginTestCase(plugin, filename, ccfile, checker, checker_str) 
              for plugin in plugins ]
 
+def parseConfigFile(config_filename):
+    config = dict()
+    f = open("../config.mk")
+    for line in f:
+        line = line.strip()
+        if line.startswith("#"):
+            continue
+        (key, value) = line.split("=")
+        config[key] = value
+    f.close()
+    return config
+
+
 VERBOSE = False
 
 from getopt import getopt
@@ -137,7 +157,7 @@ for opt, val in optlist:
         sys.exit(1)
 
 if len(args) != 2:
-    print "usage: python %s [-v] <test-set> <*hydra-cmd-fmt>"%(sys.argv[0])
+    print "usage: python %s [-v] <test-set> <cc1plus>"%(sys.argv[0])
     sys.exit(1)
 
 plugin_str = args[0]
@@ -145,8 +165,12 @@ if plugin_str == 'both':
     PLUGINS = [ 'dehydra', 'treehydra' ]
 else:
     PLUGINS = plugin_str.split(',')
-# This should be a format string with 3 %s, the plugin, script, and C++ file
-TREEHYDRA_CMD_FORMAT = args[1]
+
+# This should be the compiler to use
+CC1PLUS = args[1]
+
+# Parse the configuration file
+config_opts = parseConfigFile("../config.mk")
 
 from glob import glob
 tests = []
