@@ -243,3 +243,34 @@ function edge_string(edge, cfg) {
 function loc_string(loc) {
   return loc.toString();
 }
+
+// tuple stuff
+function gs_display(gs) {
+  switch(gs.gsbase.code) {
+  case GIMPLE_CALL: {
+    let fn = gimple_call_fndecl(gs);
+    let lhs = gimple_call_lhs(gs);
+    let args = []
+    for (a in gimple_call_arg_iterator(gs)) {
+      args.push(expr_display(a))
+    }
+    return (lhs ? call_name_display(lhs) + " = " : "")
+      + call_name_display(fn) + "(" + args.join(",") +")"
+  }
+  break
+  case GIMPLE_ASSIGN:
+    return expr_display(gs.gimple_ops[0]) + " = " + expr_display(gs.gimple_ops[1])
+  case GIMPLE_RETURN: {
+    let op = gs.gimple_ops[0];
+    return "return " + (op ? expr_display(gs.gimple_ops[0]) : "")
+  }
+  case GIMPLE_LABEL: 
+    return decl_name(gs.gimple_ops[0]) + ':'
+  case GIMPLE_COND:
+    return "if ("+expr_display(gs.gimple_ops[0])+")"
+  case GIMPLE_SWITCH:
+    return "switch ("+expr_display(gs.gimple_ops[0])+")"
+  default:
+    return "Unhandled " + gs.gsbase.code
+  }
+}
