@@ -726,3 +726,56 @@ function c_common_type_for_mode (mode, unsignedp)
 
   return undefined;
 }
+
+// tuple stuff
+
+function bb_gimple_seq(bb) {
+  let gimple_bb_info = bb.il.gimple
+  return gimple_bb_info ? gimple_bb_info.seq.first : undefined
+}
+
+function bb_gs_iterate(bb) {
+  let seq = bb_gimple_seq(bb)
+  for(;seq;seq=seq.next)
+    yield seq.stmt
+}
+
+function gimple_location (gs)
+{
+  return gs.gsbase.location;
+}
+function gimple_op(gs, i) {
+  return gs.gimple_ops[i]
+}
+
+function gimple_call_fn (gs)
+{
+  return gs.gimple_ops[1]
+}
+
+function gimple_call_lhs (gs)
+{
+  return gimple_op (gs, 0);
+}
+
+function gimple_call_fndecl (gs)
+{
+  let addr = gimple_call_fn (gs);
+  if (TREE_CODE (addr) == ADDR_EXPR)
+    {
+      return TREE_OPERAND (addr, 0);
+    }
+  return NULL_TREE;
+}
+
+function gimple_num_ops (gs)
+{
+  return gs.gsbase.num_ops;
+}
+
+function gimple_call_arg_iterator (gs) {
+  let num_ops = gimple_num_ops (gs)
+  for (let i = 3;i<num_ops;i++) {
+    yield gs.gimple_ops[i]
+  }
+}
