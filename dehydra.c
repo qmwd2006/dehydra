@@ -25,6 +25,7 @@
 #include "dehydra_ast.h"
 
 const char *NAME = "name";
+const char *SHORTNAME = "shortName";
 const char *LOC = "loc";
 const char *BASES = "bases";
 const char *ASSIGN = "assign";
@@ -409,26 +410,25 @@ void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
 }
 
 static void dehydra_setName (Dehydra *this, JSObject *obj, tree v) {
-  char const *name = NULL;
-    if (DECL_NAME(v)) {
-      name = decl_as_string (v, 0);
-    } else {
-      static char buf[128];
-      sprintf(buf, " _%d", DECL_UID (v));
-      switch (TREE_CODE (v)) {
-      case CONST_DECL: 
-        buf[0] = 'C';
-        break;
-      case RESULT_DECL:
-        buf[0] = 'R';
-        break;
-      default:
-        buf[0] = 'D';
-      }
-      name = buf;
+  if (DECL_NAME (v)) {
+    tree n = DECL_NAME (v);
+    dehydra_defineStringProperty (this, obj, NAME, decl_as_string (v, 0));
+    dehydra_defineStringProperty (this, obj, SHORTNAME, decl_as_string (n, 0));
+  } else {
+    static char buf[128];
+    sprintf (buf, " _%d", DECL_UID (v));
+    switch (TREE_CODE (v)) {
+    case CONST_DECL:
+      buf[0] = 'C';
+      break;
+    case RESULT_DECL:
+      buf[0] = 'R';
+      break;
+    default:
+      buf[0] = 'D';
     }
-    dehydra_defineStringProperty (this, obj, NAME, 
-                                  name);
+    dehydra_defineStringProperty (this, obj, NAME, buf);
+  }
 }
 
 /* Add a Dehydra variable to the given parent array corresponding to
