@@ -12,12 +12,12 @@ Location.prototype.toString = function() {
 
 /** Report an error diagnostic in GCC. loc is optional. */
 function error(msg, loc) {
-  diagnostic(true, msg, loc);
+  diagnostic(true, msg, loc ? loc : this._loc);
 }
   
 /** Report a warning diagnostic in GCC. loc is optional. */
 function warning(msg, loc) {
-  diagnostic(false, msg, loc);
+  diagnostic(false, msg, loc ? loc : this._loc);
 }
 
 /** EnumValue kept here so that convert_tree.js sees it. */
