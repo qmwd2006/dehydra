@@ -348,9 +348,19 @@ void treehydra_call_js (struct Dehydra *this, const char *callback, tree treeval
 
   get_lazy (this, lazy_treehydra_globals, NULL, dehydraSysObj,
             "treehydra");
+  // Ensure that error/warning report errors within a useful context
+  tree old_current_function_decl = NULL_TREE;
+  
+  if (TREE_CODE (treeval) == FUNCTION_DECL && current_function_decl != treeval) {
+    old_current_function_decl = current_function_decl;
+    current_function_decl = treeval;
+  }
   jsval fnval =
     get_existing_or_lazy (this, lazy_tree_node, treeval,
                           this->globalObj, "__treehydra_top_obj");
+
+  if (old_current_function_decl)
+    current_function_decl = old_current_function_decl;
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process,
                                  1, &fnval, &rval));
   JS_DeleteProperty (this->cx, dehydraSysObj, "treehydra");
