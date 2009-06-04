@@ -565,10 +565,14 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
                                       this->rootedArgDestArray);
   JSObject *fobj = dehydra_addVar (this, f, this->rootedArgDestArray);
   jsval rval, argv[2];
+  // This ensures that error/warning provide a sensible function name
+  tree old_current_decl = current_function_decl;
   argv[0] = OBJECT_TO_JSVAL (fobj);
   argv[1] = OBJECT_TO_JSVAL (this->statementHierarchyArray);
+  current_function_decl = f;
   xassert (JS_CallFunctionValue (this->cx, this->globalObj, process_function,
                                  sizeof (argv)/sizeof (argv[0]), argv, &rval));
+  current_function_decl = old_current_decl;
   dehydra_unrootObject (this, key);
   dehydra_unrootObject (this, fnkey);
   this->statementHierarchyArray = NULL;
