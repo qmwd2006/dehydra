@@ -84,7 +84,7 @@ def stdout_has_re(*args):
     return checker
 
 def stderr_empty(test, ec, out, err):
-    test.failUnless(err == '', "Expected no error output, got error output")
+    test.failUnless(err == '', "Expected no error output, got error output :%s" % err)
 
 def unit_test(test, ec, out, err):
     # Get last line
