@@ -89,7 +89,7 @@ void dehydra_init(Dehydra *this, const char *file) {
   };
 
   this->fndeclMap = pointer_map_create ();
-  this->rt = JS_NewRuntime (0x9000000L);
+  this->rt = JS_NewRuntime (0xFF000000L);
   this->cx = JS_NewContext (this->rt, 8192);
 
 #ifdef JSOPTION_JIT
