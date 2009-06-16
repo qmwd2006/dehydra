@@ -115,7 +115,7 @@ void dehydra_init(Dehydra *this, const char *file) {
   JS_DefineElement (this->cx, this->rootedArgDestArray, 0,
                     OBJECT_TO_JSVAL (this->rootedFreeArray),
                     NULL, NULL, JSPROP_ENUMERATE);
-  JS_SetVersion (this->cx, (JSVersion) 170);
+  JS_SetVersion (this->cx, JSVERSION_LATEST);
 
   /* Initialize namespace for plugin system stuff. */
   JSObject *sys = dehydra_defineObjectProperty (this, this->globalObj, SYS);
