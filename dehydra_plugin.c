@@ -414,6 +414,9 @@ static void gcc_plugin_attributes(void *_, void *_2) {
   dehydra_setFilename(&dehydra);
 }
 
+// FSF requires this crap to be put in
+int plugin_is_GPL_compatible = 1;
+
 int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version *version)
 {
   char *pass_name = 0;
