@@ -449,8 +449,12 @@ static jsval dehydra_convert_type_cached (Dehydra *this, tree type,
         break;
       }
     }
+  case TYPEOF_TYPE:
+    // avoid dealing with typeof mess
+    dehydra_defineStringProperty (this, obj, "typeof_not_implemented", type_as_string (type, 0));
+    break;
   default:
-    warning (1, "Unhandled %s: %s", tree_code_name[TREE_CODE(type)],
+    warning (1, "Dehydra: Unhandled %s: %s", tree_code_name[TREE_CODE(type)],
            type_as_string (type, TFF_CHASE_TYPEDEF));
     dehydra_defineStringProperty (this, obj, NAME, type_as_string (type, 0));
     break;

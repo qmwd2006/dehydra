@@ -8,6 +8,7 @@
 #include "dehydra.h"
 #include "dehydra_ast.h"
 #include "dehydra_types.h"
+#include "util.h"
 #ifdef TREEHYDRA_PLUGIN
 #include "treehydra.h"
 #include "tree-pass.h"
@@ -187,9 +188,12 @@ static void process (tree t) {
   case FUNCTION_DECL:
   case VAR_DECL:
     return process_type (tree_type);
+  // nothing interesting in using decls
+  case USING_DECL:
+    return;
   default:
+    /*error ( "Dehydra unknown tree element: %s", tree_code_name[TREE_CODE(t)]);*/
     xassert(!DECL_P (t));
-    /*error ( "unknown tree element: %s", tree_code_name[TREE_CODE(t)]);*/
     break;
   }
 }
