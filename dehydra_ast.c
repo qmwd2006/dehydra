@@ -159,12 +159,21 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   Dehydra *this = data;
   enum tree_code code = TREE_CODE(*tp); 
   if (enable_ast_debug) {
+    static location_t prior_loc = UNKNOWN_LOCATION;
     statement_walker_depth++;
+    char *spaces = xmalloc(statement_walker_depth+1);
     int d;
     for (d = 0; d < statement_walker_depth;d++) {
-      fprintf(stderr, " ");
+      spaces[d] = '-';
     }
-    fprintf(stderr, "ast: %s %s\n",tree_code_name[TREE_CODE(*tp)], TREE_CODE(*tp) == TARGET_EXPR ? expr_as_string(*tp, 0) : "");
+    spaces[statement_walker_depth] = 0;
+    location_t loc = location_of(*tp);
+    if (loc == UNKNOWN_LOCATION)
+      loc = prior_loc;
+    else
+      prior_loc = loc;
+    warning(0, "%H%sast: %s %s",&loc,spaces,tree_code_name[TREE_CODE(*tp)], DECL_P(*tp) ? expr_as_string(*tp, 0) : "");
+    free(spaces);
   }
   switch (code) {
   case STATEMENT_LIST:
@@ -233,13 +242,8 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     }
     *walk_subtrees = 0;
     break;
-  case TRY_CATCH_EXPR:
-#ifdef POINTER_PLUS_EXPR_CHECK
-  case POINTER_PLUS_EXPR:
-#endif
-  case ADDR_EXPR:
-  case INDIRECT_REF:
   case CLEANUP_POINT_EXPR:
+    // do not walk the cleanup stuff
     cp_walk_tree_without_duplicates (&GENERIC_TREE_OPERAND (*tp, 0),
                                      statement_walker, this);        
     *walk_subtrees = 0;
@@ -309,15 +313,21 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
       *walk_subtrees = 0;
       break;
     }
-    /* this isn't magic, but breaks pretty-printing */
-  case LABEL_DECL:
-    break;
   case EXPR_STMT:
     if (!this->inExpr) {
       location_t loc = location_of (*tp);
       if (!loc_is_unknown (loc))
         dehydra_nextStatement (this, loc);
     }
+    break;
+  case TRY_CATCH_EXPR:
+#ifdef POINTER_PLUS_EXPR_CHECK
+  case POINTER_PLUS_EXPR:
+#endif
+  case ADDR_EXPR:
+  case INDIRECT_REF:
+  case LABEL_DECL:
+    // above expressions have a single operand
     break;
   default:
     {
