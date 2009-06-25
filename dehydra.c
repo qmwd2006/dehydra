@@ -272,11 +272,13 @@ void dehydra_defineProperty (Dehydra *this, JSObject *obj,
                      NULL, NULL, JSPROP_ENUMERATE);
 }
 
-void dehydra_defineStringProperty (Dehydra *this, JSObject *obj,
+jsval dehydra_defineStringProperty (Dehydra *this, JSObject *obj,
                                    char const *name, char const *value)
 {
   JSString *str = JS_NewStringCopyZ (this->cx, value);
-  dehydra_defineProperty (this, obj, name, STRING_TO_JSVAL(str));
+  jsval val = STRING_TO_JSVAL(str);
+  dehydra_defineProperty (this, obj, name, val);
+  return val;
 }
 
 JSObject *dehydra_defineArrayProperty (Dehydra *this, JSObject *obj,
@@ -412,8 +414,13 @@ void dehydra_addAttributes (Dehydra *this, JSObject *destArray,
 static void dehydra_setName (Dehydra *this, JSObject *obj, tree v) {
   if (DECL_NAME (v)) {
     tree n = DECL_NAME (v);
-    dehydra_defineStringProperty (this, obj, NAME, decl_as_string (v, 0));
-    dehydra_defineStringProperty (this, obj, SHORTNAME, decl_as_string (n, 0));
+    jsval jsname = dehydra_defineStringProperty (this, obj, SHORTNAME, decl_as_string (n, 0));
+    // turns out calling decL_as_string on template names will cause template instantiation
+    // avoid that like the plague as it can cause compiler bugs
+    if (TREE_CODE(v) == TEMPLATE_DECL)
+      dehydra_defineProperty (this, obj, NAME, jsname);
+    else
+      dehydra_defineStringProperty (this, obj, NAME, decl_as_string (v, 0));
   } else {
     static char buf[128];
     sprintf (buf, " _%d", DECL_UID (v));

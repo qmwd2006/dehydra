@@ -58,7 +58,7 @@ JSObject *definePropertyObject (JSContext *cx, JSObject *obj,
 jsuint dehydra_getArrayLength(Dehydra *this, JSObject *array);
 void dehydra_defineProperty(Dehydra *this, JSObject *obj,
                             char const *name, jsval value);
-void dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
+jsval dehydra_defineStringProperty(Dehydra *this, JSObject *obj,
                                   char const *name, char const *value);
 JSObject *dehydra_defineArrayProperty (Dehydra *this, JSObject *obj,
                                        char const *name, int length);
