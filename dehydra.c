@@ -457,6 +457,10 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
     dehydra_setName (this, obj, v);
     tree decl_context = DECL_CONTEXT(v);
     if (decl_context && TREE_CODE(decl_context) == RECORD_TYPE) {
+      dehydra_defineStringProperty (this, obj, ACCESS,
+                                    TREE_PRIVATE (v) ? PRIVATE :
+                                    (TREE_PROTECTED (v) ? PROTECTED
+                                    : PUBLIC));
       dehydra_defineProperty (this, obj, MEMBER_OF, 
                               dehydra_convert_type (this, decl_context));
     }
@@ -521,10 +525,10 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
     /* static vars */
     if ((TREE_CODE (v) == VAR_DECL && TREE_STATIC (v)) 
         /* static functions */
-        || (TREE_CODE (v) == FUNCTION_DECL && !TREE_PUBLIC (v)) 
+        || (TREE_CODE (v) == FUNCTION_DECL && !TREE_PUBLIC (v))
         /* static class members */
         || (TREE_CODE (TREE_TYPE(v)) == FUNCTION_TYPE && decl_context 
-            && TREE_CODE (decl_context) == RECORD_TYPE))
+            && TREE_CODE (decl_context) == RECORD_TYPE)) 
       dehydra_defineProperty (this, obj, STATIC, JSVAL_TRUE);
   } else if (TREE_CODE(v) == CONSTRUCTOR) {
     /* Special case for this node type */

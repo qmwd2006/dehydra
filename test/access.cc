@@ -8,6 +8,7 @@ protected:
 
 private:
   ~A();
+  static int static_member;
 };
 
 class B : public A

@@ -46,6 +46,10 @@ extern const char *MIN_VALUE;
 extern const char *MAX_VALUE;
 extern const char *TEMPLATE;
 extern const char *SYS;
+extern const char *ACCESS;
+extern const char *PUBLIC;
+extern const char *PRIVATE;
+extern const char *PROTECTED;
 
 extern JSClass js_type_class;
 

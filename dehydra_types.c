@@ -27,13 +27,13 @@ static const char *KIND = "kind";
 static const char *TYPEDEF = "typedef";
 static const char *ARRAY = "isArray";
 static const char *INCOMPLETE = "isIncomplete";
-static const char *ACCESS = "access";
-static const char *PUBLIC = "public";
-static const char *PRIVATE = "private";
-static const char *PROTECTED = "protected";
 static const char *ISVIRTUAL = "isVirtual";
 static const char *ISTYPENAME = "isTypename";
 static const char *VARIANT = "variantOf";
+const char *ACCESS = "access";
+const char *PUBLIC = "public";
+const char *PRIVATE = "private";
+const char *PROTECTED = "protected";
 
 static struct pointer_map_t *typeMap = NULL;
 

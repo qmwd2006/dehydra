@@ -35,3 +35,8 @@ function process_tree(fn)
 function input_end() {
   print("OK")
 }
+
+function process_decl(v) {
+  if (v.name == "A::static_member")
+    assert(v.access == "private")
+}
