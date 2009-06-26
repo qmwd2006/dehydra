@@ -159,7 +159,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
   Dehydra *this = data;
   enum tree_code code = TREE_CODE(*tp); 
   if (enable_ast_debug) {
-    static location_t prior_loc = UNKNOWN_LOCATION;
+    location_t prior_loc = UNKNOWN_LOCATION;
     statement_walker_depth++;
     char *spaces = xmalloc(statement_walker_depth+1);
     int d;
@@ -168,7 +168,7 @@ statement_walker (tree *tp, int *walk_subtrees, void *data) {
     }
     spaces[statement_walker_depth] = 0;
     location_t loc = location_of(*tp);
-    if (loc == UNKNOWN_LOCATION)
+    if (loc_is_unknown(loc))
       loc = prior_loc;
     else
       prior_loc = loc;
