@@ -57,6 +57,7 @@ static const char *STD_INCLUDE = "libs";
 static const char *VERSION_STRING = "gcc_version";
 static const char *FRONTEND = "frontend";
 static const char *EXTERN = "isExtern";
+static const char *EXTERN_C = "isExternC";
 
 static char *my_dirname (char *path);
 
@@ -472,6 +473,13 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
           TREE_STATIC(v)) {
         dehydra_defineProperty (this, obj, EXTERN, JSVAL_TRUE);
       }
+    }
+    
+    /* define the C linkage */
+    if ((TREE_CODE (v) == FUNCTION_DECL ||
+         TREE_CODE (v) == VAR_DECL) &&
+        DECL_EXTERN_C_P(v)) {
+      dehydra_defineProperty(this, obj, EXTERN_C, JSVAL_TRUE);
     }
 
     tree typ = TREE_TYPE (v);
