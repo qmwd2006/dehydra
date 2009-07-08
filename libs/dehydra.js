@@ -372,35 +372,35 @@ function getVar(v) {
 function iterate_vars(statements) {
   function var_iter(v) {
     yield v;
-    for each(let va in v.assign)
-    for each (ret in var_iter(va))
-    yield ret
+    for each (let va in v.assign)
+      for each (let ret in var_iter(va))
+        yield ret;
 
-    for each(let vp in v.arguments)
-    for each (ret in var_iter(vp))
-    yield ret
+    for each (let vp in v.arguments)
+      for each (let ret in var_iter(vp))
+        yield ret;
 
     for each (let vi in v.inits)
-    for each (ret in var_iter(vi))
-    yield ret
+      for each (let ret in var_iter(vi))
+        yield ret;
   }
-  for each(let o in statements) {
-    this._loc = o.loc
-    for each(let v in o.statements) {
-      for each(let ret in var_iter(v))
-      yield ret
-    }
+
+  for each (let o in statements) {
+    this._loc = o.loc;
+    for each (let v in o.statements)
+      for each (let ret in var_iter(v))
+        yield ret;
   }
 }
 
 function process_function (decl, statements) {
-  this._function = decl
-  if (!this.process) return
-  for each (var o in statements) {
-    this._loc = o.loc
-    process (o.statements)
+  this._function = decl;
+  if (!this.process) return;
+  for each (let o in statements) {
+    this._loc = o.loc;
+    process(o.statements);
   }
-  delete this._loc
+  delete this._loc;
 }
 
 function sameVar (v1, v2) {
