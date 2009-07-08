@@ -369,18 +369,28 @@ function getVar(v) {
   return v
 }
 
-function iter(f, vars) {
-  function var_iter(f, v) {
-    f(v)
-    for each(var va in v.assign)
-      var_iter(f, va)
-    for each(var vp in v.arguments)
-      var_iter(f, vp)
-    for each (var vi in v.inits)
-      var_iter(f, vi)
+function iterate_vars(statements) {
+  function var_iter(v) {
+    yield v;
+    for each(let va in v.assign)
+    for each (ret in var_iter(va))
+    yield ret
+
+    for each(let vp in v.arguments)
+    for each (ret in var_iter(vp))
+    yield ret
+
+    for each (let vi in v.inits)
+    for each (ret in var_iter(vi))
+    yield ret
   }
-  for each(var v in vars)
-    var_iter(f, v)
+  for each(let o in statements) {
+    this._loc = o.loc
+    for each(let v in o.statements) {
+      for each(let ret in var_iter(v))
+      yield ret
+    }
+  }
 }
 
 function process_function (decl, statements) {
