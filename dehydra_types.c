@@ -240,15 +240,26 @@ static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tre
   dehydra_defineProperty (this, obj, TYPE, 
                           dehydra_convert_type (this, TREE_TYPE (type)));  
   JSObject *params = JS_NewArrayObject (this->cx, 0, NULL);
+  JSObject *defaults = JS_NewArrayObject (this->cx, 0, NULL);
   dehydra_defineProperty (this, obj, PARAMETERS, OBJECT_TO_JSVAL (params));
+  dehydra_defineProperty (this, obj, HAS_DEFAULT, OBJECT_TO_JSVAL (defaults));
   int i = 0;
   while (arg_type && (arg_type != void_list_node))
     {
-      JS_DefineElement(this->cx, params, i++,
-                       dehydra_convert_type (this, TREE_VALUE (arg_type)),      
+      JS_DefineElement(this->cx, params, i,
+                       dehydra_convert_type (this, TREE_VALUE (arg_type)),
                        NULL, NULL, JSPROP_ENUMERATE);
+      JS_DefineElement(this->cx, defaults, i,
+                       TREE_PURPOSE(arg_type) ? JSVAL_TRUE : JSVAL_FALSE,
+                       NULL, NULL, JSPROP_ENUMERATE);
+      i++;
       arg_type = TREE_CHAIN (arg_type);
     }
+
+  /* clear out defaults property if it's empty */
+  if (i == 0) {
+    JS_DeleteProperty(this->cx, obj, HAS_DEFAULT);
+  }
 }
 
 void dehydra_finishStruct (Dehydra *this, tree type) {

@@ -36,6 +36,7 @@ const char *RETURN = "isReturn";
 const char *FCALL = "isFcall";
 const char *ARGUMENTS = "arguments";
 const char *DH_CONSTRUCTOR = "isConstructor";
+const char *DH_EXPLICIT = "isExplicit";
 const char *FIELD_OF = "fieldOf";
 const char *MEMBERS = "members";
 const char *PARAMETERS = "parameters";
@@ -48,6 +49,7 @@ const char *SIGNED = "isSigned";
 const char *MIN_VALUE = "min";
 const char *MAX_VALUE = "max";
 const char *PRECISION = "precision";
+const char *HAS_DEFAULT = "hasDefault";
 const char *TEMPLATE = "template";
 const char *SYS = "sys";
 static const char *STATIC = "isStatic";
@@ -439,6 +441,52 @@ static void dehydra_setName (Dehydra *this, JSObject *obj, tree v) {
   }
 }
 
+// Add the "hasDefault" property to function parameters with default values.
+// This information is provided by gcc as part of the function type definition,
+// so to add it to each parameter we must walk the parameter array and copy
+// the information. However, we must be careful to ignore the |this|
+// parameter for nonstatic class functions, which will be present in the
+// parameter array but not in the function type definition.
+void dehydra_moveDefaults (Dehydra *this, JSObject *obj) {
+  jsval val;
+
+  JS_GetProperty(this->cx, obj, TYPE, &val);
+  if (val == JSVAL_VOID) return;
+  JSObject *type_obj = JSVAL_TO_OBJECT(val);
+
+  JS_GetProperty(this->cx, type_obj, HAS_DEFAULT, &val);
+  if (val == JSVAL_VOID) return;
+  JSObject *defaults_obj = JSVAL_TO_OBJECT(val);
+
+  JS_GetProperty(this->cx, obj, PARAMETERS, &val);
+  if (val == JSVAL_VOID) return;
+  JSObject *params_obj = JSVAL_TO_OBJECT(val);
+
+  jsuint defaults_length, params_length;
+  JS_GetArrayLength(this->cx, defaults_obj, &defaults_length);
+  JS_GetArrayLength(this->cx, params_obj, &params_length);
+
+  // determine if we have a nonstatic member function, which will
+  // thus have a |this| parameter. |isStatic| hasn't been defined
+  // on |obj| yet, so look at array lengths instead
+  JS_GetProperty(this->cx, obj, MEMBER_OF, &val);
+  int hasThis = val != JSVAL_VOID && params_length > defaults_length;
+
+  int i;
+  for (i = 0; i < defaults_length; ++i) {
+    // offset the index into the array by one if |hasThis|
+    JS_GetElement(this->cx, params_obj, i + hasThis, &val);
+    JSObject *param_obj = JSVAL_TO_OBJECT(val);
+
+    JS_GetElement(this->cx, defaults_obj, i, &val);
+    if (val != JSVAL_VOID && JSVAL_TO_BOOLEAN(val))
+      dehydra_defineProperty(this, param_obj, HAS_DEFAULT, val);
+  }
+
+  // finally, remove the old |hasDefault| property
+  JS_DeleteProperty(this->cx, type_obj, HAS_DEFAULT);
+}
+
 /* Add a Dehydra variable to the given parent array corresponding to
  * the GCC tree v, which must represent a declaration (e.g., v can
  * be a DECL_*. */
@@ -489,6 +537,10 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
 
       if (DECL_CONSTRUCTOR_P (v)) {
         dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
+
+        if (DECL_NONCONVERTING_P (v)) {
+          dehydra_defineProperty (this, obj, DH_EXPLICIT, JSVAL_TRUE);
+        }
       }
 
       if (TREE_CODE(v) == FUNCTION_DECL) {
@@ -527,6 +579,12 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
       JSObject *tmp = JS_NewArrayObject (this->cx, 0, NULL);
       dehydra_defineProperty (this, obj, ATTRIBUTES, OBJECT_TO_JSVAL (tmp));
       dehydra_addAttributes (this, tmp, attributes);
+    }
+
+    if (TREE_CODE (v) == FUNCTION_DECL) {
+      // now we have the parameter list, pull hasDefault values from the type
+      // spec and attach them to each individual parameter, for convenience
+      dehydra_moveDefaults(this, obj);
     }
     
     /* Following code handles 3 different meanings of static */
