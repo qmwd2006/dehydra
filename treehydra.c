@@ -350,8 +350,8 @@ void treehydra_call_js (struct Dehydra *this, const char *callback, tree treeval
             "treehydra");
   // Ensure that error/warning report errors within a useful context
   tree old_current_function_decl = NULL_TREE;
-  
-  if (TREE_CODE (treeval) == FUNCTION_DECL && current_function_decl != treeval) {
+
+  if (current_function_decl != treeval && TREE_CODE (treeval) == FUNCTION_DECL) {
     old_current_function_decl = current_function_decl;
     current_function_decl = treeval;
   }
