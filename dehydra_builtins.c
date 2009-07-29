@@ -18,6 +18,8 @@
 #include "xassert.h"
 
 #ifdef TREEHYDRA_PLUGIN
+extern int treehydra_debug;
+
 int set_after_gcc_pass(const char *pass);
 #endif
 
@@ -91,6 +93,8 @@ JSBool dispatch_require(JSContext *cx, const char *prop_name, jsval prop_val) {
 #ifdef TREEHYDRA_PLUGIN
   } else if (strcmp(prop_name, "after_gcc_pass") == 0) {
     return require_pass(cx, prop_val);
+  } else if (strcmp(prop_name, "treehydra_debug") == 0) {
+    treehydra_debug = 1;
 #endif
   } else {
     JS_ReportWarning(cx, "Unrecognized require keyword '%s'", prop_name);

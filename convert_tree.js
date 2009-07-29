@@ -295,7 +295,8 @@ function makeStruct (fields, type_name, prefix, subFunctions, fn_level) {
     var body = "if (!void_var) return;\n"
       body += indent + type + " *" + varName + " = ("+ type + "*) void_var;\n";
     body += extra + "\n"
-    body += indent + "dehydra_defineStringProperty (this, obj, \"_struct_name\", \"" + type_name + "\");\n"
+    body += indent + "if (treehydra_debug)\n"
+    body += indent + indent + "dehydra_defineStringProperty (this, obj, \"_struct_name\", \"" + type_name + "\");\n"
     return body + indent + makeStructBody (fields, indent, isTopmost)
   }
   var f = new Function (fn_level,
