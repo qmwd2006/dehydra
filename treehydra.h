@@ -29,4 +29,6 @@ void convert_char_star (struct Dehydra *this, struct JSObject *parent,
                         const char *propname, const char *str);
 void treehydra_call_js (struct Dehydra *this, const char *callback,
                                    union tree_node *treeval);
+
+extern int treehydra_debug;
 #endif
