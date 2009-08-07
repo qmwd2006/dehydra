@@ -1,9 +1,6 @@
 GCCSTAGE=gcc
 include config.mk
-INCLUDE = -DIN_GCC -DHAVE_CONFIG_H -I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc \
-	-I$(GCCDIR)/gcc/. -I$(GCCDIR)/gcc/../include -I$(GCCDIR)/gcc/../libcpp/include \
-	-I$(GCCDIR)/gcc/../libdecnumber -I$(GCCDIR)/gcc/../libdecnumber/bid \
-	-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp \
+INCLUDE = -DIN_GCC -DHAVE_CONFIG_H  $(GCC_PLUGIN_HEADERS) \
 	-I$(SM_INCLUDE) -I$(SM_LIBDIR) -I/$(HOME)/local/include/js/ 
 #-I/$(HOME)/local/include/js/ 
 CFLAGS= -Wall -fPIC -DXP_UNIX $(INCLUDE) $(CONFIGURE_CFLAGS)

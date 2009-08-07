@@ -24,7 +24,10 @@ static char *after_gcc_pass = 0;
 #include "gcc-plugin.h"
 #include "plugin.h"
 #define PLUGIN_HANDLER_RETURN return
+#define NOT_MOZ_PLUGINS(x) ,x
 #else
+#define NOT_MOZ_PLUGINS(x)
+#include <version.h>
 #define PLUGIN_HANDLER_RETURN return 0
 #endif
 
@@ -198,16 +201,19 @@ static void process (tree t) {
   }
 }
 
-int gcc_plugin_init(const char *file, const char* arg, char **pass) {
+#define STRINGIFY(x) #x
+
+int gcc_plugin_init(const char *file, const char* arg, char **pass
+                    NOT_MOZ_PLUGINS(const char *version_string)) {
   char *script, *rest;
 
   if (!arg) {
-    error ("Use -fplugin-arg=<scriptname> to specify the dehydra script to run");
+    error ("Use " STRINGIFY(PLUGIN_ARG) "=<scriptname> to specify the dehydra script to run");
     return 1;
   }
   pset = pointer_set_create ();
   type_pset = pointer_set_create ();
-  dehydra_init (&dehydra, file);
+  dehydra_init (&dehydra, file, version_string);
   int ret = dehydra_startup (&dehydra);
   if (ret) return ret;
 #ifdef TREEHYDRA_PLUGIN
@@ -429,7 +435,7 @@ int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version
     return 1;
 
   char *script_name = plugin_info->argv[0].value;
-  int ret = gcc_plugin_init (plugin_info->full_name, script_name, &pass_name);
+  int ret = gcc_plugin_init (plugin_info->full_name, script_name, &pass_name, version->basever);
 
   if (!ret) {
 #ifdef TREEHYDRA_PLUGIN

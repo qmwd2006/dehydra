@@ -33,6 +33,5 @@
 #include <diagnostic.h>
 /*C++ headers*/
 #include <cp-tree.h>
-#include <cxx-pretty-print.h>
 
 #endif
