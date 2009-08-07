@@ -24,7 +24,7 @@ def checkdir(path,opt):
         error("directory '"+path+"' doesn't exist, specify correct directory with --" + opt)
 
 def get_gcc_srcdir(build_dir):
-    checkdir(gcc_build, "gcc-build")
+    checkdir(build_dir, "gcc-build")
     makefile = os.path.join(build_dir, "Makefile")
     try:
         for line in open (makefile).readlines():
@@ -38,27 +38,15 @@ def get_gcc_srcdir(build_dir):
     except:
         error("Invalid gcc build dir " + build_dir)
 
-PLUGINS_NONE = 0
-PLUGINS_OFFICIAL = 1
-PLUGINS_MOZ = 2
-
 def check_gcc_srcdir(config, gcc_src):
-    msg = "Checking if GCC supports plugins(via mozilla patch or official): "
-    ret = PLUGINS_NONE
-    if os.path.isfile (os.path.join (gcc_src, "gcc/plugin.c")):
-        msg += ("GCC plugin framework")
-        config["PLUGINS_OFFICIAL"] = "Using GCC 4.5 or later plugin system"
-        config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-"
-        ret = PLUGINS_OFFICIAL
-    elif os.path.isfile (os.path.join (gcc_src, "gcc/tree-plugin-pass.c")):
-        msg += ("Mozilla plugin framework patch")
+    sys.stdout.write ("Checking if GCC supports plugins via mozilla patch: ")
+    if os.path.isfile (os.path.join (gcc_src, "gcc/tree-plugin-pass.c")):
+        print ("Mozilla plugin framework patch")
         config["PLUGINS_MOZ"] = "Using Mozilla's patch to pre-plugin GCCs'"
         config["PLUGIN_ARG"] = "-fplugin-arg"
-        ret = PLUGINS_MOZ
-    print(msg)
-    if ret == PLUGINS_NONE:
+    else:
+        sys.stdout.flush()
         error("GCC sources in %s do not have the plugin patch applied" % gcc_src)
-    return ret
 
 def getjsdirs(jsname, jslibs, jsheaders):
     if jslibs == None:
@@ -80,7 +68,8 @@ def getjsdirs(jsname, jslibs, jsheaders):
 
     return (jslibs, jsheaders)
 
-def try_enable_treehydra(config):
+def detect_cxx(config):
+    sys.stdout.write ("Checking for a C++ compiler: ")
     cxx="g++"
     if platform.system() == 'Darwin':
         cxx = "g++-4.2"
@@ -88,14 +77,49 @@ def try_enable_treehydra(config):
         cxx = os.environ["CXX"]
     except:
         pass
+    cout, cin, cerr = popen2.popen3([cxx, '-print-prog-name=cc1plus']);
+    cc1plus = cout.read().strip();
+    if os.path.exists(cc1plus):
+        print(cxx)
+    else:
+        sys.stdout.flush()
+        error("C++ compiler '%s' not found, please specify a valid compiler with the CXX environment variable" % cxx);
+    config["CC1PLUS"] = cc1plus + " -quiet"
+    config["CXX"] = cxx
+
+def try_enable_treehydra(config):
+    cxx = config["CXX"]
     sys.stdout.write ("Checking if %s accepts -fplugin for building treehydra: " % cxx)
     cout, cin, cerr = popen2.popen3([cxx, '-fplugin=', 'dehydra.c'])
     if cerr.read().find("missing argument") != -1:
-        config["CXX"] = cxx
         config["BUILD_TREEHYDRA"] = "gcc_treehydra.so"
         print("Yes")
     else:
         print("No")
+
+def try_gcc_plugin_headers(config):
+    cxx = config["CXX"]
+    sys.stdout.write ("Checking for %s plugin headers: " % cxx)
+    cout, cin, cerr = popen2.popen3([cxx, '-print-file-name=plugin'])
+    path = cout.read().strip()
+    if os.path.exists(path):
+        path = path +"/include"
+        config["GCC_PLUGIN_HEADERS"] = "-I%s -I%s/cp" % (path, path)
+        config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-"
+        print(path)
+    else:
+        print("No. Will rely on for Mozilla plugin API and build/src dirs")
+        config["GCCBUILDDIR"] = os.path.realpath(config["GCCBUILDDIR"])
+        if config["GCCDIR"] == None:
+            config["GCCDIR"] = get_gcc_srcdir (config["GCCBUILDDIR"])
+        checkdir(config["GCCDIR"], "gcc-src")
+        check_gcc_srcdir(config, config["GCCDIR"])
+        config["GCC_PLUGIN_HEADERS"] ="""-I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc \
+-I$(GCCDIR)/gcc/. -I$(GCCDIR)/gcc/../include -I$(GCCDIR)/gcc/../libcpp/include \
+-I$(GCCDIR)/gcc/../libdecnumber -I$(GCCDIR)/gcc/../libdecnumber/bid \
+-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp""".replace("\\\n","")
+
+
 
 if __name__ == "__main__":
     dynamic_lib_suffix, shared_link_flags = ('.so', '-shared') 
@@ -136,10 +160,6 @@ if __name__ == "__main__":
             exit(0)
         else:
             error("unhandled option " +  o)
-    gcc_build = os.path.realpath(gcc_build)
-    if gcc_src == None:
-        gcc_src = get_gcc_srcdir (gcc_build)
-    checkdir(gcc_src, "gcc-src")
     #Detect js stuff
     for loop_jsname in jsnamels:
         before = [jslibs, jsheaders]
@@ -159,20 +179,21 @@ if __name__ == "__main__":
               SM_INCLUDE=jsheaders, SM_LIBDIR=jslibs,
               SHARED_LINK_FLAGS=shared_link_flags, 
               CONFIGURE_CFLAGS=cflags)
-    check_gcc_srcdir(config, gcc_src)
+    detect_cxx(config)
+    try_gcc_plugin_headers(config)
     try_enable_treehydra(config)
     f = open("config.mk", "w")
     f.write("""# %s
 %s
 """ % (" ".join(["'" + a + "'" for a in sys.argv]),
-       "\n".join([k + "=" + v for k, v in config.iteritems()])))
+       "\n".join([k + "=" + str(v) for k, v in config.iteritems()])))
     f.close()
     f = open("config.h", "w")
     f.write("""#ifndef DEHYDRA_CONFIG_H
 #define DEHYDRA_CONFIG_H
 %s
 #endif
-""" % ("\n".join(["#define CFG_%s \"%s\"" % (k,v.replace('"','\\"')) 
+""" % ("\n".join(["#define CFG_%s \"%s\"" % (k,str(v).replace('"','\\"')) 
                   for k, v in config.iteritems()])))
     f.close()
 

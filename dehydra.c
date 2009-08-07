@@ -14,7 +14,6 @@
 #include <tree-iterator.h>
 #include <pointer-set.h>
 #include <toplev.h>
-#include <version.h>
 #include <langhooks.h>
 
 #include "xassert.h"
@@ -79,7 +78,7 @@ static JSClass js_decl_class = {
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
-void dehydra_init(Dehydra *this, const char *file) {
+void dehydra_init(Dehydra *this, const char *file, const char *version) {
   static JSFunctionSpec shell_functions[] = {
     {"_print",          Print,          0},
     {"include",         Include,        1},
@@ -123,7 +122,7 @@ void dehydra_init(Dehydra *this, const char *file) {
   /* Initialize namespace for plugin system stuff. */
   JSObject *sys = dehydra_defineObjectProperty (this, this->globalObj, SYS);
   /* Set version info */
-  dehydra_defineStringProperty (this, sys, VERSION_STRING, version_string);
+  dehydra_defineStringProperty (this, sys, VERSION_STRING, version);
   dehydra_defineStringProperty (this, sys, FRONTEND, lang_hooks.name);
   /* Initialize include path. */
   dehydra_defineArrayProperty (this, sys, INCLUDE_PATH, 0);
