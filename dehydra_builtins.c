@@ -95,6 +95,7 @@ JSBool dispatch_require(JSContext *cx, const char *prop_name, jsval prop_val) {
     return require_pass(cx, prop_val);
   } else if (strcmp(prop_name, "treehydra_debug") == 0) {
     treehydra_debug = 1;
+    return JS_TRUE;
 #endif
   } else {
     JS_ReportWarning(cx, "Unrecognized require keyword '%s'", prop_name);
