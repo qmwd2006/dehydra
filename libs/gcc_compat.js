@@ -275,6 +275,10 @@ function TYPE_PRECISION (node) {
   return node.type.precision;
 }
 
+function SCALAR_FLOAT_TYPE_P(t) {
+  return TREE_CODE(t) == REAL_TYPE;
+}
+
 function TYPE_P (node) {
   return TREE_CODE_CLASS (TREE_CODE (node)) == tcc_type
 }
