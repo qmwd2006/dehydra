@@ -1,5 +1,5 @@
 /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-#include "config.h"
+#include "dehydra-config.h"
 #include <jsapi.h>
 #include <unistd.h>
 #include <stdio.h>
