@@ -6,7 +6,7 @@ const enum tree_code_class tree_code_type[] = {
   tcc_exceptional,
 #include "c-common.def"
   tcc_exceptional,
-#include "cp-tree.def"
+#include "cp/cp-tree.def"
 };
 
 #undef DEFTREECODE
@@ -17,7 +17,7 @@ const unsigned char tree_code_length[] = {
   0,
 #include "c-common.def"
   0,
-#include "cp-tree.def"
+#include "cp/cp-tree.def"
 };
 
 #undef DEFTREECODE
@@ -28,7 +28,7 @@ const unsigned char tree_code_name[] = {
   0,
 #include "c-common.def"
   0,
-#include "cp-tree.def"
+#include "cp/cp-tree.def"
 };
 
 #undef DEFTREECODE
