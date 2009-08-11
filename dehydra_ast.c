@@ -121,9 +121,8 @@ void dehydra_initVar (Dehydra *this, tree lval, tree init, bool rotate) {
 }
 
 JSObject* dehydra_call_or_aggr_init_expr (Dehydra *this, tree t) {
-  TREE_CHECK2(t, CALL_EXPR, AGGR_INIT_EXPR);
-  tree fn = TREE_CODE (t) == CALL_EXPR ? CALL_EXPR_FN (t) : AGGR_INIT_EXPR_FN
-(t);
+  xassert (TREE_CODE (t) == CALL_EXPR || TREE_CODE (t) == AGGR_INIT_EXPR);
+  tree fn = TREE_CODE (t) == CALL_EXPR ? CALL_EXPR_FN (t) : AGGR_INIT_EXPR_FN (t);
   if (TREE_CODE (fn) == ADDR_EXPR)
     fn = TREE_OPERAND (fn, 0);
 
