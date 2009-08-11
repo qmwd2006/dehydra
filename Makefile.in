@@ -22,6 +22,7 @@ gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
 
 %.o: %.c
 	$(CC) -MD -g3 $(CFLAGS) -c $<
+	@mkdir -p $(DEPDIR)
 	@cp $*.d $(DEPDIR)/$*.P; \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
             -e '/^$$/ d' -e 's/$$/ :/' < $*.d >> $(DEPDIR)/$*.P; \
