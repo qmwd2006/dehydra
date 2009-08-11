@@ -188,7 +188,7 @@ if __name__ == "__main__":
 """ % (" ".join(["'" + a + "'" for a in sys.argv]),
        "\n".join([k + "=" + str(v) for k, v in config.iteritems()])))
     f.close()
-    f = open("config.h", "w")
+    f = open("dehydra-config.h", "w")
     f.write("""#ifndef DEHYDRA_CONFIG_H
 #define DEHYDRA_CONFIG_H
 %s
