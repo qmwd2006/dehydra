@@ -104,7 +104,7 @@ def try_gcc_plugin_headers(config):
     path = cout.read().strip()
     if os.path.exists(path):
         path = path +"/include"
-        config["GCC_PLUGIN_HEADERS"] = "-I%s -I%s/cp" % (path, path)
+        config["GCC_PLUGIN_HEADERS"] = "-I%s" % (path)
         config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-"
         print(path)
     else:
@@ -117,7 +117,7 @@ def try_gcc_plugin_headers(config):
         config["GCC_PLUGIN_HEADERS"] ="""-I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc \
 -I$(GCCDIR)/gcc/. -I$(GCCDIR)/gcc/../include -I$(GCCDIR)/gcc/../libcpp/include \
 -I$(GCCDIR)/gcc/../libdecnumber -I$(GCCDIR)/gcc/../libdecnumber/bid \
--I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR) -I$(GCCDIR)/gcc/cp""".replace("\\\n","")
+-I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR)""".replace("\\\n","")
 
 
 
