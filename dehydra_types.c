@@ -9,7 +9,7 @@
 #include <tm.h>
 #include <tree.h>
 #include "cp-tree-jsapi-workaround.h"
-#include <cxx-pretty-print.h>
+#include <cp/cxx-pretty-print.h>
 #include <tree-iterator.h>
 #include <pointer-set.h>
 #include <toplev.h>

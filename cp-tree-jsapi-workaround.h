@@ -13,7 +13,7 @@
 #define uint32 uint32
 #endif
 #endif // JSVAL_OBJECT
-#include <cp-tree.h>
+#include <cp/cp-tree.h>
 #ifdef JSVAL_OBJECT
 #ifdef DEHYDRA_DEFINED_uint32
 #undef uint32

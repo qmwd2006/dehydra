@@ -24,7 +24,7 @@
 #endif
 
 #include "cp-tree-jsapi-workaround.h"
-#include <cxx-pretty-print.h>
+#include <cp/cxx-pretty-print.h>
 #include <tree-iterator.h>
 #include <pointer-set.h>
 #include <toplev.h>
@@ -32,6 +32,6 @@
 #include <pointer-set.h>
 #include <diagnostic.h>
 /*C++ headers*/
-#include <cp-tree.h>
+#include <cp/cp-tree.h>
 
 #endif
