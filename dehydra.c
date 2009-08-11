@@ -232,7 +232,7 @@ FILE *dehydra_searchPath (Dehydra *this, const char *filename, char **realname)
 
       char *buf = xmalloc(strlen(dir) + strlen(filename) + 2);
       /* Doing a little extra work here to get rid of unneeded '/'. */
-      char *sep = dir[strlen(dir)-1] == '/' ? "" : "/";
+      const char *sep = dir[strlen(dir)-1] == '/' ? "" : "/";
       sprintf(buf, "%s%s%s", dir, sep, filename);
       FILE *f = fopen(buf, "r");
       if (f) {
