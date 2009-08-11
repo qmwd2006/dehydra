@@ -360,7 +360,7 @@ FILE *findFile(const char *filename, const char *dir, char **realname) {
   if (dir && dir[0] && filename[0] && filename[0] != '/') {
     char *buf = xmalloc(strlen(dir) + strlen(filename) + 2);
     /* Doing a little extra work here to get rid of unneeded '/'. */
-    char *sep = dir[strlen(dir)-1] == '/' ? "" : "/";
+    const char *sep = dir[strlen(dir)-1] == '/' ? "" : "/";
     sprintf(buf, "%s%s%s", dir, sep, filename);
     f = fopen(buf, "r");
     if (f) {

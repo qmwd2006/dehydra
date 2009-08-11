@@ -486,7 +486,7 @@ jsval dehydra_convert_type (Dehydra *this, tree type) {
     typeMap = pointer_map_create ();
   }
 
-  void **v = pointer_map_contains(typeMap, (void*)TYPE_UID(type));
+  void **v = pointer_map_contains(typeMap, (void*)(intptr_t)TYPE_UID(type));
   JSObject *obj = NULL;
   if (v) {
     jsval incomplete = JSVAL_VOID;
@@ -502,7 +502,7 @@ jsval dehydra_convert_type (Dehydra *this, tree type) {
     obj = JS_NewObject (this->cx, &js_type_class, NULL,
                         this->globalObj);
     dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
-    *pointer_map_insert (typeMap, (void*)TYPE_UID(type)) = obj;
+    *pointer_map_insert (typeMap, (void*)(intptr_t)TYPE_UID(type)) = obj;
   }
   return dehydra_convert_type_cached (this, type, obj);
 }

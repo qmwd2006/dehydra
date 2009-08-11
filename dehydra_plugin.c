@@ -206,6 +206,7 @@ static void process (tree t) {
 int gcc_plugin_init(const char *file, const char* arg, char **pass
                     NOT_MOZ_PLUGINS(const char *version_string)) {
   char *script, *rest;
+  const char *arguments = "";
 
   if (!arg) {
     error ("Use " STRINGIFY(PLUGIN_ARG) "=<scriptname> to specify the dehydra script to run");
@@ -226,12 +227,10 @@ int gcc_plugin_init(const char *file, const char* arg, char **pass
   if (rest) {
     *rest = '\0';
     ++rest;
-  }
-  else {
-    rest = "";
+    arguments = rest;
   }
 
-  dehydra_defineStringProperty(&dehydra, dehydra.globalObj, "_arguments", rest);
+  dehydra_defineStringProperty(&dehydra, dehydra.globalObj, "_arguments", arguments);
   dehydra_appendDirnameToPath (&dehydra, script);
   ret = dehydra_includeScript (&dehydra, script);
 
