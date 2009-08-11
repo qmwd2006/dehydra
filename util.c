@@ -63,7 +63,7 @@ class_key_or_enum_as_string (tree t)
 const char *
 decl_as_string (tree decl, int flags)
 {
-  tree aname = DECL_NAME (decl);
+  tree aname = DECL_P (decl) ? DECL_NAME (decl) : decl;
   return aname ? IDENTIFIER_POINTER (aname) : "";
 }
 
@@ -84,7 +84,7 @@ expr_as_string (tree decl, int flags)
 const char *
 type_as_string (tree typ, int flags)
 {
-  return IDENTIFIER_POINTER(TYPE_NAME(typ));
+  return decl_as_string (TYPE_NAME(typ), 0);
 }
 
 void

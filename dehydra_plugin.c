@@ -49,7 +49,10 @@ static void process_template_decl (tree td) {
   // process all of the template instantiations too
   for (inst = DECL_TEMPLATE_INSTANTIATIONS (td); inst; inst = TREE_CHAIN (inst)) {
     tree record_type = TREE_VALUE (inst);
-    process_type (RECORD_OR_UNION_CHECK (record_type));
+    if (TREE_CODE (record_type) == RECORD_TYPE
+	|| TREE_CODE (record_type) == UNION_TYPE
+	|| TREE_CODE (record_type) == QUAL_UNION_TYPE)
+      process_type (record_type);
   }
 }
 
