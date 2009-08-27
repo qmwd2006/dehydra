@@ -247,6 +247,10 @@ var IDENTIFIER_OPNAME_P = isGCC42 ?
   function (node) { return !!node.common.lang_flag_2; } :
   function (node) { return !!node.base.lang_flag_2; };
 
+var IDENTIFIER_TYPENAME_P = isGCC42 ?
+  function (node) { return !!node.common.lang_flag_4; } :
+  function (node) { return !!node.base.lang_flag_4; };
+
 function TREE_VEC_LENGTH (node) {
   return TREE_CHECK (node, TREE_VEC).vec.length
 }
@@ -295,9 +299,13 @@ function TYPE_LANG_SPECIFIC (node) {
   return node.type.lang_specific
 }
 
+function LANG_TYPE_IS_CLASS (node) {
+  return TYPE_LANG_SPECIFIC(node).u.h.is_lang_type_class != 0;
+}
+
 function LANG_TYPE_CLASS_CHECK (node) {
   var lang_type = TYPE_LANG_SPECIFIC (node)
-  if (!lang_type.u.h.is_lang_type_class)
+  if (!LANG_TYPE_IS_CLASS (node))
     throw new Error ("Not a class!")
   return lang_type.u.c
 }
@@ -417,26 +425,31 @@ function TYPE_ARG_TYPES(tree) {
   return tree.type.values;
 }
 
+function TYPE_METHOD_BASETYPE(tree) {
+  return tree.type.maxval;
+}
+
 function TYPE_PTRMEMFUNC_P(tree) {
   return TREE_CODE(tree) == RECORD_TYPE &&
     TYPE_LANG_SPECIFIC(tree) &&
+    TYPE_LANG_SPECIFIC(tree).u.c &&
     TYPE_PTRMEMFUNC_FLAG(tree);
 }
 
-var TYPE_READONLY = isGCC42 ?
-  function (node) { return node.common.readonly_flag; } :
-  function (node) { return node.base.readonly_flag; };
-
-// TODO This doesn't work, need to get lang_specific into Treehydra
 function TYPE_PTRMEMFUNC_FLAG(tree) {
-  throw new Error("ni");
-  do_dehydra_dump(tree.type.lang_specific, 0, 1);
-  return tree.type.lang_specific.ptrmemfunc_flag;
-  return tree.u.ptrmemfunc_flag;
+  return TYPE_LANG_SPECIFIC(tree).u.c.ptrmemfunc_flag;
+}
+
+function TYPE_PTRMEMFUNC_FN_TYPE(NODE) {
+  return TREE_TYPE (TYPE_FIELDS (NODE));
 }
 
 function DECL_SOURCE_LOCATION(node) {
   return node.decl_minimal.locus;
+}
+
+function LOC_IS_BUILTIN(loc) {
+  return loc._source_location <= 2;
 }
 
 function GIMPLE_STMT_LOCUS(tree) {
@@ -537,16 +550,28 @@ var TYPE_VOLATILE = isGCC42 ?
   function (node) { return node.common.volatile_flag; } :
   function (node) { return node.base.volatile_flag; };
 
+var TYPE_READONLY = isGCC42 ?
+  function (node) { return node.common.readonly_flag; } :
+  function (node) { return node.base.readonly_flag; };
+
 function TYPE_RESTRICT (node) {
   return node.type.restrict_flag;
 }
 
-function CLASSTYPE_DECLARED_CLASS(node) {
-  return LANG_TYPE_CLASS_CHECK(node).declared_class;
+// flag representation of above
+let TYPE_UNQUALIFIED   = 0;
+let TYPE_QUAL_CONST    = 1;
+let TYPE_QUAL_VOLATILE = 2;
+let TYPE_QUAL_RESTRICT = 4;
+
+function TYPE_QUALS(NODE) {
+  return ((TYPE_READONLY (NODE) * TYPE_QUAL_CONST) |
+          (TYPE_VOLATILE (NODE) * TYPE_QUAL_VOLATILE) |
+          (TYPE_RESTRICT (NODE) * TYPE_QUAL_RESTRICT));
 }
 
-function LANG_TYPE_CLASS_CHECK(node) {
-  return node.type.lang_specific.u.c;
+function CLASSTYPE_DECLARED_CLASS(node) {
+  return LANG_TYPE_CLASS_CHECK(node).declared_class;
 }
 
 function LANG_DECL_U2_CHECK (node, tf) {
@@ -606,6 +631,10 @@ function TYPE_MAIN_VARIANT(node) {
   return TYPE_CHECK(node).type.main_variant;
 }
 
+function TYPE_NEXT_VARIANT(node) {
+  return TYPE_CHECK(node).type.next_variant;
+}
+
 function DECL_CLONED_FUNCTION_P(node) {
   return (TREE_CODE(node) == FUNCTION_DECL || TREE_CODE(node) == TEMPLATE_DECL) &&
     DECL_LANG_SPECIFIC(node) &&
@@ -627,6 +656,10 @@ function NON_THUNK_FUNCTION_CHECK(node) {
 
 function DECL_CONSTRUCTOR_P(node) {
   return DECL_LANG_SPECIFIC(node).decl_flags.constructor_attr;
+}
+
+function DECL_DESTRUCTOR_P(node) {
+  return DECL_LANG_SPECIFIC(node).decl_flags.destructor_attr;
 }
 
 function DECL_PURE_VIRTUAL_P(node) {
@@ -679,12 +712,13 @@ function class_key_or_enum_as_string(t)
 {
   if (TREE_CODE (t) == ENUMERAL_TYPE)
     return "enum";
-  else if (TREE_CODE (t) == UNION_TYPE)
+  if (TREE_CODE (t) == UNION_TYPE)
     return "union";
-  else if (TYPE_LANG_SPECIFIC (t) && CLASSTYPE_DECLARED_CLASS (t))
+  if (TYPE_LANG_SPECIFIC (t) && CLASSTYPE_DECLARED_CLASS (t))
     return "class";
-  else
+  if (TYPE_LANG_SPECIFIC (t) && LANG_TYPE_IS_CLASS (t))
     return "struct";
+  return undefined;
 }
 
 function loc_as_string(loc) {

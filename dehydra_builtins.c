@@ -479,3 +479,21 @@ JSBool Hashcode(JSContext *cx, JSObject *obj_this, uintN argc,
   }
   return JS_TRUE;
 }
+
+JSBool ResolvePath(JSContext *cx, JSObject *obj, uintN argc,
+                   jsval *argv, jsval *rval) {
+  const char *path;
+  JSBool rv = JS_ConvertArguments(cx, argc, argv, "s", &path);
+  if (!rv) return JS_FALSE;
+
+  char buf[PATH_MAX];
+  char *buf_rv = realpath(path, buf);
+  if (!buf_rv) {
+    REPORT_ERROR_2(cx, "resolve_path: error resolving path '%s': %s",
+                   path, strerror(errno));
+    return JS_FALSE;
+  }
+  *rval = STRING_TO_JSVAL(JS_NewString(cx, buf, strlen(buf)));
+  return JS_TRUE;
+}
+

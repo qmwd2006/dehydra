@@ -5,33 +5,42 @@ include ("gcc_compat.js");
 
 /** Return a string representation of the given TYPE. */
 function type_string(type) {
-  // Fun special case -- handled like this in g++.
-  // disabled for now -- test not impl
-  if (false && TYPE_PTRMEMFUNC_P(type)) {
-    return ptrmemfunc_type_string(type);
-  }
-
   let quals = [];
   if (TYPE_VOLATILE(type))
-    quals.push('volatile ');
+    quals.push('volatile');
   if (TYPE_RESTRICT(type))
-    quals.push('restrict ');
-  
-  let prefix = quals.join('');
-  let infix = quals.length ? ' ' + prefix : '';
+    quals.push('restrict');
+  if (TYPE_READONLY(type))
+    quals.push('const');
+
+  let prefix = quals.length ? quals.join(' ') + ' ' : '';
+  let suffix = quals.length ? ' ' + quals.join(' ') : '';
 
   let type_decl = TYPE_NAME (type);
-  if (type_decl && TREE_CODE(type_decl) == TYPE_DECL)
-    return prefix + decl_name_string(type_decl);
-  
+  if (type_decl) {
+    if (TREE_CODE(type_decl) == IDENTIFIER_NODE)
+      return prefix + IDENTIFIER_POINTER(type_decl);
+    if (TREE_CODE(type_decl) == TYPE_DECL)
+      return prefix + decl_name_string(type_decl);
+    throw new Error("bad TREE_CODE for TYPE_NAME");
+  }
+
+  if (TYPE_PTRMEMFUNC_P(type)) {
+    // skip the POINTER_TYPE and go straight to the METHOD_TYPE
+    type = TREE_TYPE(TYPE_PTRMEMFUNC_FN_TYPE(type));
+  }
+
   let code = TREE_CODE(type);
-  if (code == INTEGER_TYPE || code == REAL_TYPE || code == BOOLEAN_TYPE ||
-      code == RECORD_TYPE || code == ENUMERAL_TYPE || code == UNION_TYPE) {
-    
+
+  switch (code) {
+  case INTEGER_TYPE:
+  case REAL_TYPE:
+  case FIXED_POINT_TYPE:
+  case BOOLEAN_TYPE:
     let prec = TYPE_PRECISION(type);
     type = c_common_type_for_mode (TYPE_MODE (type), TYPE_UNSIGNED (type));
     if (!type)
-      return "UNKNOWN";
+      throw new Error("c_common_type_for_mode failed");
 
     if (TYPE_NAME(type)) {
       let r = prefix + decl_name_string(TYPE_NAME(type));
@@ -40,7 +49,7 @@ function type_string(type) {
       }
       return r;
     }
-    
+
     let r;
     switch (code) {
     case INTEGER_TYPE:
@@ -56,26 +65,63 @@ function type_string(type) {
       throw new Error("Unexpected code path");
     }
     return r + prec + ">";
-  } else if (code == VOID_TYPE) {
-    return 'void';
-  } else if (code == POINTER_TYPE) {
-    return type_string(TREE_TYPE(type)) + infix + '*';
-  } else if (code == ARRAY_TYPE) {
-    return type_string(TREE_TYPE(type)) + infix + '[]';
-  } else if (code == REFERENCE_TYPE) {
-    return type_string(TREE_TYPE(type)) + infix + '&';
-  } else if (code == FUNCTION_TYPE) {
-    return type_string(TREE_TYPE(type)) + ' (*)(' + type_args_string(type) + ')';
-  } else if (code == METHOD_TYPE) {
-    return type_string(TREE_TYPE(type)) + ' (?::*)(' + type_args_string(type) + ')';
-  } else if (code == OFFSET_TYPE) {
-    return type_string(TREE_TYPE(type)) + " "
-      + type_string(TYPE_OFFSET_BASETYPE(type))+ "::*"
-  }
 
-  print(TREE_CODE(type).name);
-  do_dehydra_dump(type.type, 1, 2);
-  throw new Error("unhandled type type");
+  case VOID_TYPE:
+    return "void";
+
+  case POINTER_TYPE:
+    return type_string(TREE_TYPE(type)) + '*' + suffix;
+
+  case ARRAY_TYPE:
+    return type_string(TREE_TYPE(type)) + '[]' + suffix;
+
+  case REFERENCE_TYPE:
+    return type_string(TREE_TYPE(type)) + '&' + suffix;
+
+  case FUNCTION_TYPE:
+    return type_string(TREE_TYPE(type)) + ' (*)(' + type_args_string(type) + ')';
+
+  case METHOD_TYPE:
+    // XXX exclude |this| from args?
+    return type_string(TREE_TYPE(type)) + ' (' + type_string(TYPE_METHOD_BASETYPE(type)) + '::*)(' + type_args_string(type) + ')';
+
+  case OFFSET_TYPE:
+    return type_string(TREE_TYPE(type)) + " " +
+           type_string(TYPE_OFFSET_BASETYPE(type)) + "::*";
+
+  case VECTOR_TYPE:
+    return prefix + "vector " + type_string(TREE_TYPE(type)) + "[" + (1 << TYPE_PRECISION(type)) + "]";
+
+  case RECORD_TYPE:
+  case ENUMERAL_TYPE:
+  case UNION_TYPE:
+    // for these codes we should always have a TYPE_NAME. however, the C FE can be nasty
+    // and not give us one in cases involving typedefs (bug 511261). for such cases,
+    // we can make a guess...
+    if (sys.frontend != "GNU C")
+      throw new Error("TYPE_NAME null for " + code);
+
+    // walk the list of variants for this type, and get the last variant with a valid TYPE_NAME.
+    // this should represent the type we originated from. (we'll probably walk over the actual
+    // TYPE_NAME we're after, too, but we've no way of knowing which one - any variants declared
+    // after our one would appear first in the list, and we're better off walking toward the
+    // source than away from it, for purposes of finding a consistent identifier.)
+    for (let t = TYPE_MAIN_VARIANT(type); t && TYPE_NEXT_VARIANT(t); t = TYPE_NEXT_VARIANT(t))
+      if (TYPE_NAME(t))
+        type_decl = TYPE_NAME(t);
+    if (TREE_CODE(type_decl) != TYPE_DECL)
+      throw new Error("expected TYPE_DECL; original type is " + TREE_CODE(type_decl));
+    return prefix + decl_name_string(type_decl);
+
+  case TYPE_DECL:
+  case IDENTIFIER_NODE:
+    throw new Error("Unexpected " + code);
+
+  default:
+    print(TREE_CODE(type).name);
+    do_dehydra_dump(type.type, 1, 2);
+    throw new Error("unhandled type type");
+  }
 }
 
 /** Return a string representation of the args part of a function type,
@@ -140,10 +186,15 @@ function expr_display(expr) {
   switch (code) {
   case INDIRECT_REF:
     return '*' + expr_display(expr.exp.operands[0]);
+  case ARRAY_REF:
+    return expr_display(TREE_OPERAND(expr, 0)) +
+           '[' + expr_display(TREE_OPERAND(expr, 1)) + ']';
   case ADDR_EXPR:
     return '&' + expr_display(TREE_OPERAND(expr, 0));
   case TRUTH_NOT_EXPR:
     return '!' + expr_display(TREE_OPERAND(expr, 0));
+  case NOP_EXPR:
+    return expr_display(TREE_OPERAND(expr, 0));
   case PLUS_EXPR:
   case POINTER_PLUS_EXPR:
     return expr_display(TREE_OPERAND(expr, 0)) + ' +  ' +
