@@ -242,7 +242,7 @@ static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tre
   JSObject *params = JS_NewArrayObject (this->cx, 0, NULL);
   JSObject *defaults = JS_NewArrayObject (this->cx, 0, NULL);
   dehydra_defineProperty (this, obj, PARAMETERS, OBJECT_TO_JSVAL (params));
-  dehydra_defineProperty (this, obj, HAS_DEFAULT, OBJECT_TO_JSVAL (defaults));
+  JS_DefineProperty (this->cx, obj, HAS_DEFAULT, OBJECT_TO_JSVAL (defaults), NULL, NULL, 0);
   int i = 0;
   while (arg_type && (arg_type != void_list_node))
     {

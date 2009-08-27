@@ -87,6 +87,7 @@ void dehydra_init(Dehydra *this, const char *file, const char *version) {
     {"diagnostic",      Diagnostic,     0},
     {"require",         Require,        1},
     {"hashcode",        Hashcode,       1},
+    {"resolve_path",    ResolvePath,    1},
     {0}
   };
 
@@ -481,9 +482,6 @@ void dehydra_moveDefaults (Dehydra *this, JSObject *obj) {
     if (val != JSVAL_VOID && JSVAL_TO_BOOLEAN(val))
       dehydra_defineProperty(this, param_obj, HAS_DEFAULT, val);
   }
-
-  // finally, remove the old |hasDefault| property
-  JS_DeleteProperty(this->cx, type_obj, HAS_DEFAULT);
 }
 
 /* Add a Dehydra variable to the given parent array corresponding to

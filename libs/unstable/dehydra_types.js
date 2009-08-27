@@ -150,10 +150,13 @@ function dehydra_attachEnumStuff(objClass, enum_type) {
 function dehydra_attachClassStuff(objClass, record_type) {
   if (TRACE) print("dehydra_attachClassStuff " + type_as_string(record_type));
 
-  let bases = [ dehydra_convert(BINFO_TYPE(base_binfo))
-                for each (base_binfo in 
-                          VEC_iterate(BINFO_BASE_BINFOS(TYPE_BINFO(record_type)))) ];
-  if (bases.length) objClass.bases = bases;
+  let binfo = TYPE_BINFO(record_type);
+  if (binfo) {
+    let bases = [ dehydra_convert(BINFO_TYPE(base_binfo))
+                  for each (base_binfo in
+                            VEC_iterate(BINFO_BASE_BINFOS(binfo))) ];
+    if (bases.length) objClass.bases = bases;
+  }
   
   objClass.members = [];
   /* Output all the method declarations in the class.  */

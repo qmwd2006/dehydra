@@ -15,6 +15,7 @@ DH_JSNATIVE(Print);
 DH_JSNATIVE(WriteFile);
 DH_JSNATIVE(ReadFile);
 DH_JSNATIVE(Hashcode);
+DH_JSNATIVE(ResolvePath);
 
 void ErrorReporter(JSContext *cx, const char *message, JSErrorReport *report);
 
@@ -28,6 +29,6 @@ void  reportError(JSContext *cx, const char *file, int line,
 
 #define REPORT_ERROR_0(cx, fmt) reportError(cx, __FILE__, __LINE__, fmt);
 #define REPORT_ERROR_1(cx, fmt, arg1) reportError(cx, __FILE__, __LINE__, fmt, arg1);
-#define REPORT_ERROR_2(cx, fmt, arg1, arg2) reportError(cx, __FILE__, __LINE__, fmt, arg1, arg1);
+#define REPORT_ERROR_2(cx, fmt, arg1, arg2) reportError(cx, __FILE__, __LINE__, fmt, arg1, arg2);
 
 #endif
