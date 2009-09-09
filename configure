@@ -89,13 +89,16 @@ def detect_cxx(config):
 
 def try_enable_treehydra(config):
     cxx = config["CXX"]
-    sys.stdout.write ("Checking if %s accepts -fplugin for building treehydra: " % cxx)
-    cout, cin, cerr = popen2.popen3([cxx, '-fplugin=', 'dehydra.c'])
-    if cerr.read().find("missing argument") != -1:
-        config["BUILD_TREEHYDRA"] = "gcc_treehydra.so"
-        print("Yes")
+    if "PLUGINS_MOZ" in config:
+        sys.stdout.write ("Checking if %s accepts -fplugin for building treehydra: " % cxx)
+        cout, cin, cerr = popen2.popen3([cxx, '-fplugin=', 'dehydra.c'])
+        if cerr.read().find("missing argument") != -1:
+            config["BUILD_TREEHYDRA"] = "gcc_treehydra.so"
+            print("Yes")
+        else:
+            print("No")
     else:
-        print("No")
+        print "Will use %s to build Treehydra" % cxx
 
 def try_gcc_plugin_headers(config):
     cxx = config["CXX"]
