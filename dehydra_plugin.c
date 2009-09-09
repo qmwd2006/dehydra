@@ -4,7 +4,6 @@
 
 /*js*/
 #include <jsapi.h>
-#include <jsgc.h>
 #include "xassert.h"
 #include "dehydra.h"
 #include "dehydra_ast.h"
