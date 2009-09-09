@@ -1,6 +1,7 @@
 /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 #include "dehydra-config.h"
 #include <jsapi.h>
+#include <jsgc.h>
 #include <unistd.h>
 #include <stdio.h>
 
@@ -651,6 +652,7 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
   dehydra_unrootObject (this, fnkey);
   this->statementHierarchyArray = NULL;
   this->destArray = NULL;
+  JS_MaybeGC(this->cx);
 }
 
 static void dehydra_visitVarDecl (Dehydra *this, tree d) {

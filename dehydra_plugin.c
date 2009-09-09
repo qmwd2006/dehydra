@@ -4,6 +4,7 @@
 
 /*js*/
 #include <jsapi.h>
+#include <jsgc.h>
 #include "xassert.h"
 #include "dehydra.h"
 #include "dehydra_ast.h"
@@ -80,6 +81,7 @@ static void process_decl (tree f) {
     treehydra_call_js (&dehydra, "process_tree_decl", f);
 #endif
   }
+  JS_MaybeGC(dehydra.cx);
 }
 
 static void process_record_or_union_type (tree c) {
@@ -154,13 +156,17 @@ static void process_type(tree t) {
   switch (TREE_CODE(t)) {
   case RECORD_TYPE:
   case UNION_TYPE:
-    return process_record_or_union_type (t);
+    process_record_or_union_type (t);
+    break;
   case ENUMERAL_TYPE:
-    return process_enumeral_type (t);
+    process_enumeral_type (t);
+    break;
   default:
     /*    fprintf(stderr, "Unhandled type:%s\n", tree_code_name[TREE_CODE(t)]);*/
     break;
   }
+
+  JS_MaybeGC(dehydra.cx);
 }
 
 static void process (tree t) {
