@@ -132,6 +132,7 @@ function expr_uses(expr) {
   } else {
     switch (TREE_CODE(expr)) {
     case TRUTH_NOT_EXPR:
+    case VIEW_CONVERT_EXPR:
       yield TREE_OPERAND(expr, 0);
       break;
     case TRUTH_XOR_EXPR:
