@@ -382,6 +382,7 @@ void treehydra_call_js (struct Dehydra *this, const char *callback, tree treeval
 
   pointer_map_destroy (jsobjMap);
   jsobjMap = NULL;
+  JS_MaybeGC(this->cx);
 }
 
 int treehydra_startup (Dehydra *this) {

@@ -728,4 +728,5 @@ void dehydra_input_end (Dehydra *this) {
   jsval rval;
   xassert (JS_CallFunctionValue(this->cx, this->globalObj, input_end,
                                0, NULL, &rval));
+  JS_GC(this->cx);
 }
