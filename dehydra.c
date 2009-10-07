@@ -154,6 +154,14 @@ void dehydra_setFilename(Dehydra *this) {
     dehydra_defineStringProperty (this, JSVAL_TO_OBJECT(sys_val),
                                   "aux_base_name", aux_base_name);
   }
+
+  if (main_input_filename) {
+    /* provide filename info */
+    jsval sys_val;
+    JS_GetProperty(this->cx, this->globalObj, SYS, &sys_val);
+    dehydra_defineStringProperty (this, JSVAL_TO_OBJECT(sys_val),
+                                  "main_input_filename", main_input_filename);
+  }
 }
 
 int dehydra_startup (Dehydra *this) {
