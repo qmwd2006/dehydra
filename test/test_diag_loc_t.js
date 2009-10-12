@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 'onefunc.cc', 'output': 'stderr_has(":1:")' }
+// { 'test': 'treehydra', 'input': 'onefunc.cc', 'output': 'stderr_has(":1:")', 'lang': 'c,c++' }
 
 // Error message should refer to line 1.
 

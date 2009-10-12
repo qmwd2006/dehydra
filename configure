@@ -11,7 +11,8 @@ Usage: ./configure ...
 --js-libs= Location of libjs.so
 --js-headers= SpiderMonkey headers, location of jsapi.h. Might get autodetected correctly from --js-libs.
 --gcc-build= GCC build directory. Defaults to ../gcc-build
---gcc-src= GCC source directory. Autodetected from build dir""".lstrip()
+--gcc-src= GCC source directory. Autodetected from build dir
+--enable-C Enable experimental C support""".lstrip()
     pass
 
 def error(msg):
@@ -84,7 +85,7 @@ def detect_cxx(config):
     else:
         sys.stdout.flush()
         error("C++ compiler '%s' not found, please specify a valid compiler with the CXX environment variable" % cxx);
-    config["CC1PLUS"] = cc1plus + " -quiet"
+    config["CC1PLUS"] = cc1plus
     config["CXX"] = cxx
 
 def try_enable_treehydra(config):
@@ -134,7 +135,7 @@ if __name__ == "__main__":
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h",
-                                   ["js-name=", "js-libs=", "js-headers=", "gcc-src=", "gcc-build="])
+                                   ["js-name=", "js-libs=", "js-headers=", "gcc-src=", "gcc-build=", "enable-C"])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -146,6 +147,7 @@ if __name__ == "__main__":
     jsheaders = None
     gcc_build = "../gcc-build"
     gcc_src = None
+    Csupport = False
     for o, val in opts:
         if o == "--js-name":
             jsname = val
@@ -156,8 +158,8 @@ if __name__ == "__main__":
             jsheaders = os.path.expanduser(val)
         elif o == "--gcc-build":
             gcc_build = os.path.expanduser(val)
-        elif o == "--gcc-src":
-            gcc_src = os.path.expanduser(val)
+        elif o == "--enable-C":
+            Csupport = True
         elif o in ("-h", "--help"):
             usage()
             exit(0)
@@ -182,6 +184,11 @@ if __name__ == "__main__":
               SM_INCLUDE=jsheaders, SM_LIBDIR=jslibs,
               SHARED_LINK_FLAGS=shared_link_flags, 
               CONFIGURE_CFLAGS=cflags)
+    if Csupport:
+        config['C_SUPPORT'] = "yes"
+        print("Experimental C testsuite is enabled");
+    else:
+        print("Disabling C testsuite");
     detect_cxx(config)
     try_gcc_plugin_headers(config)
     try_enable_treehydra(config)

@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 'onefunc.cc', 'output': 'stderr_empty' }
+// { 'test': 'treehydra', 'input': 'onefunc.cc', 'output': 'stderr_empty', 'lang': 'c,c++' }
 
 // Test that pass option is accepted and we get CFG
 // Should print: 0

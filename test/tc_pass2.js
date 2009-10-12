@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 'onefunc.cc', 'output': 'stderr_has("Cannot set gcc_pass_after")' }
+// { 'test': 'treehydra', 'input': 'onefunc.cc', 'output': 'stderr_has("Cannot set gcc_pass_after")', 'lang': 'c,c++' }
 
 // Test that pass option is not accepted in process_tree.
 

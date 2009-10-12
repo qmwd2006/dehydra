@@ -1,4 +1,4 @@
-// { 'test': 'dehydra', 'input': 'copy_ctor.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'copy_ctor.cc', 'output': 'unit_test', 'lang': 'c++' }
 let failed = false
 let run = 0
 const spec = [[/^t::t/, 1], [/^f/, 1, true], [/^g/, 1] ]

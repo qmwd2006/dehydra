@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 'typedef.cc', 'output': 'unit_test' }
+// { 'test': 'treehydra', 'input': 'typedef.cc', 'output': 'unit_test', 'lang': 'c,c++' }
 
 include('unit_test.js');
 include('unstable/lazy_types.js');

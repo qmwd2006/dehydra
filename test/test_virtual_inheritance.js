@@ -1,4 +1,4 @@
-// { 'test': 'dehydra,treehydra', 'input': 'virtual_inheritance.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra,treehydra', 'input': 'virtual_inheritance.cc', 'output': 'unit_test', 'lang': 'c++' }
 if (this.TREE_CODE)
   include('unstable/lazy_types.js');
 

@@ -1,4 +1,4 @@
-// { 'test': 'dehydra', 'input': 'scopes.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'scopes.cc', 'output': 'unit_test', 'lang': 'c++' }
 
 // Test that scoping operators appear in type names as expected.
 

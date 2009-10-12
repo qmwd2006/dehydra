@@ -1,4 +1,4 @@
-// { 'test': 'dehydra', 'input': 'isExtern.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'isExtern.cc', 'output': 'unit_test', 'lang': 'c++'}
 
 // Test for correct results for isExtern
 

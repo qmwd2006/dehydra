@@ -43,7 +43,7 @@ check_treehydra:
 	python unit_test_harness.py treehydra "$(CC1PLUS)"
 
 %.o: %.cc $(PLUGIN) $(GLOBAL_DEPS)
-	$(CC1PLUS) $(CXXFLAGS) $< -o /dev/null
+	$(CC1PLUS) -quiet $(CXXFLAGS) $< -o /dev/null
 
 #tests workaround for outputing to stdout when shouldn't
 pipe: destr_order.cc $(GLOBAL_DEPS)

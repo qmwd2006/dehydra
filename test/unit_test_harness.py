@@ -4,12 +4,14 @@
 Specify a test by a JS file in this directory with the first line
 like this:
 
-// { 'test': 'treehydra', 'input': 'onefunc.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'empty.cc', 'output': 'unit_test', 'lang': 'c'}
 
   test:   comma-separated list of plugins to test, dehydra or treehydra
   input:  C++ input file to use for test
   output: eval'd in this script to yield a checker function applied
           to the output. See checkers, below.
+  lang:   comma-separated list of languages to test, c or c++. defaults to c++
+
 """
 
 import os, re, sys
@@ -18,9 +20,10 @@ from unittest import TestCase, TestSuite, TestLoader, TestResult
 
 class PluginTestCase(TestCase):
     """Test case for running Treehydra and checking output."""
-    def __init__(self, plugin, jsfile, ccfile, checker, checker_str):
+    def __init__(self, plugin, lang, jsfile, ccfile, checker, checker_str):
         super(PluginTestCase, self).__init__()
         self.plugin = plugin
+        self.lang = lang
         self.jsfile = jsfile
         self.ccfile = ccfile
         self.checker = checker
@@ -33,7 +36,11 @@ class PluginTestCase(TestCase):
         self.checker(self, 0, out, err)
 
     def getCommand(self):
-        command = CC1PLUS + " -fplugin=../gcc_" + self.plugin + ".so -o /dev/null"
+        command = CC1PLUS
+        # turn .../cc1plus into .../cc1
+        if self.lang == 'c':
+            command = command[:-4]
+        command += " -quiet -fplugin=../gcc_" + self.plugin + ".so -o /dev/null"
         if ("PLUGINS_MOZ" in config_opts) :
             command += " -fplugin-arg=" + self.jsfile
         else :
@@ -120,17 +127,28 @@ def extractTests(filename):
         if p not in ('dehydra', 'treehydra'):
             raise TestSpecException(filename, "invalid plugin %s"%p)
     
-    ccfile = spec.get('input')
-    if ccfile is None:
-        ccfile = 'empty.cc'
+    srcfile = spec.get('input')
+    if srcfile is None:
+        srcfile = 'empty.cc'
 
     checker_str = spec.get('output')
     if checker_str is None:
         checker_str = 'unit_test'
     checker = eval(checker_str)
 
-    return [ PluginTestCase(plugin, filename, ccfile, checker, checker_str) 
-             for plugin in plugins ]
+    langs = spec.get('lang')
+    if langs is None:
+        langs = 'c,c++'
+    # only pay attention to lang attribute if C is enabled
+    if not 'C_SUPPORT' in config_opts:
+        langs = 'c++'
+    langs = langs.split(',')
+    for lang in langs:
+        if lang not in ('c', 'c++'):
+            raise TestSpecException(filename, "invalid language %s"%lang)
+
+    return [ PluginTestCase(plugin, lang, filename, srcfile, checker, checker_str)
+             for plugin in plugins for lang in langs]
 
 def parseConfigFile(config_filename):
     config = dict()
@@ -157,7 +175,7 @@ for opt, val in optlist:
         sys.exit(1)
 
 if len(args) != 2:
-    print "usage: python %s [-v] <test-set> <cc1plus>"%(sys.argv[0])
+    print "usage: python %s [-v] <test-set> <compiler options>"%(sys.argv[0])
     sys.exit(1)
 
 plugin_str = args[0]
@@ -176,17 +194,17 @@ from glob import glob
 tests = []
 # This test can't go in a file, because it tests when the file doesn't exist.
 for plugin in ("dehydra", "treehydra"):
-    tests.append(PluginTestCase(plugin, 'nofile.js', 'empty.cc',
+    tests.append(PluginTestCase(plugin, 'c++', 'nofile.js', 'empty.cc',
                                 stderr_has('Cannot find include file'), ''))
 # Tests for the argument
 for plugin in ("dehydra", "treehydra"):
-    tests.append(PluginTestCase(plugin, '"test_arg.js hello  goodbye"', 'empty.cc',
-                                unit_test, 'unit_test'))
+    tests.append(PluginTestCase(plugin, 'c++', '"test_arg.js hello  goodbye"',
+                                'empty.cc', unit_test, 'unit_test'))
 
 # For now, we'll put this here, but if more are created, we should make
 # the test harness search dirs.
 for plugin in ("dehydra", "treehydra"):
-    tests.append(PluginTestCase(plugin, 'subdir/main.js', 'empty.cc',
+    tests.append(PluginTestCase(plugin, 'c++', 'subdir/main.js', 'empty.cc',
                                 unit_test, ''))
 
 

@@ -1,4 +1,4 @@
-// { 'test': 'dehydra,treehydra', 'input': 'empty.cc', 'output': 'stderr_has("SyntaxError")' }
+// { 'test': 'dehydra,treehydra', 'input': 'empty.cc', 'output': 'stderr_has("SyntaxError")', 'lang': 'c,c++' }
 
 // Produce a syntax error
 
