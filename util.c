@@ -19,6 +19,9 @@ location_of (tree t)
   else if (TREE_CODE (t) == OVERLOAD)
     t = OVL_FUNCTION (t);
 
+  if (!t)
+    return UNKNOWN_LOCATION;
+
   if (DECL_P(t))
     return DECL_SOURCE_LOCATION (t);
   else if (EXPR_P(t) && EXPR_HAS_LOCATION(t))
@@ -135,4 +138,9 @@ enum cp_tree_node_structure_enum
 cp_tree_node_structure (union lang_tree_node *_) {
   xassert(false);
   return LAST_TS_ENUM;
+}
+
+tree *
+decl_cloned_function_p (const_tree decl, bool just_testing) {
+  xassert (0);
 }
