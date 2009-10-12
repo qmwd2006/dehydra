@@ -1,4 +1,4 @@
-// { 'test': 'dehydra', 'input': 'members.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'members.cc', 'output': 'unit_test', 'lang': 'c++' }
 
 include('unit_test.js');
 

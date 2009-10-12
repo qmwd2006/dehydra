@@ -1,4 +1,4 @@
-// { 'test': 'dehydra', 'input': 'template_member.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'template_member.cc', 'output': 'unit_test', 'lang': 'c++' }
 
 // Test that templated function declarations are annotated usefully
 

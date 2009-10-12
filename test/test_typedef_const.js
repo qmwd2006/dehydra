@@ -1,4 +1,4 @@
-// { 'test': 'dehydra', 'input': 'typedef.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'typedef.cc', 'output': 'unit_test', 'lang': 'c++' }
 
 // Make sure that 'const' is handled correctly on typedefs
 

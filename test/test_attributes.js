@@ -1,4 +1,4 @@
-// { 'test': 'dehydra', 'input': 'attributes2.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'attributes2.cc', 'output': 'unit_test', 'lang': 'c++' }
 
 function process_type(c) {
   //print (c)

@@ -1,4 +1,4 @@
-// { 'test': 'dehydra', 'input': 'test_static_func.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'test_static_func.cc', 'output': 'unit_test', 'lang': 'c++' }
 function assert (t) {
   if (!t)
     throw new Error("static isn't correct");

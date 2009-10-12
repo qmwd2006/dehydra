@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 'assign.cc', 'output': 'unit_test' }
+// { 'test': 'treehydra', 'input': 'assign.cc', 'output': 'unit_test', 'lang': 'c++' }
 include("gcc_util.js")
 
 let counter = 2

@@ -1,4 +1,4 @@
-// { 'test': 'dehydra', 'input': 'const.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'const.cc', 'output': 'unit_test', 'lang': 'c++' }
 
 // Test that 'const' is handled correctly.
 

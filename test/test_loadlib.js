@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 'empty.cc', 'output': 'unit_test' }
+// { 'test': 'treehydra', 'input': 'empty.cc', 'output': 'unit_test', 'lang': 'c,c++' }
 
 // Test that treehydra.js is loaded before this file, and that this
 // file is loaded only once.

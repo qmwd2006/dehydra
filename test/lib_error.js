@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 'empty.cc', 'output': 'stderr_has("TypeError", "/gcc_compat.js")' }
+// { 'test': 'treehydra', 'input': 'empty.cc', 'output': 'stderr_has("TypeError", "/gcc_compat.js")', 'lang': 'c,c++' }
 
 // Produce an error in an included library file in the treehydra dir.
 

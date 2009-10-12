@@ -1,4 +1,4 @@
-// { 'test': 'dehydra', 'input': 'decl.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra', 'input': 'decl.cc', 'output': 'unit_test', 'lang': 'c++' }
 
 let assert_passes = 0;
 function xassert (t) {

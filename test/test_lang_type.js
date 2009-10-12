@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 'templ.cc', 'output': 'unit_test' }
+// { 'test': 'treehydra', 'input': 'templ.cc', 'output': 'unit_test', 'lang': 'c++' }
 
 // test lang_type union stuff
 

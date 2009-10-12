@@ -1,4 +1,4 @@
-// { 'test': 'dehydra,treehydra', 'input': 'empty.cc', 'output': 'unit_test' }
+// { 'test': 'dehydra,treehydra', 'input': 'empty.cc', 'output': 'unit_test', 'lang': 'c,c++' }
 
 const GUARD_AGAINST_MULTIPLE_INCLUSIONS = 0
 
