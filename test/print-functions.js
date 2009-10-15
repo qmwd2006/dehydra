@@ -23,10 +23,6 @@ function iter_over_inits(vars)
       processVar(v);
     iter_over_inits(v.assign);
     iter_over_inits(v.arguments);
-    for each (va in v.inits) {
-      iter_over_inits(v.assign);
-      iter_over_inits(v.arguments);
-    }
   }
 }
       
