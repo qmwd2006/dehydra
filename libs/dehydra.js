@@ -379,10 +379,6 @@ function iterate_vars(statements) {
     for each (let vp in v.arguments)
       for each (let ret in var_iter(vp))
         yield ret;
-
-    for each (let vi in v.inits)
-      for each (let ret in var_iter(vi))
-        yield ret;
   }
 
   for each (let o in statements) {
