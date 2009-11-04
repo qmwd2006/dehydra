@@ -493,7 +493,7 @@ JSBool ResolvePath(JSContext *cx, JSObject *obj, uintN argc,
                    path, strerror(errno));
     return JS_FALSE;
   }
-  *rval = STRING_TO_JSVAL(JS_NewString(cx, buf, strlen(buf)));
+  *rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx, buf));
   return JS_TRUE;
 }
 
