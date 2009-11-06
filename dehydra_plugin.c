@@ -446,7 +446,7 @@ int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version
 
   if (!ret) {
 #ifdef TREEHYDRA_PLUGIN
-    struct plugin_pass pass_info;
+    struct register_pass_info pass_info;
     pass_info.pass = &treehydra_pass;
     if (pass_name) {
       pass_info.reference_pass_name = pass_name;
