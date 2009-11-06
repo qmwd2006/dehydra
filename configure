@@ -99,6 +99,7 @@ def try_enable_treehydra(config):
         else:
             print("No")
     else:
+        config["BUILD_TREEHYDRA"] = "gcc_treehydra.so"
         print "Will use %s to build Treehydra" % cxx
 
 def try_gcc_plugin_headers(config):
