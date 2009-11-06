@@ -176,7 +176,7 @@ function callGetExistingOrLazy (type, name, isAddrOf, cast, isPrimitive, isArray
     return "get_existing_or_lazy (this, " + lazy_call + ", " 
       + expr + ", " + dest + ", " + propValue + ")"
   }
-  throw new Error("eager getexisting/orlazy not implemented");
+  throw new Error("eager getexisting/orlazy not implemented: "+lazy_call);
 }
 
 function makeUnionBody (fields, isTopmost, indent) {
@@ -512,7 +512,7 @@ function convert (unit, aggr) {
         tag = getUnionTag (m.type.attributes)
     }
     
-    if (type_kind == "struct" 
+    if (type_kind == "struct"
         // Allow anonymous unions and 2 whitelisted unions
         || (type_kind == "union"
             && ((type.name == "tree_node" || type.name == "gimple_statement_d")
@@ -522,12 +522,15 @@ function convert (unit, aggr) {
         print ("Harmless: "+m.name + "' type is incomplete");
         continue;
       }
-      subf = convert (unit, type, isUnion)
-      
-      if (!isUnion) {
-        lengthExpr = getLengthExpr (m.attributes, isToplevelType)
-        if (type.name != "tree_node") 
-          unionResolver = getUnionResolver (m.type.attributes, name, isToplevelType)
+      // taras: There doesnt seem to be a convenient place to specificy handcoded 
+      // struct conversion functions.
+      if (type.name != "tree_string") {
+        subf = convert (unit, type, isUnion)
+        if (!isUnion) {
+          lengthExpr = getLengthExpr (m.attributes, isToplevelType)
+          if (type.name != "tree_node") 
+            unionResolver = getUnionResolver (m.type.attributes, name, isToplevelType)
+        }
       }
     } else if (type_kind == "enum") {
       isPrimitive = true
@@ -579,12 +582,14 @@ function convert (unit, aggr) {
                      isToplevelType ? FN_TOPMOST : FN_NESTED)
   } else if (aggr.kind == "struct") {
     let level
-    if (aggr_name == "cgraph_node")
-      level == FN_TOPMOST
-    else if (isToplevelType)
-      level = FN_STATIC
-    else
-      level = FN_NESTED
+    switch(aggr_name) {
+    case "cgraph_node":
+    case "tree_common":
+      level = FN_TOPMOST
+      break;
+    default:
+      level = isToplevelType ? FN_STATIC : FN_NESTED;
+    }
     ret = makeStruct (ls, aggr_name, getPrefix(aggr), subFunctions, level)
   } else if (isEnum) {
     var enum_inherit = undefined

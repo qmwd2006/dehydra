@@ -14,8 +14,9 @@ jsval get_enum_value (struct Dehydra *this, const char *name);
 
 void lazy_tree_node (struct Dehydra *this, void *structure, struct JSObject *obj);
 
-// lazy_cgraph_node and lazy_gimple_statement_d are union-access utility functions done by hand
+// these are generated code called from treehydra.c
 void lazy_cgraph_node (struct Dehydra *this, void* void_var, struct JSObject *obj);
+void lazy_tree_common (struct Dehydra *this, void* void_var, struct JSObject *obj);
 // This stuff became important in gcc 4.5
 void lazy_gimple_statement_d (struct Dehydra *this, void* void_var, struct JSObject *obj);
 
