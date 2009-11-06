@@ -30,6 +30,7 @@ struct JSObject *dehydra_defineObjectProperty (struct Dehydra *this, struct JSOb
                                                char const *name);
 void convert_location_t (struct Dehydra *this, struct JSObject *parent,
                          const char *propname, location_t loc);
+void lazy_tree_string (struct Dehydra *this, void* void_var, struct JSObject *obj);
 
 #include "treehydra.h"
 
