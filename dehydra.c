@@ -638,6 +638,10 @@ static void dehydra_visitFunctionDecl (Dehydra *this, tree f) {
   if (!v) {
     return;
   }
+  if (!*v) {
+    /* mustn't visit this function twice */
+    return;
+  }
   int key = (int)(intptr_t) *v;
   this->statementHierarchyArray = 
     JSVAL_TO_OBJECT (dehydra_getRootedObject (this, key));
@@ -689,12 +693,14 @@ int dehydra_rootObject (Dehydra *this, jsval val) {
   } else {
     pos = dehydra_getArrayLength (this, this->rootedArgDestArray);
   }
+  xassert (pos != 0); /* don't overwrite the rootedFreeArray root */
   JS_DefineElement (this->cx, this->rootedArgDestArray, pos,
                     val, NULL, NULL, JSPROP_ENUMERATE);
   return pos;
 }
 
 void dehydra_unrootObject (Dehydra *this, int pos) {
+  xassert (pos != 0); /* don't unroot the rootedFreeArray */
   int length = dehydra_getArrayLength (this, this->rootedFreeArray);
   JS_DefineElement (this->cx, this->rootedFreeArray, length,
                     INT_TO_JSVAL (pos),
