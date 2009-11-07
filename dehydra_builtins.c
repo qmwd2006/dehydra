@@ -201,11 +201,19 @@ JSBool Diagnostic(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
     if (JS_GetProperty(cx, loc_obj, "_source_location", &jsloc)) {
       loc = JSVAL_TO_INT(jsloc);
 #endif
-      if (is_error) {
-        error ("%H%s", &loc, msg);
-      } else {
-        warning (0, "%H%s", &loc, msg);
-      }
+// gcc 4.3
+#ifdef GIMPLE_TUPLE_P
+    if (is_error)
+      error ("%H%s", &loc, msg);
+    else 
+      warning (0, "%H%s", &loc, msg);
+// gcc 4.5
+#else
+    if (is_error)
+      error_at (loc, "%s", msg);
+    else 
+      warning_at (loc, 0, "%s", msg);
+#endif
       return TRUE;
     }
   }
