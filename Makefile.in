@@ -41,7 +41,7 @@ treehydra: gcc_treehydra.so
 
 .PHONY: treehydra
 
-check check_dehydra check_treehydra check_both:
+check check_dehydra check_treehydra check_both check_both_tinderbox:
 	$(MAKE) -C test $@
 
 clean:
