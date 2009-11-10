@@ -11,6 +11,10 @@
 #define GTY(x) __attribute__((user (("gty:"#x))))
 #endif
 
+#if !defined(TREEHYDRA_CONVERT_JS) && !defined(TREEHYDRA_GENERATED)
+#include <jsapi.h>
+#endif
+
 #include <config.h>
 #include <system.h>
 #include <coretypes.h>
@@ -23,6 +27,7 @@
 #include <tree-flow.h>
 #endif
 
+/*C++ headers*/
 #include "cp-tree-jsapi-workaround.h"
 #include <cp/cxx-pretty-print.h>
 #include <tree-iterator.h>
@@ -31,7 +36,5 @@
 
 #include <pointer-set.h>
 #include <diagnostic.h>
-/*C++ headers*/
-#include <cp/cp-tree.h>
 
 #endif

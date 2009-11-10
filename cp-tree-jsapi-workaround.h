@@ -3,7 +3,7 @@
    and SpiderMonkey's jsotypes.h */
 #if !defined(TREEHYDRA_CONVERT_JS) && !defined(TREEHYDRA_GENERATED)
 // do not include JS in special and therefore fragile files of treehydra
-#include "jsapi.h"
+#include <jsapi.h>
 #endif
 
 #ifdef JSVAL_OBJECT

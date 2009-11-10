@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <stdarg.h>
 
+#include <jsapi.h>
+
 #include <config.h>
 #include <system.h>
 #include <coretypes.h>
@@ -10,7 +12,6 @@
 #include <tree.h>
 #include "cp-tree-jsapi-workaround.h"
 #include <toplev.h>
-#include <jsapi.h>
 
 #include "util.h"
 #include "dehydra.h"
