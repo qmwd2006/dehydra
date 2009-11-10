@@ -42,6 +42,9 @@ check_dehydra: $(OBJECTS)
 check_treehydra:
 	python unit_test_harness.py treehydra "$(CC1PLUS)"
 
+check_both_tinderbox: $(OBJECTS)
+	python unit_test_harness.py --tinderbox both "$(CC1PLUS)"
+
 %.o: %.cc $(PLUGIN) $(GLOBAL_DEPS)
 	$(CC1PLUS) -quiet $(CXXFLAGS) $< -o /dev/null
 

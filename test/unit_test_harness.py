@@ -58,15 +58,36 @@ class MyTestResult(TestResult):
 
     def addSuccess(self, *args, **kw):
         super(MyTestResult, self).addSuccess(*args, **kw)
-        sys.stderr.write('.')
+        self.printResult('pass', args[0])
 
     def addError(self, *args, **kw):
         super(MyTestResult, self).addError(*args, **kw)
-        sys.stderr.write('e')
+        self.printResult('error', args[0])
 
     def addFailure(self, test, err):
         self.failures.append((test, err[1].args))
-        sys.stderr.write('x')
+        self.printResult('fail', args[0])
+
+class TinderboxTestResult(MyTestResult):
+    tagMap = { 'pass':  'TEST-PASS',
+               'error': 'TEST-UNEXPECTED-FAIL (error)',
+               'fail':  'TEST-UNEXPECTED-FAIL' }
+    
+    def printResult(self, tag, test):
+        print('%s | %s | %s | %s' % 
+              (self.tagMap[tag], test.plugin, test.ccfile, test.jsfile))
+
+    def finish(self):
+        pass
+
+class DevTestResult(MyTestResult):
+    tagMap = { 'pass': '.', 'error': 'e', 'fail': 'x' }
+    
+    def printResult(self, tag, test):
+        sys.stderr.write(self.tagMap[tag])
+
+    def finish(self):
+        sys.stderr.write('\n')
 
 # Checkers
 def stderr_has(*args):
@@ -163,16 +184,13 @@ def parseConfigFile(config_filename):
     return config
 
 
-VERBOSE = False
-
-from getopt import getopt
-optlist, args = getopt(sys.argv[1:], 'v')
-for opt, val in optlist:
-    if opt == '-v':
-        VERBOSE = True
-    else:
-        print >> sys.stderr, "%s: invalid option %s"%(sys.argv[0], opt)
-        sys.exit(1)
+from optparse import OptionParser
+parser = OptionParser()
+parser.add_option('-v', '--verbose', action='store_true', dest='verbose',
+                  help='verbose output')
+parser.add_option('--tinderbox', action='store_true', dest='tinderbox',
+                  help='tinderbox-compatible output')
+OPTIONS, args = parser.parse_args()
 
 if len(args) != 2:
     print "usage: python %s [-v] <test-set> <compiler options>"%(sys.argv[0])
@@ -216,7 +234,7 @@ for f in glob('*.js'):
         import traceback
         traceback.print_exc()
 
-if VERBOSE:
+if OPTIONS.verbose:
     print 'Test Cases:'
     for t in tests:
         if t.plugin in PLUGINS:
@@ -229,10 +247,13 @@ s = TestSuite()
 for t in tests: 
     if t.plugin in PLUGINS:
         s.addTest(t)
-r = MyTestResult()
+if OPTIONS.tinderbox:
+    r = TinderboxTestResult()
+else:
+    r = DevTestResult()
 
 s.run(r)
-sys.stderr.write('\n')
+r.finish()
 
 if r.wasSuccessful():
     print "OK: %d tests passed"%r.testsRun
