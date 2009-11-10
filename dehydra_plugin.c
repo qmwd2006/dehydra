@@ -1,9 +1,11 @@
 /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 #include "dehydra-config.h"
-#include "gcc_cp_headers.h"
 
 /*js*/
 #include <jsapi.h>
+
+#include "gcc_cp_headers.h"
+
 #include "xassert.h"
 #include "dehydra.h"
 #include "dehydra_ast.h"

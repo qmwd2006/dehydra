@@ -7,6 +7,11 @@
 #pragma weak cp_walk_subtrees
 
 #ifndef TREEHYDRA_GENERATED
+
+#if !defined(TREEHYDRA_CONVERT_JS) && !defined(TREEHYDRA_GENERATED)
+#include <jsapi.h>
+#endif
+
 #include <config.h>
 #include <system.h>
 #include <coretypes.h>
