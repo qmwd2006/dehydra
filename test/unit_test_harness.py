@@ -157,8 +157,8 @@ def parseConfigFile(config_filename):
         line = line.strip()
         if line.startswith("#"):
             continue
-        (key, value) = line.split("=")
-        config[key] = value
+        fragments = line.split("=")
+        config[fragments[0]] = "=".join(fragments[1:])
     f.close()
     return config
 
