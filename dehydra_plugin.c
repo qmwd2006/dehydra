@@ -11,6 +11,7 @@
 #include "dehydra_ast.h"
 #include "dehydra_types.h"
 #include "util.h"
+#include "tree-pass.h"
 #ifdef TREEHYDRA_PLUGIN
 #include "treehydra.h"
 #include "tree-pass.h"
@@ -447,6 +448,25 @@ int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version
   int ret = gcc_plugin_init (plugin_info->full_name, script_name, &pass_name, version->basever);
 
   if (!ret) {
+    // Look for a pass introduced in GCC 4.5 prunes useful info(class members/etc) & disable it
+#define DEFTIMEVAR(identifier__, name__) \
+    identifier__,
+    enum
+    {
+      TV_NONE,
+#include "timevar.def"
+      TIMEVAR_LAST
+    };
+
+    struct opt_pass *p;
+    for(p = all_small_ipa_passes;p;p=p->next) {
+      if (p->tv_id != TV_IPA_FREE_LANG_DATA)
+        continue;
+      //disable it
+      p->execute = NULL;
+      break;
+    }
+    // It's gone now
 #ifdef TREEHYDRA_PLUGIN
     struct register_pass_info pass_info;
     pass_info.pass = &treehydra_pass;
