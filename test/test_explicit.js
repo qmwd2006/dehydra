@@ -14,8 +14,12 @@ function TestDefaults(member, value)
 
 TestDefaults.prototype = new TestCase();
 
+TestDefaults.prototype.description = function() {
+  return "isExplicit " + this.member.name + ": "
+}
+
 TestDefaults.prototype.runTest = function() {
-  this.assertEquals(this.member.isExplicit, this.value);
+  this.assertEquals(!!this.member.isExplicit, this.value);
 };
 
 function getMember(t, name)
@@ -29,9 +33,9 @@ function getMember(t, name)
 }
 
 let tests = [['C::C()',             true],
-             ['C::C(int)',          undefined],
+             ['C::C(int)',          false],
              ['C::C(char)',         true],
-             ['C::C(double, int)',  undefined],
+             ['C::C(double, int)',  false],
              ['C::C(double, char)', true],
              ['C::C(int, char)',    true],
              ['C::C(int, float)',   true]];

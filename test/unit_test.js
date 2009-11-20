@@ -25,7 +25,7 @@ TestResults.prototype.list = function () {
     for each (let errors in [ this.errors, this.failures ]) {
       for (let i = 0; i < errors.length; ++i) {
         let [t, e] = errors[i];
-        print("ERR  " + t + "   " + e);
+        print("ERR  " + t + "   " + e + "\n" + e.stack);
       }
     }
   }
@@ -84,14 +84,19 @@ TestCase.prototype.fail = function(msg) {
   throw new Error(msg);
 };
 
+// override this to provide nicer error messages
+TestCase.prototype.description = function () {
+  return "";
+}
+
 TestCase.prototype.assertEquals = function(v1, v2) {
   if (v1 != v2) {
-    throw new Error(v1 + ' != ' + v2);
+    throw new Error(this.description() + v1 + ' != ' + v2);
   }
 };
 
 TestCase.prototype.assertTrue = function(v) {
   if (!v) {
-    throw new Error(v + ' is false');
+    throw new Error(this.description() + v + ' is false');
   }
 };
