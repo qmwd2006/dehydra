@@ -22,6 +22,19 @@ TestDefaults.prototype.runTest = function() {
   this.assertEquals(!!this.member.isExplicit, this.value);
 };
 
+let tests={'C::C()': false,
+           'C::C(int)': false,
+           'C::C(char)': true,
+           'C::C(double, int)': false,
+           'C::C(double, char)': true,
+           'C::C(int, char)': false,
+           'C::C(int, float)': true};
+
+if (/^4.3/(sys.gcc_version)) {
+  delete tests['C::C()']
+  delete tests['C::C(int, char)']
+}
+
 function getMember(t, name)
 {
   for each (let m in t.members) {
@@ -32,19 +45,11 @@ function getMember(t, name)
   throw Error("Member " + name + " not found.");
 }
 
-let tests = [['C::C()',             true],
-             ['C::C(int)',          false],
-             ['C::C(char)',         true],
-             ['C::C(double, int)',  false],
-             ['C::C(double, char)', true],
-             ['C::C(int, char)',    true],
-             ['C::C(int, float)',   true]];
-
 function process_type(t)
 {
   if (t.name == 'C') {
-    for each (let [name, value] in tests)
-      new TestDefaults(getMember(t, name), value).run(r);
+    for (let name in tests)
+      new TestDefaults(getMember(t, name), tests[name]).run(r);
   }
 }
 
@@ -55,7 +60,8 @@ function process_function(d, b)
 
 function input_end()
 {
-  let testCount = tests.length;
-
+  let testCount = 0;
+  for (name in tests)
+    testCount++;
   r.verifyExpectedTestsRun(testCount);
 }
