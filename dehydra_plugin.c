@@ -34,11 +34,17 @@ static char *after_gcc_pass = 0;
 #define PLUGIN_HANDLER_RETURN return 0
 #endif
 
+/* Queue up tree object for latest processing (ie because gcc will fill in more info or 
+   loose track of them)
+ */
+static VEC(tree,heap) *tree_queue_vec = NULL;
+
 static int processed = 0;
 static Dehydra dehydra = {0};
 
 static void process(tree);
 static void process_type(tree t);
+static void dehydra_ehqueue_tree (tree t);
 
 // do a DFS of a TREE_CHAIN
 void dfs_process_chain(tree t) {
@@ -225,6 +231,7 @@ int gcc_plugin_init(const char *file, const char* arg, char **pass
   }
   pset = pointer_set_create ();
   type_pset = pointer_set_create ();
+  tree_queue_vec = VEC_alloc(tree, heap, 10);
   dehydra_init (&dehydra, file, version_string);
   int ret = dehydra_startup (&dehydra);
   if (ret) return ret;
@@ -287,15 +294,6 @@ void gcc_plugin_pass (void) {
    dehydra_cp_pre_genericize call dehydra_visitDecl directly */
 static bool postGlobalNamespace = 0;
 
-/* The queue stuff is used to get a deterministic order to types */
-typedef struct tree_queue {
-  tree t;
-  struct tree_queue *next;
-} tree_queue;
-
-static tree_queue *tree_queue_head = NULL;
-static tree_queue *tree_queue_tail = NULL;
-
 #ifdef CFG_PLUGINS_MOZ
 int gcc_plugin_post_parse()
 #else
@@ -304,18 +302,20 @@ static void gcc_plugin_post_parse(void*_, void*_2)
 {
   if (processed || errorcount) PLUGIN_HANDLER_RETURN;
   processed = 1;
-  
+
+  int i;
+  tree t;
   /* first visit recorded structs */
-  while(tree_queue_head) {
-    tree_queue *q = tree_queue_head;
-    process_type (q->t);
+  for (i = 0; tree_queue_vec && VEC_iterate (tree, tree_queue_vec, i, t); ++i) {
+    process_type (t);
 #ifdef TREEHYDRA_PLUGIN
-    treehydra_call_js (&dehydra, "process_tree_type", q->t);
+    treehydra_call_js (&dehydra, "process_tree_type", t);
 #endif
-    tree_queue_head = q->next;
-    free(q);
   }
-  tree_queue_tail = NULL;
+
+  VEC_free (tree, heap, tree_queue_vec);
+  tree_queue_vec = NULL;
+
   if (global_namespace)
     process(global_namespace);
 
@@ -364,16 +364,12 @@ static void gcc_plugin_finish_struct (tree t, void *_)
      processing immediately is because gcc is overly
      lazy and does some things (like setting anonymous
      struct names) sometime after completing the type */
-  xassert(!tree_queue_tail || tree_queue_head);
-  tree_queue *q = xmalloc (sizeof (tree_queue));
-  q->t = t;
-  q->next = NULL;
-  if (tree_queue_tail)
-    tree_queue_tail->next = q;
-  else if (!tree_queue_head)
-    tree_queue_head = q;
-  tree_queue_tail = q;
+  dehydra_ehqueue_tree(t);
   PLUGIN_HANDLER_RETURN;
+}
+
+static void dehydra_ehqueue_tree (tree t) {
+  VEC_safe_push(tree, heap, tree_queue_vec, t);
 }
 
 #ifdef CFG_PLUGINS_MOZ
@@ -386,6 +382,10 @@ static void gcc_plugin_finish (void *_, void *_2)
   pset = NULL;
   pointer_set_destroy (type_pset);
   type_pset = NULL;
+  if (tree_queue_vec)
+    VEC_free(tree, heap, tree_queue_vec);
+  tree_queue_vec = NULL;
+
   if (!errorcount)
     dehydra_input_end (&dehydra);
   PLUGIN_HANDLER_RETURN;
