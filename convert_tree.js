@@ -9,6 +9,20 @@ function getLine(fname, line) {
   return fbody[line - 1]
 }
 
+/* Unwrap type from typedefs */
+function skipTypedefs (type) {
+  while (type) {
+    let next_type = type.typedef
+    if (next_type) {
+      type = next_type
+    }
+    else
+      break;
+  }
+  return type
+}
+
+/* Skips pointers/typedefs down to underlying primitive/aggregate type */
 function skipTypeWrappers (type) {
   while (type) {
     if (type.typedef) {
@@ -443,18 +457,24 @@ const location_tRegexp = /location_t|location_s|source_locus/;
 /* meaty part of the script
 * Unit is what holds the result
 * Aggr is the data type to convert
-* zeroTh(%0), is the outermost aggr type
+* zeroTh(%0), is the outermost(ie outmost by value struct) aggr type
 * first(%1) is the parent of current type
+* byValue means that this aggr is part of another struct
 */
 const tree_code_name = isGCC42 ? "tree_common::code" : "tree_base::code";
-function convert (unit, aggr) {
+function convert (unit, aggr, byValue) {
   if (!aggr || unit.guard(aggr)) {
     return
   }
   var ls = []
   const isUnion = aggr.kind == "union"
   const isEnum = aggr.kind == "enum"
-  const isToplevelType = aggr.name.indexOf(":") == -1
+  // isToplevelType is basically needed for %1/%0/%h stuff
+  // indicates that reflection for the type should be nested
+  // TODO: get rid of the ":" clause, 
+  // marking types similar to isGtyPercent0 should be enough
+  const isToplevelType = aggr.name.indexOf(":") == -1 && 
+    (!byValue || !aggr.isGtyPercent0)
   const aggr_name = stripPrefixRegexp.exec(aggr.name)[1]
   // Keep nested structs/unions here
   var subFunctions = []
@@ -525,7 +545,8 @@ function convert (unit, aggr) {
       // taras: There doesnt seem to be a convenient place to specificy handcoded 
       // struct conversion functions.
       if (type.name != "tree_string") {
-        subf = convert (unit, type, isUnion)
+        let isInplaceStruct = skipTypeWrappers(m.type) == type;
+        subf = convert (unit, type, isInplaceStruct)
         if (!isUnion) {
           lengthExpr = getLengthExpr (m.attributes, isToplevelType)
           if (type.name != "tree_node") 
@@ -610,7 +631,41 @@ function convert (unit, aggr) {
   }
 }
 
+function isAttrTainted(attributes, taintCheck) {
+  for each (var a in attributes) {
+    if (a.name != "user")
+      continue;
+
+    if (taintCheck.exec(a.value)) {
+      return true;
+    }
+  }
+}
+
+// Make use of DFS traversal to catch nested types that make use of %0 GTY
+function process_type_percent0(type) {
+  if (isAttrTainted(type.attributes, percent0_Regexp)) {
+    type.isGtyPercent0 = true;
+    print(type.name + " is %0 tainted");
+    return;
+  } 
+
+  if (type.kind != "union")
+  for each (let m in type.members) {
+    if (!m.type)
+      continue
+
+    let t = skipTypedefs(m.type);
+    if (t.isGtyPercent0) {
+      type.isGtyPercent0 = true;
+      return
+    } 
+
+  }
+}
+
 function process_type(type) {
+  process_type_percent0(type);
   while (type.variantOf)
     type = type.variantOf
 
