@@ -3,6 +3,8 @@
 
 /*js*/
 #include <jsapi.h>
+// cgraph.h conflicts with nspr
+#undef TEST_BIT
 
 #include "gcc_cp_headers.h"
 
@@ -11,6 +13,7 @@
 #include "dehydra_ast.h"
 #include "dehydra_types.h"
 #include "util.h"
+#include "cgraph.h"
 #include "tree-pass.h"
 #ifdef TREEHYDRA_PLUGIN
 #include "treehydra.h"
@@ -318,6 +321,13 @@ static void gcc_plugin_post_parse(void*_, void*_2)
 
   if (global_namespace)
     process(global_namespace);
+
+  //  Bug 532319 -  Fix processing of instantiated template functions
+  // TODO: use cgraph_nodes + varpool to get rid of global_namespace and end up with working C support
+  struct cgraph_node *n;
+  for (n = cgraph_nodes; n; n = n->next) {
+    process(n->decl);
+  }
 
   postGlobalNamespace = 1;
   PLUGIN_HANDLER_RETURN;
