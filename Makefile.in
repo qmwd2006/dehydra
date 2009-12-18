@@ -29,7 +29,7 @@ gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
         rm -f $*.d
 
 treehydra_generated.c: gcc_cp_headers.h convert_tree.js gcc_dehydra.so
-	$(CXX) -Wp,-C -save-temps -DTREEHYDRA_CONVERT_JS -fpermissive -fshow-column $(CFLAGS) -fplugin=./gcc_dehydra.so $(PLUGIN_ARG)=convert_tree.js $< -o /dev/null
+	$(CXX) -Wp,-C -DTREEHYDRA_CONVERT_JS -fpermissive -fshow-column $(CFLAGS) -fplugin=./gcc_dehydra.so $(PLUGIN_ARG)=convert_tree.js $< -o /dev/null
 
 useful_arrays.ii: useful_arrays.c
 	$(CC) $(INCLUDE) -E $< -o $@
