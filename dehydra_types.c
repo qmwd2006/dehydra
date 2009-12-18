@@ -49,7 +49,12 @@ void dehydra_attachTypeAttributes (Dehydra *this, JSObject *obj, tree type) {
     ? TYPE_TEMPLATE_INFO (type) : NULL_TREE;
   
   if (decl_template_info) {
-    tree template_decl = TREE_PURPOSE (decl_template_info);
+    tree template_decl = 
+#ifndef CFG_PLUGINS_MOZ
+      TI_TEMPLATE (decl_template_info);
+#else
+      TREE_PURPOSE (decl_template_info);
+#endif
     tree type = TREE_TYPE (template_decl);
     tree attributes = TYPE_ATTRIBUTES (type);
     dehydra_addAttributes (this, destArray, attributes);
