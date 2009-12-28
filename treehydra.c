@@ -205,7 +205,8 @@ void lazy_tree_string (struct Dehydra *this, void* void_var, struct JSObject *ob
   convert_int(this, obj, "length", (HOST_WIDE_INT) topmost->length);
 
   // now reflect .str, account for unicode magic (bug 526970)
-  if (TYPE_PRECISION (TREE_TYPE (TREE_TYPE (str))) == TYPE_PRECISION (char_type_node)) {
+  tree str_type = TREE_TYPE (str);
+  if (str_type && TYPE_PRECISION (TREE_TYPE (str_type)) == TYPE_PRECISION (char_type_node)) {
     wchar_bytes = 1;
   } else {
     wchar_bytes = TYPE_PRECISION (wchar_type_node) / BITS_PER_UNIT;
