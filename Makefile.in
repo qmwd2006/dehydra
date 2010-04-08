@@ -62,5 +62,8 @@ check check_dehydra check_treehydra check_both check_both_tinderbox:
 	$(MAKE) -C test $@
 
 clean:
-	rm -f *.o *.so *~ *.ii *_generated.c enums.js useful_arrays.js $(DEPDIR)/*.P
+	rm -f *.o *.so *~ *.s *.ii *_generated.c enums.js useful_arrays.js $(DEPDIR)/*.P
 	$(MAKE) -C test clean
+
+distclean: clean
+	rm -f Makefile config.mk dehydra-config.h
