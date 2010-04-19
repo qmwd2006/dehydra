@@ -51,9 +51,6 @@ function skipTypeWrappers (type) {
        * on the other hand, that makes life easier for getPrefix() */
       if (!next_type.name && type.name)
         next_type.name = type.name
-      if(next_type.name == type.name) {
-        next_type.hasTypedef = true
-      }
 
       type = next_type
     }
@@ -339,12 +336,6 @@ function makeStruct (fields, type_name, prefix, subFunctions, fn_level) {
 }
 
 function getPrefix (aggr) {
-  /* if there is a typedef that was encounted while skipTypeWrappers()ing
-   * then just use that...onfortunately C++ FE eats some typedefs
-   * This works great in C
-   */
-  if (aggr.hasTypedef)
-    return ""
   /* if this is C FE, then we know what we want to know 
    * aka no typedef...with C++ there might still be a need to use the typedef 
    * that was eaten
