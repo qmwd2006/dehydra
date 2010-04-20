@@ -502,7 +502,7 @@ int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version
     if (pass_name) {
       pass_info.reference_pass_name = pass_name;
     } else {
-      pass_info.reference_pass_name = "useless";
+      pass_info.reference_pass_name = all_lowering_passes->name;
     }
     pass_info.ref_pass_instance_number = 0;
     pass_info.pos_op = PASS_POS_INSERT_AFTER;
