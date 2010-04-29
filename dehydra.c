@@ -556,12 +556,12 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
 
     tree typ = TREE_TYPE (v);
     if (TREE_CODE (v) == FUNCTION_DECL ||
-        DECL_FUNCTION_TEMPLATE_P (v)) {
+        (isGPlusPlus() && DECL_FUNCTION_TEMPLATE_P (v))) {
       dehydra_defineProperty (this, obj, FUNCTION, JSVAL_TRUE);  
 
-      if (DECL_CONSTRUCTOR_P (v)) {
+      if (isGPlusPlus() && DECL_CONSTRUCTOR_P (v)) {
         dehydra_defineProperty (this, obj, DH_CONSTRUCTOR, JSVAL_TRUE);
-
+        
         if (DECL_NONCONVERTING_P (v)) {
           dehydra_defineProperty (this, obj, DH_EXPLICIT, JSVAL_TRUE);
         }
@@ -576,11 +576,13 @@ JSObject* dehydra_addVar (Dehydra *this, tree v, JSObject *parentArray) {
         for (args = DECL_ARGUMENTS(v); args; args = TREE_CHAIN (args))
           dehydra_addVar(this, args, arglist);
       }
-
-      if (DECL_PURE_VIRTUAL_P (v))
-        dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
-      else if (DECL_VIRTUAL_P (v))
-        dehydra_defineProperty (this, obj, VIRTUAL, JSVAL_TRUE);
+      
+      if (isGPlusPlus()) {
+        if (DECL_PURE_VIRTUAL_P (v))
+          dehydra_defineStringProperty (this, obj, VIRTUAL, "pure");
+        else if (DECL_VIRTUAL_P (v))
+          dehydra_defineProperty (this, obj, VIRTUAL, JSVAL_TRUE);
+      }
 
       if (DECL_FUNCTION_TEMPLATE_P (v)) {
         tree args = DECL_INNERMOST_TEMPLATE_PARMS (v);

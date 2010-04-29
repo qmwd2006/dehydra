@@ -509,13 +509,15 @@ int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version
     register_callback (plugin_info->base_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 #endif
     register_callback (plugin_info->base_name, PLUGIN_FINISH_UNIT, gcc_plugin_post_parse, NULL);
-    register_callback (plugin_info->base_name, 
+    if (isGPlusPlus()) {
+      register_callback (plugin_info->base_name, 
 #ifdef CFG_PLUGINS_MOZ
-                       PLUGIN_CXX_CP_PRE_GENERICIZE, 
+                         PLUGIN_CXX_CP_PRE_GENERICIZE, 
 #else
-                       PLUGIN_PRE_GENERICIZE,
+                         PLUGIN_PRE_GENERICIZE,
 #endif
-                       (plugin_callback_func) gcc_plugin_cp_pre_genericize, NULL);
+                         (plugin_callback_func) gcc_plugin_cp_pre_genericize, NULL);
+    }
     register_callback (plugin_info->base_name, PLUGIN_FINISH_TYPE, 
                        (plugin_callback_func) gcc_plugin_finish_struct, NULL);
     register_callback (plugin_info->base_name, PLUGIN_FINISH, gcc_plugin_finish, NULL);

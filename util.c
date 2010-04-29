@@ -24,6 +24,7 @@
 #include "util.h"
 
 #include <inttypes.h>
+#include <execinfo.h>
 
 static char locationbuf[PATH_MAX];
 
@@ -66,7 +67,7 @@ char const * loc_as_string (location_t loc) {
 tree global_namespace = NULL;
 
 bool isGPlusPlus() {
-  return global_namespace != NULL;
+  return cp_walk_subtrees != NULL;
 }
 
 const char *
@@ -162,4 +163,14 @@ cp_tree_node_structure (union lang_tree_node *_) {
 tree *
 decl_cloned_function_p (const_tree decl, bool just_testing) {
   xassert (0);
+}
+
+void crashhandler() {
+  void* callstack[128];
+  int size  = backtrace(callstack, sizeof(callstack)/sizeof(callstack[0]));
+  backtrace_symbols_fd(callstack, size, 2);
+
+  fprintf(stderr, "Sleeping 60 seconds, pid is %d\n", getpid());
+  sleep(60);
+  _exit(1);
 }
