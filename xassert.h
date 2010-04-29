@@ -20,7 +20,7 @@
 
 #ifndef XASSERT_H
 #define XASSERT_H
-
+void crashhandler();
 #define xassert(cond)                                                   \
   if (!(cond)) {                                                        \
     fprintf(stderr, "%s:%d: Assertion failed:" #cond                    \
@@ -28,7 +28,7 @@
             "dehydra please file a bug, include a testcase or .ii file" \
             " produced with -save-temps\n",                             \
             __FILE__, __LINE__);                                        \
-    _exit(1);                                                           \
+    crashhandler();                                                     \
   }
 
 #endif
