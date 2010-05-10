@@ -36,11 +36,11 @@ class PluginTestCase(TestCase):
         self.checker(self, 0, out, err)
 
     def getCommand(self):
-        command = CC1PLUS
-        # turn .../cc1plus into .../cc1
+        command = CXX
+        # turn .../g++ into .../gcc
         if self.lang == 'c':
-            command = command[:-4]
-        command += " -quiet -fplugin=../gcc_" + self.plugin + ".so -o /dev/null"
+            command = command[:-2] + "cc"
+        command += " -c -fplugin=../gcc_" + self.plugin + ".so -o /dev/null"
         if ("PLUGINS_MOZ" in config_opts) :
             command += " -fplugin-arg=" + self.jsfile
         else :
@@ -203,7 +203,7 @@ else:
     PLUGINS = plugin_str.split(',')
 
 # This should be the compiler to use
-CC1PLUS = args[1]
+CXX = args[1]
 
 # Parse the configuration file
 config_opts = parseConfigFile("../config.mk")

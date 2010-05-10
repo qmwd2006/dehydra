@@ -95,14 +95,11 @@ def detect_cxx(config):
         cxx = os.environ["CXX"]
     except:
         pass
-    cout, cin, cerr = popen2.popen3([cxx, '-print-prog-name=cc1plus']);
-    cc1plus = cout.read().strip();
-    if os.path.exists(cc1plus):
-        print(cxx)
-    else:
-        sys.stdout.flush()
-        error("C++ compiler '%s' not found, please specify a valid compiler with the CXX environment variable" % cxx);
-    config["CC1PLUS"] = cc1plus
+    try:
+        cxx.find("../")
+        cxx = os.path.abspath(cxx)
+    except:
+        pass
     config["CXX"] = cxx
 
 def try_enable_treehydra(config):
@@ -125,7 +122,7 @@ def try_gcc_plugin_headers(config):
     cout, cin, cerr = popen2.popen3([cxx, '-print-file-name=plugin'])
     path = cout.read().strip()
     if os.path.exists(path):
-        path = path +"/include"
+        path = os.path.abspath(path +"/include")
         config["GCC_PLUGIN_HEADERS"] = "-I%s" % (path)
         config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-"
         print(path)

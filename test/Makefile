@@ -34,19 +34,19 @@ check:: check_dehydra $(BUILD_TREEHYDRA:gcc_treehydra.so=check_treehydra)
 
 # Unit tests
 check_both: $(OBJECTS)
-	python unit_test_harness.py both "$(CC1PLUS)"
+	python unit_test_harness.py both "$(CXX)"
 
 check_dehydra: $(OBJECTS)
-	python unit_test_harness.py dehydra "$(CC1PLUS)"
+	python unit_test_harness.py dehydra "$(CXX)"
 
 check_treehydra:
-	python unit_test_harness.py treehydra "$(CC1PLUS)"
+	python unit_test_harness.py treehydra "$(CXX)"
 
 check_both_tinderbox: $(OBJECTS)
-	python unit_test_harness.py --tinderbox both "$(CC1PLUS)"
+	python unit_test_harness.py --tinderbox both "$(CXX)"
 
 %.o: %.cc $(PLUGIN) $(GLOBAL_DEPS)
-	$(CC1PLUS) -quiet $(CXXFLAGS) $< -o /dev/null
+	$(CXX) -c $(CXXFLAGS) $< -o /dev/null
 
 #tests workaround for outputing to stdout when shouldn't
 pipe: destr_order.cc $(GLOBAL_DEPS)
