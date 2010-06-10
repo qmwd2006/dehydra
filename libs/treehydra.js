@@ -21,6 +21,8 @@ include ("xhydra.js")
 include ("map.js")
 include ("platform.js")
 include ("gcc_compat.js")
+include ("gcc_util.js")
+include ("gcc_print.js")
 
 function unhandledLazyProperty (prop) {
     /* Special case: the interpreter will look for this property when
@@ -46,6 +48,20 @@ if (isGCC42) {
   this.POINTER_PLUS_EXPR = PLUS_EXPR;
   this.FIXED_POINT_TYPE = {};
  }
+
+if (!isUsingGCCTuples) {
+  this.gimple_code = TREE_CODE;
+  this.GIMPLE_CALL = CALL_EXPR;
+  this.GIMPLE_ASSIGN = GIMPLE_MODIFY_STMT;
+  this.GIMPLE_COND = COND_EXPR;
+  this.GIMPLE_SWITCH = SWITCH_EXPR;
+  this.GIMPLE_RETURN = RETURN_EXPR;
+  this.gimple_call_fndecl = call_function_decl;
+  this.gimple_call_arg = call_arg;
+  this.gimple_call_arg_iterator = call_arg_iterator;
+  this.gs_display = isn_display;
+  this.gimple_op = function(isn, i) { return isn.operands()[i]; }
+}
 
 // Class that the lazyness builds itself around of
 function GCCNode () {
