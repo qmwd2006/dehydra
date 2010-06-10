@@ -230,7 +230,12 @@ void lazy_tree_string (struct Dehydra *this, void* void_var, struct JSObject *ob
   } else {
     wchar_bytes = TYPE_PRECISION (wchar_type_node) / BITS_PER_UNIT;
   }
-  num_chars = (TREE_STRING_LENGTH (str) / wchar_bytes) - 1; // skip trailing null
+  num_chars = (TREE_STRING_LENGTH (str) / wchar_bytes);
+  // TREE_STRING_LENGTH is 0 for certain empty strings
+  if (num_chars != 0) {
+    // skip trailing null
+    --num_chars;
+  }
 
   if (wchar_bytes == 1) {
     jsval v = STRING_TO_JSVAL (JS_NewStringCopyN (this->cx, TREE_STRING_POINTER (str), num_chars));
