@@ -42,6 +42,10 @@
 #include "dehydra_types.h"
 #include "dehydra_ast.h"
 
+#ifndef JS_HAS_NEW_GLOBAL_OBJECT
+#define JS_NewGlobalObject(cx, cls) JS_NewObject(cx, cls, NULL, NULL)
+#endif
+
 const char *NAME = "name";
 const char *SHORTNAME = "shortName";
 const char *LOC = "loc";
@@ -97,6 +101,14 @@ static JSClass js_decl_class = {
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
+static JSClass global_class = {
+  "DehydraGlobal", /* name */
+  JSCLASS_GLOBAL_FLAGS, /* flags */
+  JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub,
+  JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, JS_FinalizeStub,
+  JSCLASS_NO_OPTIONAL_MEMBERS
+};
+
 void dehydra_init(Dehydra *this, const char *file, const char *version) {
   static JSFunctionSpec shell_functions[] = {
     {"_print",          Print,          0},
@@ -120,7 +132,7 @@ void dehydra_init(Dehydra *this, const char *file, const char *version) {
 
   JS_SetContextPrivate (this->cx, this);
   
-  this->globalObj = JS_NewObject (this->cx, NULL, 0, 0);
+  this->globalObj = JS_NewGlobalObject (this->cx, &global_class);
   JS_InitStandardClasses (this->cx, this->globalObj);
   /* register error handler */
   JS_SetErrorReporter (this->cx, ErrorReporter);
