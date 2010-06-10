@@ -54,6 +54,7 @@ static char *after_gcc_pass = 0;
 #define NOT_MOZ_PLUGINS(x)
 #include <version.h>
 #define PLUGIN_HANDLER_RETURN return 0
+#define MAYBE_CLASS_TYPE_P(tree_type) (TREE_CODE(tree_type) == RECORD_TYPE)
 #endif
 
 /* Queue up tree object for latest processing (ie because gcc will fill in more info or 
@@ -172,6 +173,10 @@ static void process_type(tree t) {
     return;
   }
 
+  if (EXCEPTIONAL_CLASS_P(t)) {
+    return;
+  }
+
   // dmandelin@mozilla.com -- bug 420299
   // We need to process the original type first, because it will be the target
   // of the typedef field. This is the natural extension of the DFS strategy.
@@ -211,7 +216,7 @@ static void process (tree t) {
 
   tree tree_type = TREE_TYPE (t);
   bool is_template_typedef = tree_type
-    && TREE_CODE (tree_type) == RECORD_TYPE
+    && MAYBE_CLASS_TYPE_P (tree_type)
     && TYPE_TEMPLATE_INFO (tree_type);
   bool is_artifical = 
     (TREE_CODE (t) == TYPE_DECL && DECL_IMPLICIT_TYPEDEF_P (t))
