@@ -118,14 +118,22 @@ var GIMPLE_STMT_P = isGCC42 ?
     return TREE_CODE_CLASS (TREE_CODE ((NODE))) == tcc_gimple_stmt
   }
 
+// This macro was eventually removed in GCC 4.5, however this
+// is needed to simultaneously handle GENERIC and GIMPLE.
+function GIMPLE_TUPLE_P (node) {
+  return node.hasOwnProperty("gsbase");
+}
+
 function TREE_OPERAND (node, i) {
   return node.exp.operands[i]
 }
 
-var GIMPLE_STMT_OPERAND = isGCC42 ? TREE_OPERAND :
-  function (node, i) {
-    return node.gstmt.operands[i]
-  }
+var GIMPLE_STMT_OPERAND = isGCC42 ?
+  TREE_OPERAND : isGCC43 ?
+    function (node, i) {
+      return node.gstmt.operands[i]
+    } :
+    gimple_op
 
 function GENERIC_TREE_OPERAND (node, i)
 {
@@ -490,7 +498,9 @@ function CASE_LOW(expr) { return TREE_OPERAND(expr, 0); }
 function CASE_HIGH(expr) { return TREE_OPERAND(expr, 1); }
 function CASE_LABEL(expr) { return TREE_OPERAND(expr, 2); }
 
-function LABEL_DECL_UID(decl) { return decl.decl_common.pointer_alias_set; }
+var LABEL_DECL_UID = isUsingGCCTuples ?
+  function (decl) { return decl.label_decl.label_decl_uid; } :
+  function (decl) { return decl.decl_common.pointer_alias_set; }
 
 /** Given an OBJ_TYPE_REF, return a FUNCTION_DECL for the method. */
 function resolve_virtual_fun_from_obj_type_ref(ref) {
@@ -525,6 +535,8 @@ let UNKNOWN_LOCATION = undefined;
 /** Return the source code location of the argument, which must be a tree.
  *  The result is a JS object with 'file', 'line', and 'column' properties. */
 function location_of(t) {
+  if (GIMPLE_TUPLE_P(t))
+    return t.gsbase.location;
   if (TREE_CODE (t) == PARM_DECL && DECL_CONTEXT (t))
     t = DECL_CONTEXT (t);
   else if (TYPE_P (t)) {
@@ -785,16 +797,8 @@ function c_common_type_for_mode (mode, unsignedp)
 }
 
 // tuple stuff
-
-function bb_gimple_seq(bb) {
-  let gimple_bb_info = bb.il.gimple
-  return gimple_bb_info ? gimple_bb_info.seq.first : undefined
-}
-
-function bb_gs_iterate(bb) {
-  let seq = bb_gimple_seq(bb)
-  for(;seq;seq=seq.next)
-    yield seq.stmt
+function gimple_code (gs) {
+  return gs.gsbase.code
 }
 
 function gimple_location (gs)
@@ -836,3 +840,50 @@ function gimple_call_arg_iterator (gs) {
     yield gs.gimple_ops[i]
   }
 }
+
+function gimple_call_arg (gs, i) {
+  return gs.gimple_ops[3+i]
+}
+
+function gimple_switch_index (gs) {
+  return gs.gimple_ops[0]
+}
+
+function gimple_switch_num_labels (gs)
+{
+  return gimple_num_ops (gs) - 1;
+}
+
+function gimple_switch_label (gs, index)
+{
+  return gs.gimple_ops[index + 1];
+}
+
+let _comparisons = null;
+
+var gimple_cond_code = isUsingGCCTuples ?
+  function (gs) {
+    if (!this._comparisons) {
+      this._comparisons = {}
+      let enums = [LT_EXPR, LE_EXPR, GT_EXPR, GE_EXPR, EQ_EXPR, NE_EXPR];
+      for each (let e in enums)
+        this._comparisons[e.value] = e
+    }
+    let ret = _comparisons[gs.gsbase.subcode];
+    if (!ret)
+      throw new Error("Unexpected gimple_cond subcode");
+    return ret
+  } :
+  function (cond_expr) {
+    return TREE_CODE(TREE_OPERAND(cond_expr, 0));
+  }
+
+var condition_operand = isUsingGCCTuples ? 
+  function (gimple_cond, i) {
+    return gimple_op(gimple_cond, i);
+  } :
+  function (cond_expr, i) {
+    let expr = TREE_OPERAND(cond_expr, 0);
+    let cond_op = TREE_OPERAND(expr, i);
+    return cond_op;
+  }

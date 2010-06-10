@@ -314,6 +314,25 @@ function loc_string(loc) {
   return loc.toString();
 }
 
+function cond_code_display(code) {
+  switch(code) {
+  case LT_EXPR:
+    return '<=';
+  case LE_EXPR:
+    return '<';
+  case GT_EXPR:
+    return '>';
+  case GE_EXPR:
+    return '>=';
+  case EQ_EXPR:
+    return '==';
+  case NE_EXPR:
+    return '!=';
+  default:
+    throw new Error("Invalid conditional code value");
+  }
+}
+
 // tuple stuff
 function gs_display(gs) {
   switch(gs.gsbase.code) {
@@ -336,8 +355,12 @@ function gs_display(gs) {
   }
   case GIMPLE_LABEL: 
     return decl_name(gs.gimple_ops[0]) + ':'
-  case GIMPLE_COND:
-    return "if ("+expr_display(gs.gimple_ops[0])+")"
+  case GIMPLE_RESX:
+    return "catch: //exception handler"
+  case GIMPLE_COND: {
+    let op = cond_code_display (gimple_cond_code (gs));
+    return "if ("+expr_display(gs.gimple_ops[0])+" " + op+ " " +expr_display(gs.gimple_ops[1])+")"
+  }
   case GIMPLE_SWITCH:
     return "switch ("+expr_display(gs.gimple_ops[0])+")"
   default:
