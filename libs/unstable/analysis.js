@@ -59,9 +59,97 @@ function decl_get_label(d) {
 
 /* Analysis-related accessors */
 
+function ensure_decl_p(decl) {
+  if (!DECL_P(decl))
+    throw new Error("Fix code to only put decls here. Got :"+decl.tree_code());
+  return decl
+}
+
+function filter_crap(ls) {
+  for each(var d in ls) {
+    if (!d)
+      continue;
+    
+    switch(d.tree_code()) {
+    case INTEGER_CST:
+      break;
+    case ADDR_EXPR:
+      d = TREE_OPERAND(d, 0);
+    default:
+      yield ensure_decl_p(d);
+    }
+  }
+}
+
 /** Iterate over variables defined by the instruction. 
     If kind == 'strong', iterate over only strong defs. */
 function isn_defs(isn, kind) {
+  let retls = []
+  switch (gimple_code(isn)) {
+  case GIMPLE_ASSIGN:
+    retls.push(isn.gimple_ops[0]);
+    if (kind != 'strong') {
+      retls.push(isn.gimple_ops[1]);
+      retls.push(isn.gimple_ops[2]);
+    }
+    break;
+  case GIMPLE_CALL:
+    {
+      retls.push(isn.gimple_ops[1]);
+      if (kind != 'strong') {
+        for (let d in gimple_call_arg_iterator(isn))
+          retls.push(d);
+      }
+    }
+    break;
+  case GIMPLE_RETURN:{
+    let operand = isn.gimple_ops[0];
+    if (kind != 'strong')
+      retls.push(operand);
+    }
+    break;
+  case GIMPLE_COND:
+  case GIMPLE_SWITCH:
+    break;
+  default:
+    throw new Error("isn_defs ni " + gimple_code(isn));
+  }
+  
+  for each(let d in filter_crap(retls))
+    yield d;
+};
+
+/** Iterate over variables used by the instruction.  */
+function isn_uses(isn) {
+  let retls = [];
+  switch (gimple_code(isn)) {
+  case GIMPLE_ASSIGN:
+    retls.push(isn.gimple_ops[0]);
+    retls.push(isn.gimple_ops[1]);
+    break;
+  case GIMPLE_CALL: 
+    for (let d in gimple_call_arg_iterator(isn))
+      retls.push(d);
+    break;
+  case GIMPLE_RETURN:
+    retls.push(isn.gimple_ops[0]);
+    break;
+  case GIMPLE_COND:
+    retls.push(isn.gimple_ops[0]);
+    retls.push(isn.gimple_ops[1]);
+    break;
+  case GIMPLE_SWITCH:
+    retls.push(isn.gimple_ops[0]);
+    break;
+  default:
+    throw new Error("ni " + gimple_code(isn));
+  }
+  for each(let d in filter_crap(retls))
+    yield d;
+};
+
+if (!isUsingGCCTuples) {
+isn_defs = function (isn, kind) {
   switch (TREE_CODE(isn)) {
   case GIMPLE_MODIFY_STMT:
     yield GENERIC_TREE_OPERAND(isn, 0);
@@ -97,23 +185,7 @@ function isn_defs(isn, kind) {
   }
 };
 
-/** Iterate over variables defined by a call. All of these are weak defs.
-  * This is unsound -- we just iterate over x where &x is an arg, without
-  * attempting alias analysis. */
-function call_expr_defs(isn) {
-  let operand_count = TREE_INT_CST(TREE_OPERAND(isn, 0)).low;
-  let arg_count = operand_count - 3;
-  for (let i = 0; i < arg_count; ++i) {
-    let operand_index = i + 3;
-    let operand = TREE_OPERAND(isn, operand_index);
-    if (TREE_CODE(operand) == ADDR_EXPR) {
-      yield TREE_OPERAND(operand, 0);
-    }
-  }
-};
-
-/** Iterate over variables used by the instruction.  */
-function isn_uses(isn) {
+isn_uses = function (isn) {
   switch (TREE_CODE(isn)) {
   case GIMPLE_MODIFY_STMT:
     return expr_uses(GENERIC_TREE_OPERAND(isn, 1));
@@ -134,6 +206,23 @@ function isn_uses(isn) {
     break;
   default:
     throw new Error("isn_uses ni " + TREE_CODE(isn).name);
+  }
+};
+} // !isUsingGCCTuples
+
+/** Iterate over variables defined by a call. All of these are weak defs.
+  * This is unsound -- we just iterate over x where &x is an arg, without
+  * attempting alias analysis. */
+function call_expr_defs(isn) {
+
+  let operand_count = TREE_INT_CST(TREE_OPERAND(isn, 0)).low;
+  let arg_count = operand_count - 3;
+  for (let i = 0; i < arg_count; ++i) {
+    let operand_index = i + 3;
+    let operand = TREE_OPERAND(isn, operand_index);
+    if (TREE_CODE(operand) == ADDR_EXPR) {
+      yield TREE_OPERAND(operand, 0);
+    }
   }
 };
 

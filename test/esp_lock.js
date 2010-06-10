@@ -85,12 +85,13 @@ function LockCheck(cfg, trace) {
   let found = create_decl_set(); // ones we already found
   for (let bb in cfg_bb_iterator(cfg)) {
     for (let isn in bb_isn_iterator(bb)) {
-      if (TREE_CODE(isn) != CALL_EXPR) continue
       
-      let fname = call_function_name(isn);
+      if (gimple_code(isn) != GIMPLE_CALL) continue
+      
+      let fname = decl_name(gimple_call_fndecl(isn))
       if (fname != CREATE_FUNCTION) continue
       
-      let arg = call_arg(isn, 0);
+      let arg = gimple_call_arg(isn, 0);
       if (!DECL_P(arg) || found.has(arg)) continue;
       
       found.add(arg);
@@ -107,12 +108,12 @@ LockCheck.prototype = new ESP.Analysis;
 // State transition function. Mostly, we delegate everything to
 // another function as either an assignment or a call.
 LockCheck.prototype.flowState = function(isn, state) {
-  switch (TREE_CODE(isn)) {
-  case SWITCH_EXPR:
-  case COND_EXPR:
+  switch (gimple_code(isn)) {
+  case GIMPLE_SWITCH:
+  case GIMPLE_COND:
     // This gets handled by flowStateCond instead, has no exec effect
     break;
-  case CALL_EXPR:
+  case GIMPLE_CALL:
     if (this.processCall(isn, isn, state))
       break;
   default:
@@ -126,14 +127,14 @@ LockCheck.prototype.flowStateCond = function(isn, truth, state) {
   this.zeroNonzero.flowStateCond (isn, truth, state)
 }
 
-LockCheck.prototype.processCall = function(expr, blame, state) {
-  let fname = call_function_name(expr);
+LockCheck.prototype.processCall = function(gs, blame, state) {
+  let fname = decl_name(gimple_call_fndecl(gs));
   if (fname == LOCK_FUNCTION) {
-    this.processLock(expr, av.LOCKED, av.UNLOCKED, blame, state);
+    this.processLock(gs, av.LOCKED, av.UNLOCKED, blame, state);
   } else if (fname == UNLOCK_FUNCTION) {
-    this.processLock(expr, av.UNLOCKED, av.LOCKED, blame, state);
+    this.processLock(gs, av.UNLOCKED, av.LOCKED, blame, state);
   } else if (fname == CREATE_FUNCTION) {
-    this.processLock(expr, av.UNLOCKED, undefined, blame, state);
+    this.processLock(gs, av.UNLOCKED, undefined, blame, state);
   } else {
     return false
   }
@@ -142,7 +143,7 @@ LockCheck.prototype.processCall = function(expr, blame, state) {
 
 // State transition for a lock API.
 LockCheck.prototype.processLock = function(call, val, precond, blame, state) {
-  let arg = call_arg(call, 0);
+  let arg = gimple_call_arg(call, 0);
   if (DECL_P(arg)) {
     if (precond != undefined) 
       this.checkPrecondition(arg, precond, blame, state);

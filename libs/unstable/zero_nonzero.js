@@ -48,13 +48,13 @@ function Zero_NonZero() {
 }
 
 Zero_NonZero.prototype.flowState = function(isn, state) {
-  switch (TREE_CODE(isn)) {
-  case GIMPLE_MODIFY_STMT:
+  switch (gimple_code(isn)) {
+  case GIMPLE_ASSIGN:
     this.processAssign(isn, state);
     break;
-  case RETURN_EXPR:
-    let op = isn.operands()[0];
-    if (op) this.processAssign(isn.operands()[0], state);
+  case GIMPLE_RETURN:
+    let op = gimple_op(isn, 0);
+    if (op) this.processAssign(op, state);
     break;
   }
 }
@@ -62,8 +62,8 @@ Zero_NonZero.prototype.flowState = function(isn, state) {
 // State transition for assignments. We'll just handle constants and copies.
 // For everything else, the result is unknown (i.e., TOP).
 Zero_NonZero.prototype.processAssign = function(isn, state) {
-  let lhs = isn.operands()[0];
-  let rhs = isn.operands()[1];
+  let lhs = gimple_op(isn, 0);
+  let rhs = gimple_op(isn, 1);
 
   if (DECL_P(lhs)) {
     // Unwrap NOP_EXPR, which is semantically a copy.
@@ -157,48 +157,48 @@ Zero_NonZero.prototype.processAssign = function(isn, state) {
 }
 
 Zero_NonZero.prototype.flowStateCond = function(isn, truth, state) {
-  switch (TREE_CODE(isn)) {
-  case COND_EXPR:
+  let code = gimple_code(isn)
+  switch (code) {
+  case GIMPLE_COND:
     this.flowStateIf(isn, truth, state);
     break;
-  case SWITCH_EXPR:
+  case GIMPLE_SWITCH:
     this.flowStateSwitch(isn, truth, state);
     break;
+  default:
+    throw new Error("flowStateCond: Unhandled gimple:" +code)
   }
 }
 
 // Apply filter for an if statement. This handles only tests for
 // things being zero or nonzero.
 Zero_NonZero.prototype.flowStateIf = function(isn, truth, state) {
-  let exp = TREE_OPERAND(isn, 0);
-
-  if (DECL_P(exp)) {
-    this.filter(state, exp, Lattice.NONZERO, truth, isn);
-    return;
-  }
-
-  switch (TREE_CODE(exp)) {
+  let comparison = gimple_cond_code(isn);
+  switch (comparison) {
   case EQ_EXPR:
   case NE_EXPR:
-    // Handle 'x op <int lit>' pattern only
-    let op1 = TREE_OPERAND(exp, 0);
-    let op2 = TREE_OPERAND(exp, 1);
+    let op1 = condition_operand(isn, 0);
+    let op2 = condition_operand(isn, 1);
     if (expr_literal_int(op1) != undefined) {
       [op1,op2] = [op2,op1];
     }
     if (!DECL_P(op1)) break;
     if (expr_literal_int(op2) != 0) break;
-    let val = TREE_CODE(exp) == EQ_EXPR ? Lattice.ZERO : Lattice.NONZERO;
+    let val = comparison == EQ_EXPR ? Lattice.ZERO : Lattice.NONZERO;
     this.filter(state, op1, val, truth, isn);
     break;
   default:
-    // Don't care about anything else.
+    let exp = GENERIC_TREE_OPERAND(isn, 0);
+    if (DECL_P(exp)) {
+      this.filter(state, exp, Lattice.NONZERO, truth, isn);
+      return;
+    }
   }
 }
 
 // State transition for switch cases.
 Zero_NonZero.prototype.flowStateSwitch = function(isn, truth, state) {
-  let exp = TREE_OPERAND(isn, 0);
+  let exp = gimple_op(isn, 0);
   
   if (DECL_P(exp)) {
     if (truth != null) {
