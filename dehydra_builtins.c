@@ -146,9 +146,9 @@ JSBool Require(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
   JSBool retval = JS_TRUE;
   int i;
   for (i = 0; i < prop_ids->length; ++i) {
+    xassert(JS_EnterLocalRootScope(cx));
     jsval prop;
     JSBool rv = JS_IdToValue(cx, prop_ids->vector[i], &prop);
-    argv[argc+1] = prop;
     xassert(rv);
     JSString *prop_str = JSVAL_TO_STRING(prop);
     char *prop_name = JS_GetStringBytes(prop_str);
@@ -158,6 +158,7 @@ JSBool Require(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
 
     rv = dispatch_require(cx, prop_name, prop_val);
     if (rv == JS_FALSE) retval = JS_FALSE;
+    JS_LeaveLocalRootScope(cx);
   }
   JS_DestroyIdArray(cx, prop_ids);
   if (!retval) return retval;
