@@ -489,7 +489,7 @@ Analysis.prototype.run = function() {
           let edge_state = bb.stateOut.copy();
           let cond = bb_isn_last(bb);
           if (this.trace) {
-            print("  branch " + truth + ": " + isn_display(cond));
+            print("  branch " + truth + ": " + gs_display(cond));
           }
           this.flowStateCond(cond, truth, edge_state);
           e.state = edge_state;
@@ -503,7 +503,7 @@ Analysis.prototype.run = function() {
           let edge_state = bb.stateOut.copy();
           let cond = bb_isn_last(bb);
           if (this.trace) {
-            print("  branch " + truth + ": " + isn_display(cond));
+            print("  branch " + truth + ": " + gs_display(cond));
           }
           this.flowStateCond(cond, truth, edge_state);
           e.state = edge_state;
@@ -564,7 +564,7 @@ Analysis.prototype.flowStateOut = function(bb) {
       if (this.trace >= 2) {
         print("    loc: " + location_of(isn));
       }
-      print("    " + isn_display(isn));
+      print("    " + gs_display(isn));
     }
     this.flowState(isn, state);
     if (this.trace) {

@@ -26,8 +26,9 @@ function LivenessAnalysis() {
 LivenessAnalysis.prototype = new BackwardAnalysis;
 
 LivenessAnalysis.prototype.flowState = function(isn, state) {
-  switch (TREE_CODE(isn)) {
+  switch (gimple_code(isn)) {
   case RETURN_EXPR:
+    // 4.3 issue: Need to specially handle embedded trees within RETURN_EXPRs
     let gms = TREE_OPERAND(isn, 0);
     if (gms) {
       // gms is usually a GIMPLE_MODIFY_STMT but can be a RESULT_DECL
@@ -40,10 +41,11 @@ LivenessAnalysis.prototype.flowState = function(isn, state) {
       }
     }
     break;
-  case GIMPLE_MODIFY_STMT:
-  case COND_EXPR:
-  case SWITCH_EXPR:
-  case CALL_EXPR:
+  case GIMPLE_RETURN:
+  case GIMPLE_ASSIGN:
+  case GIMPLE_COND:
+  case GIMPLE_SWITCH:
+  case GIMPLE_CALL:
     for (let e in isn_defs(isn, 'strong')) {
       if (DECL_P(e)) {
         state.remove(e);
