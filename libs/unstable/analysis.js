@@ -59,25 +59,35 @@ function decl_get_label(d) {
 
 /* Analysis-related accessors */
 
-function ensure_decl_p(decl) {
-  if (!DECL_P(decl))
-    throw new Error("Fix code to only put decls here. Got :"+decl.tree_code());
-  return decl
-}
-
-function filter_crap(ls) {
-  for each(var d in ls) {
+function defs_filter(ls) {
+  for each(let d in ls) {
     if (!d)
       continue;
+
+    // ignore |this|
+    if (d.tree_code() == COMPONENT_REF)
+      d = TREE_OPERAND(d, 1);
     
-    switch(d.tree_code()) {
-    case INTEGER_CST:
-      break;
-    case ADDR_EXPR:
-      d = TREE_OPERAND(d, 0);
-    default:
-      yield ensure_decl_p(d);
-    }
+    try {
+      walk_tree(d, function (t) {
+        if (DECL_P(t))
+          throw t;
+      });
+    } catch (t) { yield t; }
+  }
+}
+
+function uses_filter(ls) {
+  for each(let d in ls) {
+    if (!d)
+      continue;
+
+    try {
+      walk_tree(d, function (t) {
+        if (DECL_P(t))
+          throw t;
+      });
+    } catch (t) { yield t; }
   }
 }
 
@@ -95,16 +105,16 @@ function isn_defs(isn, kind) {
     break;
   case GIMPLE_CALL:
     {
-      retls.push(isn.gimple_ops[1]);
+      retls.push(gimple_call_lhs(isn));
       if (kind != 'strong') {
         for (let d in gimple_call_arg_iterator(isn))
           retls.push(d);
       }
     }
     break;
-  case GIMPLE_RETURN:{
-    let operand = isn.gimple_ops[0];
-    if (kind != 'strong')
+  case GIMPLE_RETURN:
+    if (kind != 'strong') {
+      let operand = isn.gimple_ops[0];
       retls.push(operand);
     }
     break;
@@ -115,7 +125,7 @@ function isn_defs(isn, kind) {
     throw new Error("isn_defs ni " + gimple_code(isn));
   }
   
-  for each(let d in filter_crap(retls))
+  for each(let d in defs_filter(retls))
     yield d;
 };
 
@@ -144,7 +154,7 @@ function isn_uses(isn) {
   default:
     throw new Error("ni " + gimple_code(isn));
   }
-  for each(let d in filter_crap(retls))
+  for each(let d in uses_filter(retls))
     yield d;
 };
 
