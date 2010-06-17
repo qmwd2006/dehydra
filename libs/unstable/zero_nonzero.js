@@ -52,10 +52,40 @@ Zero_NonZero.prototype.flowState = function(isn, state) {
   case GIMPLE_ASSIGN:
     this.processAssign(isn, state);
     break;
-  case GIMPLE_RETURN:
-    let op = gimple_op(isn, 0);
+  case RETURN_EXPR:
+    // 4.3 embeds assignments in returns
+    let op = isn.operands()[0];
     if (op) this.processAssign(op, state);
     break;
+  case GIMPLE_CALL:
+    this.processCall(isn, state);
+  }
+}
+
+Zero_NonZero.prototype.processCall = function (isn, state) {
+  // these are handled by processAssign (4.3 issue)
+  if (isn.tree_code() == CALL_EXPR)
+    return;
+
+  for (let arg in gimple_call_arg_iterator(isn)) {
+    if (arg.tree_code() == ADDR_EXPR) {
+      let vbl = arg.operands()[0];
+      if (DECL_P(vbl)) {
+        state.assignValue(vbl, ESP.TOP, isn);
+      }
+    }
+  }
+  
+  let lhs = gimple_call_lhs(isn);
+  if (!lhs)
+    return;
+
+  let fname = gimple_call_function_name(isn);
+  if (fname == '__builtin_expect') {
+    // Same as an assign from arg 0 to lhs
+    state.assign(lhs, gimple_call_args(isn, 0), isn);
+  } else {
+    state.assignValue(lhs, ESP.TOP, isn);
   }
 }
 
@@ -90,9 +120,10 @@ Zero_NonZero.prototype.processAssign = function(isn, state) {
       if (DECL_P(op1) && expr_literal_int(op2) == 0) {
         state.assign(lhs, op1, isn);
       }
-    }
       break;
+    }
     case CALL_EXPR:
+      /* only relevant with GCC 4.3 */
       let fname = call_function_name(rhs);
       if (fname == '__builtin_expect') {
         // Same as an assign from arg 0 to lhs
@@ -188,10 +219,9 @@ Zero_NonZero.prototype.flowStateIf = function(isn, truth, state) {
     this.filter(state, op1, val, truth, isn);
     break;
   default:
-    let exp = GENERIC_TREE_OPERAND(isn, 0);
+    let exp = isn.operands()[0];
     if (DECL_P(exp)) {
       this.filter(state, exp, Lattice.NONZERO, truth, isn);
-      return;
     }
   }
 }

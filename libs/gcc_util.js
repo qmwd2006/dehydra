@@ -75,6 +75,25 @@ function function_decl_return_type_name(tree) {
   return type_string(type);
 }
 
+/** Return the expression returned by a given GIMPLE_RETURN or
+ *  RETURN_EXPR. Return undefined with void returns. */
+function return_expr(exp) {
+  TREE_CHECK(exp, RETURN_EXPR, GIMPLE_RETURN);
+
+  let ret = exp.operands()[0];
+  if (!ret)
+    return undefined;
+  switch (ret.tree_code()) {
+  case INIT_EXPR:
+  case GIMPLE_MODIFY_STMT:{
+    let rhs = ret.operands()[1];
+    return rhs;
+  }
+  default:
+    return ret;
+  }
+}
+
 /** Iterate over the basic blocks in the CFG. */
 function cfg_bb_iterator(cfg) {
   let bb_entry = cfg.x_entry_block_ptr;
@@ -402,6 +421,14 @@ function call_function_name(expr) {
   return decl ? decl_name_string(decl) : undefined;
 }
 
+/** The argument must be a GIMPLE_CALL. If it represents a call to a named
+ * function (not a method or function pointer), then return the name.
+ * Otherwise return undefined. */
+function gimple_call_function_name(gs) {
+  let decl = gimple_call_fndecl(gs);
+  return decl ? decl_name_string(decl) : undefined;
+}
+
 /** Return the ith argument of the function, counting from zero and including
  * 'this' in the list if it is present. */
 function call_arg(expr, i) {
@@ -414,9 +441,14 @@ function call_arg(expr, i) {
 /** Iterator over the argument list of the function call. */
 var call_arg_iterator = call_expr_arg_iterator;
 
-/** Return an array of the arguments of a function call. */
-function call_args(expr) {
-  return [ a for (a in call_arg_iterator(expr)) ];
+/** Return an array of the arguments of a CALL_EXPR. */
+function call_expr_args(call_expr) {
+  return [ a for (a in call_arg_iterator(call_expr)) ];
+}
+
+/** Return an array of the arguments of a GIMPLE_CALL. */
+function gimple_call_args(gimple_call) {
+  return [ a for (a in gimple_call_arg_iterator(gimple_call)) ];
 }
 
 /** Iterate over the base hierarchy of the given RECORD_TYPE in DFS order,

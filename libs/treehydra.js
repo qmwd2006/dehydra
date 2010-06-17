@@ -56,11 +56,19 @@ if (!isUsingGCCTuples) {
   this.GIMPLE_COND = COND_EXPR;
   this.GIMPLE_SWITCH = SWITCH_EXPR;
   this.GIMPLE_RETURN = RETURN_EXPR;
+  this.GIMPLE_LABEL = LABEL_EXPR;
+  this.gimple_call_fn = CALL_EXPR_FN;
   this.gimple_call_fndecl = call_function_decl;
+  this.gimple_call_function_name = call_function_name;
+  this.gimple_call_args = call_expr_args;
   this.gimple_call_arg = call_arg;
   this.gimple_call_arg_iterator = call_arg_iterator;
   this.gs_display = isn_display;
   this.gimple_op = function(isn, i) { return isn.operands()[i]; }
+} else {
+  this.FILTER_EXPR = undefined;
+  this.EXC_PTR_EXPR = undefined;
+  this.GIMPLE_MODIFY_STMT = undefined;
 }
 
 // Class that the lazyness builds itself around of
