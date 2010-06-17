@@ -9,7 +9,7 @@ var expected = [
   'd-te\0st'
 ];
 
-function process_tree(fndecl) {
+function process_cp_pre_genericize(fndecl) {
   function checker (t) {
     if (TREE_CODE (t) != STRING_CST)
       return true;

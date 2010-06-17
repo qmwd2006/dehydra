@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 'longevity.cc', 'output': 'unit_test', 'lang': 'c++' }
+// { 'test': 'treehydra', 'input': 'longevity.cc', 'output': 'unit_test', 'lang': 'c++', 'version': '4.3' }
 
 function process_tree (function_decl) {
   var b = DECL_SAVED_TREE (function_decl)

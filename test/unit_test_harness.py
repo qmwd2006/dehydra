@@ -97,6 +97,13 @@ def stderr_has(*args):
                 test.fail("Expected '%s' in error output; not found. stderr:%s"%(e,err))
     return checker
 
+def stderr_has_re(*args):
+    def checker(test, ec, out, err):
+        for e in args:
+            if not re.search(e, err, re.M):
+                test.fail("Expected to find regular expression '%s' in error output; not found. stderr:%s"%(e, err))
+    return checker
+
 def stdout_has(*args):
     def checker(test, ec, out, err):
         for e in args:
@@ -157,11 +164,21 @@ def extractTests(filename):
         checker_str = 'unit_test'
     checker = eval(checker_str)
 
+    version = spec.get('version')
+    if version == '4.5' and "PLUGINS_MOZ" in config_opts:
+        return []
+    if version == '4.3' and not "PLUGINS_MOZ" in config_opts:
+        return []
+
     langs = spec.get('lang')
     if langs is None:
         langs = 'c,c++'
-    # only pay attention to lang attribute if C is enabled
+    # ignore C tests if C is not enabled
     if not 'C_SUPPORT' in config_opts:
+        # ignore C only tests
+        if langs == 'c':
+            return []
+        # use only C++ for multiplatform tests
         langs = 'c++'
     langs = langs.split(',')
     for lang in langs:

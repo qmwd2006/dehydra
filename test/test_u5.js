@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 't4.cc', 'output': 'unit_test', 'lang': 'c++' }
+// { 'test': 'treehydra', 'input': 't4.cc', 'output': 'unit_test', 'lang': 'c++', 'version': '4.3' }
 function process_tree(fndecl) {
   let t = TREE_TYPE(fndecl);
   let rt = TREE_TYPE(t);

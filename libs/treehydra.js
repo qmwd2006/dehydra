@@ -88,18 +88,18 @@ GCCNode.prototype.toString = function () {
 
 GCCNode.prototype.tree_code = isGCC42 ?
   function () { return this.common.code; } :
-  function () { return this.base.code; }
+  function () { return GIMPLE_TUPLE_P(this) ? this.gsbase.code : this.base.code; }
 
 /* Convienient thing along the lines of GENERIC_TREE_OPERAND */
 GCCNode.prototype.operands = function () {
-  if (GIMPLE_STMT_P (this))
-    return this.gstmt.operands
+  if (GIMPLE_TUPLE_P (this))
+    return this.gimple_ops;
+  else if (GIMPLE_STMT_P (this))
+    return this.gstmt.operands;
   else if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (this.tree_code())))
-  {
-    return this.exp.operands
-  } else {
+    return this.exp.operands;
+  else
     throw new Error("no operands in this object");
-  }
 }
 
 GCCNode.prototype.toSource = function () {
@@ -201,9 +201,13 @@ function walk_tree (t, func, guard, stack) {
       walk_tree (i.stmt (), func, guard, stack);
     }
     break;
+  case TEMPLATE_PARM_INDEX:
+    // Weird statement expression with no ops. Ignore.
+    break;
   default:
     if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (code))
-        || IS_GIMPLE_STMT_CODE_CLASS (TREE_CODE_CLASS (code)))
+        || IS_GIMPLE_STMT_CODE_CLASS (TREE_CODE_CLASS (code))
+        || GIMPLE_TUPLE_P (t))
     {
       for each (let o in t.operands()) {
         walk_tree (o, func, guard, stack)

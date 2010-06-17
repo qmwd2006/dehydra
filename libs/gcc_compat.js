@@ -36,9 +36,9 @@ function IS_EXPR_CODE_CLASS (code_class) {
     && code_class.value <= tcc_expression.value
 }
 
-var IS_GIMPLE_STMT_CODE_CLASS = isGCC42 ?
-  function (code_class) { return false; } :
-  function (code_class) { return code_class == tcc_gimple_stmt; }
+var IS_GIMPLE_STMT_CODE_CLASS = isGCC43 ?
+  function (code_class) { return code_class == tcc_gimple_stmt; } :
+  function (code_class) { return false; }
 
 function TreeCheckError (expected_code, actual_code) {
   var err = new Error("Expected " + expected_code + ", got " + actual_code)
@@ -112,11 +112,11 @@ function TREE_OPERAND_LENGTH (node)
     return TREE_CODE_LENGTH (TREE_CODE (node));
 }
 
-var GIMPLE_STMT_P = isGCC42 ?
-  function (NODE) { return false; } :
-  function (NODE) {
-    return TREE_CODE_CLASS (TREE_CODE ((NODE))) == tcc_gimple_stmt
-  }
+var GIMPLE_STMT_P = isGCC43 ?
+  function (node) {
+    return TREE_CODE_CLASS(TREE_CODE((node))) == tcc_gimple_stmt;
+  } :
+  function (node) { return false; }
 
 // This macro was eventually removed in GCC 4.5, however this
 // is needed to simultaneously handle GENERIC and GIMPLE.
@@ -341,7 +341,7 @@ function CLASSTYPE_TEMPLATE_INFO (node) {
   return LANG_TYPE_CLASS_CHECK(node).template_info
 }
 
-const TI_TEMPLATE = TREE_PURPOSE;
+const TI_TEMPLATE = isUsingGCCTuples ? TREE_TYPE : TREE_PURPOSE;
 
 function CLASSTYPE_TI_TEMPLATE (node) {
   return TI_TEMPLATE (CLASSTYPE_TEMPLATE_INFO (node))
@@ -351,9 +351,21 @@ function DECL_LANG_SPECIFIC (node) {
   return node.decl_common.lang_specific
 }
 
-function DECL_TEMPLATE_INFO (node) {
-  return DECL_LANG_SPECIFIC (node).decl_flags.u.template_info
+var decl_flags = isUsingGCCTuples?
+  function (tree) { return tree.u.fn; } :
+  function (tree) { return tree.decl_flags; }
+
+function VAR_TEMPL_TYPE_OR_FUNCTION_DECL_CHECK(node) {
+  return TREE_CHECK(node, VAR_DECL, FUNCTION_DECL, TYPE_DECL, TEMPLATE_DECL);
 }
+
+var DECL_TEMPLATE_INFO = isUsingGCCTuples ?
+  function (node) {
+    return DECL_LANG_SPECIFIC(VAR_TEMPL_TYPE_OR_FUNCTION_DECL_CHECK(node)).u.min.template_info;
+  } :
+  function (node) {
+    return DECL_LANG_SPECIFIC(node).decl_flags.u.template_info;
+  }
 
 function DECL_TI_TEMPLATE(node) {
   return TI_TEMPLATE (DECL_TEMPLATE_INFO (node));
@@ -368,7 +380,7 @@ function TYPE_TEMPLATE_INFO(node) {
     return CLASSTYPE_TEMPLATE_INFO (node)
 }
 
-const TI_ARGS = TREE_VALUE
+const TI_ARGS = isUsingGCCTuples ? TREE_CHAIN : TREE_VALUE;
 
 function TMPL_ARGS_HAVE_MULTIPLE_LEVELS (node) {
   if (!node) return
@@ -607,9 +619,9 @@ function CLASSTYPE_DECLARED_CLASS(node) {
 
 function LANG_DECL_U2_CHECK (node, tf) {
   let lt = DECL_LANG_SPECIFIC (node);
-  if (lt.decl_flags.u2sel != tf)
-    throw Error("LANG_DECL_U2_CHECK failed! expected: " + lt + " got: " + lt.decl_flags.u2sel);
-  return lt.decl_flags.u2;
+  if (decl_flags(lt).u2sel != tf)
+    throw Error("LANG_DECL_U2_CHECK failed! expected: " + lt + " got: " + decl_flags(lt).u2sel);
+  return decl_flags(lt).u2;
 }
 
 function DECL_ACCESS(node) {
@@ -669,7 +681,7 @@ function TYPE_NEXT_VARIANT(node) {
 function DECL_CLONED_FUNCTION_P(node) {
   return (TREE_CODE(node) == FUNCTION_DECL || TREE_CODE(node) == TEMPLATE_DECL) &&
     DECL_LANG_SPECIFIC(node) &&
-    !DECL_LANG_SPECIFIC(node).decl_flags.thunk_p &&
+    !decl_flags(DECL_LANG_SPECIFIC(node)).thunk_p &&
     DECL_CLONED_FUNCTION(node) != undefined;
 }
 
@@ -686,15 +698,15 @@ function NON_THUNK_FUNCTION_CHECK(node) {
 }
 
 function DECL_CONSTRUCTOR_P(node) {
-  return DECL_LANG_SPECIFIC(node).decl_flags.constructor_attr;
+  return decl_flags(DECL_LANG_SPECIFIC(node)).constructor_attr;
 }
 
 function DECL_DESTRUCTOR_P(node) {
-  return DECL_LANG_SPECIFIC(node).decl_flags.destructor_attr;
+  return decl_flags(DECL_LANG_SPECIFIC(node)).destructor_attr;
 }
 
 function DECL_PURE_VIRTUAL_P(node) {
-  return DECL_LANG_SPECIFIC(node).decl_flags.pure_virtual;
+  return decl_flags(DECL_LANG_SPECIFIC(node)).pure_virtual;
 }
 
 function DECL_VIRTUAL_P(node) {
@@ -745,9 +757,13 @@ function class_key_or_enum_as_string(t)
     return "enum";
   if (TREE_CODE (t) == UNION_TYPE)
     return "union";
-  if (TYPE_LANG_SPECIFIC (t) && CLASSTYPE_DECLARED_CLASS (t))
-    return "class";
-  if (TYPE_LANG_SPECIFIC (t) && LANG_TYPE_IS_CLASS (t))
+  if (TYPE_LANG_SPECIFIC (t) && LANG_TYPE_IS_CLASS (t)) {
+    if (CLASSTYPE_DECLARED_CLASS (t))
+      return "class";
+    return "struct";
+  }
+  // C struct
+  if (TREE_CODE (t) == RECORD_TYPE)
     return "struct";
   return undefined;
 }
@@ -826,7 +842,7 @@ function gimple_call_fndecl (gs)
     {
       return TREE_OPERAND (addr, 0);
     }
-  return NULL_TREE;
+  return undefined;
 }
 
 function gimple_num_ops (gs)

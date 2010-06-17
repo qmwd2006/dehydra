@@ -4,7 +4,7 @@ include('treehydra.js');
 include('unit_test.js');
 //include('/home/dmandelin/treehydra-analysis/util.js')
 
-function process_tree(fndecl) {
+function process_cp_pre_genericize(fndecl) {
   let r = new TestResults();
   new LocationTestCase(fndecl).run(r);
   r.list();
