@@ -7,7 +7,7 @@ include('unit_test.js');
 
 const assertEquals = TestCase.prototype.assertEquals
 
-function process_tree(fndecl) {
+function process_cp_pre_genericize(fndecl) {
   var counter = 0;
   function checker (t, depth) {
     if (t.tree_code() != PARM_DECL) return
