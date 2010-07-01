@@ -861,6 +861,10 @@ function gimple_call_arg (gs, i) {
   return gs.gimple_ops[3+i]
 }
 
+function gimple_call_num_args (gs) {
+  return gimple_num_ops (TREE_CHECK (gs, GIMPLE_CALL)) - 3;
+}
+
 function gimple_switch_index (gs) {
   return gs.gimple_ops[0]
 }

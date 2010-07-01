@@ -209,10 +209,14 @@ static void process (tree t) {
   if (pointer_set_insert (pset, t)) {
     return;
   }
-  if  (TREE_CODE (t) != NAMESPACE_DECL
-       && DECL_IS_BUILTIN (t)) {
+  if (TREE_CODE (t) != NAMESPACE_DECL
+      && DECL_IS_BUILTIN (t)) {
     return;
   }
+
+  // nothing interesting in using decls
+  if (TREE_CODE(t) == USING_DECL)
+    return;
 
   tree tree_type = TREE_TYPE (t);
   bool is_template_typedef = tree_type
@@ -235,9 +239,6 @@ static void process (tree t) {
   case FUNCTION_DECL:
   case VAR_DECL:
     return process_type (tree_type);
-  // nothing interesting in using decls
-  case USING_DECL:
-    return;
   default:
     /*error ( "Dehydra unknown tree element: %s", tree_code_name[TREE_CODE(t)]);*/
     xassert(!DECL_P (t));
