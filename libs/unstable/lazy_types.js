@@ -163,7 +163,7 @@ LazyRecord.prototype.__defineGetter__('attributes', function record_atts() {
   let attrs = [];
   let decl_template_info = TYPE_TEMPLATE_INFO (this._type);
   if (decl_template_info) {
-    let template_decl = TREE_PURPOSE (decl_template_info);
+    let template_decl = TI_TEMPLATE (decl_template_info);
     let type = TREE_TYPE (template_decl);
     attrs = attrs.concat(translate_attributes(TYPE_ATTRIBUTES(type)));
   }
@@ -215,9 +215,16 @@ function LazyEnum(type) {
 LazyEnum.prototype = new LazyType();
 LazyEnum.prototype.kind = 'enum';  
 LazyEnum.prototype.__defineGetter__('members', function enum_members() {
-  return [{'name': IDENTIFIER_POINTER(TREE_PURPOSE(tv)),
-	   'value': TREE_INT_CST_LOW(TREE_VALUE(tv))}
-	  for (tv in flatten_chain(TYPE_VALUES(this._type)))];
+  let members = [];
+  for (let tv in flatten_chain(TYPE_VALUES(this._type))) {
+    let obj = { "name" : IDENTIFIER_POINTER(TREE_PURPOSE(tv)) }
+    let val = TREE_VALUE(tv);
+    if (TREE_CODE(val) == CONST_DECL)
+      val = DECL_INITIAL(val);
+    obj.value = TREE_INT_CST_LOW(val);
+    members.push(obj);
+  }
+  return members;
 });
 LazyEnum.prototype.toString = function() {
   return "enum " + this.name;

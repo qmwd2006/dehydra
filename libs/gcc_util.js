@@ -94,6 +94,13 @@ function return_expr(exp) {
   }
 }
 
+/** Iterate over every statement of every block in the CFG. */
+function cfg_isn_iterator(cfg) {
+  for (let bb in cfg_bb_iterator(cfg))
+    for (let isn in bb_isn_iterator(bb))
+      yield isn;
+}
+
 /** Iterate over the basic blocks in the CFG. */
 function cfg_bb_iterator(cfg) {
   let bb_entry = cfg.x_entry_block_ptr;

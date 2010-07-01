@@ -1,7 +1,8 @@
-// { 'test': 'dehydra', 'input': 'enum.cc', 'output': 'unit_test' }
+// { 'test': 'treehydra', 'input': 'enum.cc', 'output': 'unit_test' }
 
-// Test that 'enum' type is passed correctly
+require({ after_gcc_pass: "cfg" });
 
+include('unstable/lazy_types.js')
 include('unit_test.js')
 
 let r = new TestResults();
@@ -26,10 +27,24 @@ EnumTestCase.prototype.runTest = function () {
   this.assertEquals(m[2].value, 42);
 }
 
+// Test that 'enum' type is passed correctly
 function process_type(type) {
   new EnumTestCase(type).run(r);
 }
 
+// Test enum handling of dehydra_convert
+function process_tree(fn) {
+  let cfg = function_decl_cfg(fn);
+  for (let isn in cfg_isn_iterator(cfg)) {
+    if (isn.tree_code() != GIMPLE_ASSIGN)
+      continue;
+    let lhs = gimple_op(isn, 0);
+    let t = TREE_TYPE(lhs);
+    t = dehydra_convert(t);
+    new EnumTestCase(t).run(r);
+  }
+}
+
 function input_end() {
-  r.verifyExpectedTestsRun(1)
+  r.verifyExpectedTestsRun(2);
 }
