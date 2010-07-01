@@ -334,6 +334,10 @@ static void gcc_plugin_post_parse(void*_, void*_2)
   tree t;
   /* first visit recorded structs */
   for (i = 0; tree_queue_vec && VEC_iterate (tree, tree_queue_vec, i, t); ++i) {
+    // Bug 575434: some structs get mangled with 4.5 CC1
+    // TODO: find out what's going on
+    if (EXCEPTIONAL_CLASS_P (t))
+      continue;
     process_type (t);
 #ifdef TREEHYDRA_PLUGIN
     treehydra_call_js (&dehydra, "process_tree_type", t);
