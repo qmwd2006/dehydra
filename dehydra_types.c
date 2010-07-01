@@ -92,7 +92,9 @@ static void dehydra_attachTypeTypedef(Dehydra *this, JSObject *obj, tree type) {
     return;
 
   tree original_type = DECL_ORIGINAL_TYPE (type_decl);
-  if (original_type) {
+  // bug 575398: circular typedef field generated with (typedefed) 
+  // attribute __aligned__ record_type
+  if (original_type && type != original_type) {
     dehydra_defineStringProperty (this, obj, NAME,
                                   IDENTIFIER_POINTER(DECL_NAME(type_decl)));
     jsval subval = dehydra_convert_type (this, original_type);
