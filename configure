@@ -124,7 +124,7 @@ def try_gcc_plugin_headers(config):
     if os.path.exists(path):
         path = os.path.abspath(path +"/include")
         config["GCC_PLUGIN_HEADERS"] = "-I%s" % (path)
-        config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-"
+        config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-script"
         print(path)
     else:
         print("No. Will rely on for Mozilla plugin API and build/src dirs")

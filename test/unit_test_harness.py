@@ -4,13 +4,15 @@
 Specify a test by a JS file in this directory with the first line
 like this:
 
-// { 'test': 'dehydra', 'input': 'empty.cc', 'output': 'unit_test', 'lang': 'c'}
+// { 'test': 'dehydra', 'input': 'empty.cc', 'output': 'unit_test', 'lang': 'c', 'args': { 'a': '1', 'b': '2' }, 'version': '4.5' }
 
-  test:   comma-separated list of plugins to test, dehydra or treehydra
-  input:  C++ input file to use for test
-  output: eval'd in this script to yield a checker function applied
-          to the output. See checkers, below.
-  lang:   comma-separated list of languages to test, c or c++. defaults to c++
+  test:    comma-separated list of plugins to test, dehydra or treehydra
+  input:   C++ input file to use for test
+  output:  eval'd in this script to yield a checker function applied
+           to the output. See checkers, below.
+  lang:    comma-separated list of languages to test, c or c++. defaults to c++
+  args:    list of key value pairs passed as arguments to the script
+  version: for restricting tests to a particular GCC version. 4.3 or 4.5
 
 """
 
@@ -20,11 +22,12 @@ from unittest import TestCase, TestSuite, TestLoader, TestResult
 
 class PluginTestCase(TestCase):
     """Test case for running Treehydra and checking output."""
-    def __init__(self, plugin, lang, jsfile, ccfile, checker, checker_str):
+    def __init__(self, plugin, lang, jsfile, arguments, ccfile, checker, checker_str):
         super(PluginTestCase, self).__init__()
         self.plugin = plugin
         self.lang = lang
         self.jsfile = jsfile
+        self.arguments = arguments
         self.ccfile = ccfile
         self.checker = checker
         self.checker_str = checker_str
@@ -41,10 +44,16 @@ class PluginTestCase(TestCase):
         if self.lang == 'c':
             command = command[:-2] + "cc"
         command += " -c -fplugin=../gcc_" + self.plugin + ".so -o /dev/null"
-        if ("PLUGINS_MOZ" in config_opts) :
-            command += " -fplugin-arg=" + self.jsfile
+        if "PLUGINS_MOZ" in config_opts:
+            command += ' -fplugin-arg="' + self.jsfile
+            argprefix = "--"
         else :
-            command += " -fplugin-arg-gcc_" + self.plugin + "-=" + self.jsfile
+            command += " -fplugin-arg-gcc_" + self.plugin + "-script=" + self.jsfile
+            argprefix = "-fplugin-arg-gcc_" + self.plugin + "-"
+        for key, value in self.arguments.iteritems():
+            command += " " + argprefix + key + "=" + value
+        if "PLUGINS_MOZ" in config_opts:
+            command += '"'
         command += " " + self.ccfile
         return command
 
@@ -170,6 +179,10 @@ def extractTests(filename):
     if version == '4.3' and not "PLUGINS_MOZ" in config_opts:
         return []
 
+    arguments = spec.get('args')
+    if arguments is None:
+        arguments = {}
+
     langs = spec.get('lang')
     if langs is None:
         langs = 'c,c++'
@@ -185,7 +198,7 @@ def extractTests(filename):
         if lang not in ('c', 'c++'):
             raise TestSpecException(filename, "invalid language %s"%lang)
 
-    return [ PluginTestCase(plugin, lang, filename, srcfile, checker, checker_str)
+    return [ PluginTestCase(plugin, lang, filename, arguments, srcfile, checker, checker_str)
              for plugin in plugins for lang in langs]
 
 def parseConfigFile(config_filename):
@@ -229,18 +242,14 @@ from glob import glob
 tests = []
 # This test can't go in a file, because it tests when the file doesn't exist.
 for plugin in ("dehydra", "treehydra"):
-    tests.append(PluginTestCase(plugin, 'c++', 'nofile.js', 'empty.cc',
+    tests.append(PluginTestCase(plugin, 'c++', 'nofile.js', {}, 'empty.cc',
                                 stderr_has('Cannot find include file'), ''))
-# Tests for the argument
-for plugin in ("dehydra", "treehydra"):
-    tests.append(PluginTestCase(plugin, 'c++', '"test_arg.js hello  goodbye"',
-                                'empty.cc', unit_test, 'unit_test'))
 
 # For now, we'll put this here, but if more are created, we should make
 # the test harness search dirs.
 for plugin in ("dehydra", "treehydra"):
-    tests.append(PluginTestCase(plugin, 'c++', 'subdir/main.js', 'empty.cc',
-                                unit_test, ''))
+    tests.append(PluginTestCase(plugin, 'c++', 'subdir/main.js', {},
+                                'empty.cc', unit_test, ''))
 
 
 for f in glob('*.js'):
