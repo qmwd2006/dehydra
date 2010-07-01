@@ -248,15 +248,15 @@ static void process (tree t) {
 
 #define STRINGIFY(x) #x
 
-int gcc_plugin_init(const char *file, const char* arg, char **pass
-                    NOT_MOZ_PLUGINS(const char *version_string)) {
-  char *script, *rest;
-  const char *arguments = "";
+#ifdef CFG_PLUGINS_MOZ
+int gcc_plugin_init(const char *file, const char* arg, char **pass)
+#else
+int gcc_plugin_init(const char *file, const struct plugin_argument* argv, int argc, 
+                    char **pass, const char *version_string)
+#endif
+{
+  char *script = NULL;
 
-  if (!arg) {
-    error ("Use " STRINGIFY(PLUGIN_ARG) "=<scriptname> to specify the dehydra script to run");
-    return 1;
-  }
   pset = pointer_set_create ();
   type_pset = pointer_set_create ();
   tree_queue_vec = VEC_alloc(tree, heap, 10);
@@ -267,16 +267,40 @@ int gcc_plugin_init(const char *file, const char* arg, char **pass
   ret = treehydra_startup (&dehydra);
   if (ret) return ret;
 #endif
+#ifdef CFG_PLUGINS_MOZ
+  if (!arg) {
+    error ("Use " STRINGIFY(PLUGIN_ARG) "=<scriptname> to specify the dehydra script to run");
+    return 1;
+  }
+
+  char *rest;
+  const char *options = "";
 
   script = xstrdup(arg);
   rest = strchr(script, ' ');
   if (rest) {
     *rest = '\0';
     ++rest;
-    arguments = rest;
+    options = rest;
+  }
+  dehydra_defineStringProperty(&dehydra, dehydra.globalObj, "options", options);
+#else
+  JSObject *options = dehydra_defineObjectProperty (&dehydra, dehydra.globalObj, "options");
+
+  int i;
+  for (i = 0; i < argc; ++i) {
+    if (!strcmp(argv[i].key, "script"))
+      script = argv[i].value;
+    else
+      dehydra_defineStringProperty (&dehydra, options, argv[i].key, argv[i].value);
   }
 
-  dehydra_defineStringProperty(&dehydra, dehydra.globalObj, "_arguments", arguments);
+  if (!script) {
+    error ("Use " STRINGIFY(PLUGIN_ARG) "=<scriptname> to specify the dehydra script to run");
+    return 1;
+  }
+#endif
+
   dehydra_appendDirnameToPath (&dehydra, script);
   ret = dehydra_includeScript (&dehydra, script);
 
@@ -483,8 +507,8 @@ int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version
   if (!plugin_info->argc)
     return 1;
 
-  char *script_name = plugin_info->argv[0].value;
-  int ret = gcc_plugin_init (plugin_info->full_name, script_name, &pass_name, version->basever);
+  int ret = gcc_plugin_init (plugin_info->full_name, plugin_info->argv,
+                             plugin_info->argc, &pass_name, version->basever);
 
   if (!ret) {
     // Look for a pass introduced in GCC 4.5 prunes useful info(class members/etc) & disable it

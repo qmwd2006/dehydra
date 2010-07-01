@@ -19,8 +19,6 @@
 
 include ("xhydra.js")
 
-this.__defineGetter__("arguments", function() { return this._arguments.split(/ +/); });
-
 Object.prototype.toString = function () {return uneval(this)}
 /*
 A clone function is required to clone
