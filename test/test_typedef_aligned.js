@@ -19,11 +19,7 @@ TypedefTestCase.prototype.runTest = function () {
 function process_type(t) {
   while(t) {
     new TypedefTestCase(t).run(r);
+    r.list();
     t = t.typedef;
   }
-}
-
-function input_end() {
-  // deydra_types.c TODO: ensure types are only visited once
-  r.verifyExpectedTestsRun(5);
 }
