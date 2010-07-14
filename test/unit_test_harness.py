@@ -42,7 +42,7 @@ class PluginTestCase(TestCase):
         command = CXX
         # turn .../g++ into .../gcc
         if self.lang == 'c':
-            command = command[:-2] + "cc"
+            command = re.sub(r'g\+\+([^/]*)$', r'gcc\1', command)
         command += " -c -fplugin=../gcc_" + self.plugin + ".so -o /dev/null"
         if "PLUGINS_MOZ" in config_opts:
             command += ' -fplugin-arg="' + self.jsfile
