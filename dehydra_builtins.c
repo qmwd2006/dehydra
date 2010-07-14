@@ -74,7 +74,7 @@ JSBool require_option(JSContext *cx, jsval val, uint32 option) {
 JSBool require_pass(JSContext *cx, jsval val) {
   JSString *str = JS_ValueToString(cx, val);
   if (!str) return JS_FALSE;
-  JS_AddRoot(cx, &str);
+  JS_AddStringRoot(cx, &str);
   char *cstr = JS_GetStringBytes(str);
   JSBool retval;
   if (set_after_gcc_pass(cstr)) {
@@ -83,7 +83,7 @@ JSBool require_pass(JSContext *cx, jsval val) {
   } else {
     retval = JS_TRUE;
   }
-  JS_RemoveRoot(cx, &str);
+  JS_RemoveStringRoot(cx, &str);
   return retval;
 }
 #endif
@@ -433,10 +433,10 @@ static JSBool dehydra_loadScript (Dehydra *this, const char *filename,
   }
 
   JSObject *sobj = JS_NewScriptObject(this->cx, script);
-  JS_AddNamedRoot(this->cx, &sobj, filename);
+  JS_AddNamedObjectRoot(this->cx, &sobj, filename);
   jsval rval;
   JSBool rv = JS_ExecuteScript(this->cx, namespace, script, &rval);
-  JS_RemoveRoot(this->cx, &sobj);
+  JS_RemoveObjectRoot(this->cx, &sobj);
   if (!rv) {
     xassert(JS_IsExceptionPending(this->cx));
     return JS_FALSE;
