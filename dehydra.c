@@ -143,7 +143,7 @@ void dehydra_init(Dehydra *this, const char *file, const char *version) {
   }
   this->rootedArgDestArray = 
     JS_NewArrayObject (this->cx, 0, NULL);
-  JS_AddRoot (this->cx, &this->rootedArgDestArray);
+  JS_AddObjectRoot (this->cx, &this->rootedArgDestArray);
   // this is to be added at function_decl time
   this->rootedFreeArray = JS_NewArrayObject (this->cx, 0, NULL);
   JS_DefineElement (this->cx, this->rootedArgDestArray, 0,

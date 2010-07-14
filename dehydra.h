@@ -21,6 +21,14 @@
 #ifndef DEHYDRA_H
 #define DEHYDRA_H
 
+#ifndef JS_TYPED_ROOTING_API
+#define JS_AddObjectRoot(cx, obj) JS_AddRoot(cx, obj)
+#define JS_AddStringRoot(cx, str) JS_AddRoot(cx, str)
+#define JS_AddNamedObjectRoot(cx, obj, name) JS_AddNamedRoot(cx, obj, name)
+#define JS_RemoveObjectRoot(cx, obj) JS_RemoveRoot(cx, obj)
+#define JS_RemoveStringRoot(cx, str) JS_RemoveRoot(cx, str)
+#endif
+
 struct Dehydra {
   JSRuntime *rt;
   JSContext *cx;
