@@ -44,8 +44,16 @@ LazyType.prototype.__defineGetter__('restrict', function type_restrict() {
   return TYPE_RESTRICT(this._type) ? true : undefined;
 });
 LazyType.prototype.__defineGetter__('attributes', function type_atts() {
-  if (!TYPE_P(this._type))
-    throw new Error("code " + TREE_CODE(this._type) + " is not a type!");
+  switch (TREE_CODE(this._type)) {
+  case TYPENAME_TYPE:
+  case TEMPLATE_TYPE_PARM:
+  case TYPEOF_TYPE:
+    // types for which TYPE_P does not hold. argh.
+    break;
+  default:
+    if (!TYPE_P(this._type))
+      throw new Error("code " + TREE_CODE(this._type) + " is not a type!");
+  }
   return translate_attributes(TYPE_ATTRIBUTES(this._type));
 });
 LazyType.prototype.__defineGetter__('variantOf', function type_variant() {
@@ -515,6 +523,7 @@ function dehydra_convert(type) {
     /* maybe should add an isTemplateParam? */
   case TEMPLATE_TYPE_PARM:
   case TYPENAME_TYPE:
+  case TYPEOF_TYPE:
     return new LazyType(type);
   case FUNCTION_TYPE:
   case METHOD_TYPE:

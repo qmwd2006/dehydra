@@ -561,6 +561,9 @@ function location_of(t) {
   // TODO disabling this for now
   //else if (TREE_CODE (t) == OVERLOAD)
   //  t = OVL_FUNCTION (t);
+  
+  if (t.tree_code() == TEMPLATE_PARM_INDEX)
+    return UNKNOWN_LOCATION;
 
   if (DECL_P(t))
     return DECL_SOURCE_LOCATION (t);

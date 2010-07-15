@@ -210,18 +210,19 @@ function walk_tree (t, func, guard, stack) {
     }
     break;
   case TEMPLATE_PARM_INDEX:
-    // Weird statement expression with no ops. Ignore.
+  case PTRMEM_CST:
+  case USING_DECL:
+    /* expressions with no operands */
     break;
   default:
     if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (code))
-        || IS_GIMPLE_STMT_CODE_CLASS (TREE_CODE_CLASS (code))
-        || GIMPLE_TUPLE_P (t))
-    {
-      for each (let o in t.operands()) {
+        || IS_GIMPLE_STMT_CODE_CLASS (TREE_CODE_CLASS (code))) {
+      for each (let o in t.operands())
         walk_tree (o, func, guard, stack)
-      }
+    } else if (GIMPLE_TUPLE_P (t)) {
+      for (let i = 0; i < gimple_num_ops(t); ++i)
+        walk_tree(gimple_op(t, i), func, guard, stack);
     }
-    break;
   }
   stack.pop ()
 }
