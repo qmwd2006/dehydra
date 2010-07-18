@@ -461,8 +461,12 @@ static void dehydra_setName (Dehydra *this, JSObject *obj, tree v) {
     // avoid that like the plague as it can cause compiler bugs
     if (TREE_CODE(v) == TEMPLATE_DECL)
       dehydra_defineProperty (this, obj, NAME, jsname);
-    else
+    else {
+      if (HAS_DECL_ASSEMBLER_NAME_P (v))
+        dehydra_defineStringProperty (this, obj, "assemblerName", 
+                                      IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (v)));
       dehydra_defineStringProperty (this, obj, NAME, decl_as_string (v, 0));
+    }
   } else {
     static char buf[128];
     sprintf (buf, " _%d", DECL_UID (v));
