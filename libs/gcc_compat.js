@@ -752,6 +752,14 @@ function DECL_TEMPLATE_PARMS(node) {
   return node.decl_non_common.arguments;
 }
 
+function DECL_ASSEMBLER_NAME(node) {
+  return node._decl_assembler_name.identifier;
+}
+
+function DECL_NONLOCAL(node) {
+  return node.decl_common.nonlocal_flag
+}
+
 let INNERMOST_TEMPLATE_PARMS = TREE_VALUE;
 
 function class_key_or_enum_as_string(t)
