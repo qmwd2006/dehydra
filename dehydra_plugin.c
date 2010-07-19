@@ -173,10 +173,6 @@ static void process_type(tree t) {
     return;
   }
 
-  if (EXCEPTIONAL_CLASS_P(t)) {
-    return;
-  }
-
   // dmandelin@mozilla.com -- bug 420299
   // We need to process the original type first, because it will be the target
   // of the typedef field. This is the natural extension of the DFS strategy.
@@ -360,8 +356,9 @@ static void gcc_plugin_post_parse(void*_, void*_2)
   /* first visit recorded structs */
   for (i = 0; tree_queue_vec && VEC_iterate (tree, tree_queue_vec, i, t); ++i) {
     // Bug 575434: some structs get mangled with 4.5 CC1
+    // see also: http://gcc.gnu.org/bugzilla/show_bug.cgi?id=44968
     // TODO: find out what's going on
-    if (EXCEPTIONAL_CLASS_P (t))
+    if (!TYPE_P (t))
       continue;
     process_type (t);
 #ifdef TREEHYDRA_PLUGIN
