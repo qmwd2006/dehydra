@@ -39,6 +39,7 @@
 #include "dehydra.h"
 #include "dehydra_ast.h"
 #include "dehydra_types.h"
+#include "jsval_map.h"
 
 static const char *POINTER = "isPointer";
 static const char *REFERENCE = "isReference";
@@ -54,7 +55,7 @@ const char *PUBLIC = "public";
 const char *PRIVATE = "private";
 const char *PROTECTED = "protected";
 
-static struct pointer_map_t *typeMap = NULL;
+static struct jsval_map *typeMap = NULL;
 
 static const char *dehydra_typeString(tree type);
 static jsval dehydra_convert_type_cached (Dehydra *this, tree type, JSObject *obj);
@@ -290,9 +291,11 @@ static void dehydra_convertAttachFunctionType (Dehydra *this, JSObject *obj, tre
 
 void dehydra_finishStruct (Dehydra *this, tree type) {
   if (!typeMap) return;
-  void **v = pointer_map_contains(typeMap, type);
-  if (!v) return;
-  JSObject *obj = (JSObject*) *v;
+  jsval v;
+  bool found = jsval_map_get(typeMap, type, &v);
+  if (!found) return;
+  xassert(JSVAL_IS_OBJECT(v));
+  JSObject *obj = JSVAL_TO_OBJECT(v);
   jsval incomplete = JSVAL_VOID;
   JS_GetProperty(this->cx, obj, INCOMPLETE, &incomplete);
   if (incomplete != JSVAL_TRUE) return;
@@ -509,26 +512,29 @@ jsval dehydra_convert_type (Dehydra *this, tree type) {
      this prevents nodes without types from haivng undefined .type*/
   xassert (type);
   if (!typeMap) {
-    typeMap = pointer_map_create ();
+    typeMap = jsval_map_create ();
   }
 
-  void **v = pointer_map_contains(typeMap, (void*)(intptr_t)TYPE_UID(type));
+  jsval v;
+  bool found = jsval_map_get(typeMap, (void*)(intptr_t)TYPE_UID(type), &v);
   JSObject *obj = NULL;
-  if (v) {
+  if (found) {
     jsval incomplete = JSVAL_VOID;
-    obj = (JSObject*) *v;
+    xassert(JSVAL_IS_OBJECT(v));
+    obj = JSVAL_TO_OBJECT(v);
     JS_GetProperty(this->cx, obj, INCOMPLETE, &incomplete);
     /* add missing stuff to the type if it is now COMPLETE_TYPE_P */
     if (incomplete == JSVAL_TRUE && COMPLETE_TYPE_P (type)) {
       JS_DeleteProperty (this->cx, obj, INCOMPLETE);
     } else {
-      return OBJECT_TO_JSVAL (obj);
+      return v;
     }
   } else {
     obj = JS_NewObject (this->cx, &js_type_class, NULL,
                         this->globalObj);
-    dehydra_rootObject (this, OBJECT_TO_JSVAL (obj));
-    *pointer_map_insert (typeMap, (void*)(intptr_t)TYPE_UID(type)) = obj;
+    jsval val = OBJECT_TO_JSVAL(obj);
+    dehydra_rootObject (this, val);
+    jsval_map_put(typeMap, (void*)(intptr_t)TYPE_UID(type), val);
   }
   return dehydra_convert_type_cached (this, type, obj);
 }

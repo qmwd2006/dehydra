@@ -46,6 +46,7 @@
 #include "dehydra.h"
 #include "dehydra_types.h"
 #include "treehydra.h"
+#include "jsval_map.h"
 
 // mess to figure out what gimple is implemented like
 #ifdef GIMPLE_TUPLE_P // 4.3
@@ -59,12 +60,18 @@
 #endif
 #endif
 
+// no precompiler symbol defined for fatvals change (bug 549143)
+#ifndef JSID_TO_STRING
+#define JSID_TO_STRING(id) JSVAL_TO_STRING(id)
+#endif
+
 #if JS_VERSION < 180
 #error "Need SpiderMonkey 1.8 or higher. Treehydra does not support older spidermonkeys due to lack of JS_AlreadyHasOwnProperty"
 #endif
 /* The entries in the map should be transitively rooted by
    this->globalObj's current_function_decl property */
-static struct pointer_map_t *jsobjMap = NULL;
+static struct jsval_map *jsvalMap = NULL;
+
 /* this helps correlate js nodes to their C counterparts */
 static int global_seq = 0;
 static JSObject *dehydraSysObj = NULL;
@@ -101,7 +108,7 @@ static const char *SEQUENCE_N = "SEQUENCE_N";
  * The strategy here is to call the lazy handler exactly once, the
  * first time any property is asked for. Thus, the handler must install
  * all lazy properties. */
-static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id,
+static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsid id,
                                uintN flags, JSObject **objp) {
   Dehydra *this = JS_GetContextPrivate (cx);
   /* when the going gets tough will be able to implement
@@ -119,7 +126,8 @@ static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id,
      *
      * A better way to do this would be to simply set strict mode, but
      * strict mode doesn't always report this condition (see bug 425066). */
-    const char *prop_name = JS_GetStringBytes(JSVAL_TO_STRING(id));
+    JSString* str = JSID_TO_STRING(id);
+    const char *prop_name = JS_GetStringBytes(str);
     JSBool has_prop;
     JSObject *protoObj = JS_GetPrototype(cx, obj);
     JSBool rv = JS_HasProperty(cx, protoObj, prop_name, &has_prop);
@@ -131,8 +139,9 @@ static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsval id,
     jsval unhandled_property_handler = dehydra_getToplevelFunction(
         this, "unhandledLazyProperty");
     jsval rval;
+    jsval arg = STRING_TO_JSVAL(str);
     return JS_CallFunctionValue (this->cx, this->globalObj, unhandled_property_handler,
-                                 1, &id, &rval);
+                                 1, &arg, &rval);
   }
   JS_SetPrivate (cx, obj, NULL);
   lazy->handler (this, lazy->data, obj);
@@ -176,15 +185,15 @@ jsval get_existing_or_lazy (Dehydra *this, treehydra_handler handler, void *v,
     return JSVAL_VOID;
   }
 
-  void **ret = pointer_map_contains (jsobjMap, v);
-  if (ret) {
-    dehydra_defineProperty (this, parent, propname, (jsval) *ret);
-    return (jsval) *ret;
+  jsval val;
+  bool found = jsval_map_get (jsvalMap, v, &val);
+  if (found) {
+    dehydra_defineProperty (this, parent, propname, val);
+    return val;
   }
 
   const jsval jsret = get_lazy (this, handler, v, parent, propname);
-
-  *pointer_map_insert (jsobjMap, v) = (void*) jsret;
+  jsval_map_put(jsvalMap, v, jsret);
   return jsret;
 }
 
@@ -365,10 +374,11 @@ walk_n_test (tree *tp, int *walk_subtrees, void *data)
   const char *strcode = tree_code_name[code];
   GrowingString **gstr = (GrowingString**) data;
   /* figure out corresponding seq# by peeking at js */
-  void **v = pointer_map_contains (jsobjMap, *tp);
+  jsval v;
+  bool found = jsval_map_get (jsvalMap, *tp, &v);
   int seq = 0;
-  if (v) {
-    JSObject *obj = JSVAL_TO_OBJECT ((jsval) *v);
+  if (found) {
+    JSObject *obj = JSVAL_TO_OBJECT (v);
     jsval val = JSVAL_VOID;
     JS_GetProperty(gstr[0]->this->cx, obj, SEQUENCE_N, &val);
     if (val != JSVAL_VOID)
@@ -430,8 +440,8 @@ void treehydra_call_js (struct Dehydra *this, const char *callback, tree treeval
   if (process == JSVAL_VOID) return;
 
   jsval rval;
-  xassert (!jsobjMap);
-  jsobjMap = pointer_map_create ();
+  xassert (!jsvalMap);
+  jsvalMap = jsval_map_create();
 
   get_lazy (this, lazy_treehydra_globals, NULL, dehydraSysObj,
             "treehydra");
@@ -454,14 +464,12 @@ void treehydra_call_js (struct Dehydra *this, const char *callback, tree treeval
   JS_DeleteProperty (this->cx, this->globalObj,
                        "__treehydra_top_obj");
 
-  pointer_map_destroy (jsobjMap);
-  jsobjMap = NULL;
+  jsval_map_destroy(jsvalMap);
+  jsvalMap = NULL;
   JS_MaybeGC(this->cx);
 }
 
 int treehydra_startup (Dehydra *this) {
-  /* Check conditions that should hold for treehydra_generated.h */
-  xassert (NULL == JSVAL_NULL && sizeof (void*) == sizeof (jsval));
   jsval sys_val = JSVAL_VOID;
 
   JS_GetProperty(this->cx, this->globalObj, SYS, &sys_val);

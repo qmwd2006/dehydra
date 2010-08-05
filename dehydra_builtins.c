@@ -482,11 +482,11 @@ JSBool Hashcode(JSContext *cx, JSObject *obj_this, uintN argc,
                     jsval *argv, jsval *rval)
 {
   if (!argc)
-    return JSVAL_FALSE;
+    return JS_FALSE;
   jsval o = *argv;
   if (!JSVAL_IS_OBJECT (o)) {
     *rval = o;
-    return JSVAL_TRUE;
+    return JS_TRUE;
   }
   JSObject *obj = JSVAL_TO_OBJECT (*argv);
   JSBool has_prop;

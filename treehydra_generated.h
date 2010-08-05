@@ -23,6 +23,7 @@
 /* This file isn't generated, but it's used by the generated one*/
 #include "gcc_cp_headers.h"
 #include "gcc_compat.h"
+#include <stdint.h>
 // cleanup some gcc polution in GCC trunk as of Mar 5, 2008
 #ifdef in_function_try_handler
 #undef in_function_try_handler
@@ -37,8 +38,7 @@
 #endif
 
 struct JSObject;
-typedef void* jsval;
-#define JSVAL_NULL NULL
+typedef uint64_t jsval;
 
 struct Dehydra;
 void dehydra_defineProperty(struct Dehydra *this, struct JSObject *obj,
