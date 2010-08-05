@@ -364,7 +364,7 @@ void dehydra_setLoc(Dehydra *this, JSObject *obj, tree t) {
 #ifndef __APPLE__
 /* On modern GCCs we use a lazy location system to save memory
  and location lookup*/
-static JSBool ResolveLocation (JSContext *cx, JSObject *obj, jsval id,
+static JSBool ResolveLocation (JSContext *cx, JSObject *obj, jsid id,
                                uintN flags, JSObject **objp) {
   *objp = obj;
   JSBool has_prop;
@@ -380,7 +380,7 @@ static JSBool ResolveLocation (JSContext *cx, JSObject *obj, jsval id,
   dehydra_defineStringProperty (this, obj, "file", eloc.file);
   dehydra_defineProperty (this, obj, "line", INT_TO_JSVAL(eloc.line));
   dehydra_defineProperty (this, obj, "column", INT_TO_JSVAL(eloc.column));
-  return JSVAL_TRUE;
+  return JS_TRUE;
 }
 #endif 
 

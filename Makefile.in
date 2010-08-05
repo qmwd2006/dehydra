@@ -29,11 +29,11 @@ DEPDIR = .deps
 
 all: gcc_dehydra.so $(BUILD_TREEHYDRA)
 
-gcc_dehydra.so: dehydra_plugin.o dehydra_builtins.o $(DEHYDRA_OBJS)
-	$(CC) -o $@ $+ $(LDFLAGS)
+gcc_dehydra.so: dehydra_plugin.o dehydra_builtins.o jsval_map.o $(DEHYDRA_OBJS)
+	$(CXX) -o $@ $+ $(LDFLAGS)
 
-gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
-	$(CC) -o $@ $(TREEHYDRA_OBJS) $(LDFLAGS)
+gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) jsval_map.o useful_arrays.js
+	$(CXX) -o $@ $(TREEHYDRA_OBJS) jsval_map.o $(LDFLAGS)
 
 -include $(TREEHYDRA_OBJS:%.o=$(DEPDIR)/%.P)
 
@@ -47,6 +47,9 @@ gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) useful_arrays.js
 
 treehydra_generated.c: gcc_cp_headers.h convert_tree.js gcc_dehydra.so
 	$(CXX) -Wp,-C -save-temps -DTREEHYDRA_CONVERT_JS -fpermissive -fshow-column $(CFLAGS) -fplugin=./gcc_dehydra.so $(PLUGIN_ARG)=convert_tree.js $< -o /dev/null
+
+jsval_map.o: jsval_map.cc jsval_map.h
+	$(CXX) -g3 $(CFLAGS) -c $<
 
 useful_arrays.ii: useful_arrays.c
 	$(CC) $(INCLUDE) -E $< -o $@
