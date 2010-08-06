@@ -19,7 +19,7 @@
 #
 # Author: Taras Glek
 # OSX support by Vlad Sukhoy
-import getopt, sys, os.path, os, platform, popen2
+import getopt, sys, os.path, os, platform, popen2, tempfile
 
 def usage():
     print """
@@ -116,6 +116,23 @@ def try_enable_treehydra(config):
         config["BUILD_TREEHYDRA"] = "gcc_treehydra.so"
         print "Will use %s to build Treehydra" % cxx
 
+def try_enable_finish_decl(config):
+    print("Checking for FINISH_DECL callback:")
+    cxx = config["CXX"]
+    file = tempfile.NamedTemporaryFile("w+b", -1, ".c")
+    file.write(
+"""#include "gcc-plugin.h"
+enum plugin_event p = PLUGIN_FINISH_DECL;
+""")
+    file.flush()
+    po = popen2.Popen3("cc -c -o /dev/null " + config["GCC_PLUGIN_HEADERS"] + " " + file.name)
+    if po.wait() == 0:
+        config['FINISH_DECL'] = "yes"
+        print("FINISH_DECL callback enabled");
+    else:
+        print("FINISH_DECL callback disabled");
+    file.close()
+
 def try_gcc_plugin_headers(config):
     cxx = config["CXX"]
     sys.stdout.write ("Checking for %s plugin headers: " % cxx)
@@ -126,6 +143,7 @@ def try_gcc_plugin_headers(config):
         config["GCC_PLUGIN_HEADERS"] = "-I%s" % (path)
         config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-script"
         print(path)
+        try_enable_finish_decl(config)
     else:
         print("No. Will rely on for Mozilla plugin API and build/src dirs")
         config["GCCBUILDDIR"] = os.path.realpath(config["GCCBUILDDIR"])
