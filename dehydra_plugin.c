@@ -432,6 +432,17 @@ static void dehydra_ehqueue_tree (tree t) {
   VEC_safe_push(tree, heap, tree_queue_vec, t);
 }
 
+#ifdef CFG_FINISH_DECL
+static void gcc_plugin_finish_decl(void *event_data, void *_) {
+  tree decl = (tree) event_data;
+  if (TREE_CODE(decl) != VAR_DECL || DECL_CONTEXT(decl))
+    return;
+#ifdef TREEHYDRA_PLUGIN
+  treehydra_call_js (&dehydra, "process_tree_decl", decl);
+#endif
+}
+#endif
+
 #ifdef CFG_PLUGINS_MOZ
 int gcc_plugin_finish ()
 #else
@@ -551,6 +562,9 @@ int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version
     }
     register_callback (plugin_info->base_name, PLUGIN_FINISH_TYPE, 
                        (plugin_callback_func) gcc_plugin_finish_struct, NULL);
+#ifdef CFG_FINISH_DECL
+    if (!isGPlusPlus()) register_callback (plugin_info->base_name, PLUGIN_FINISH_DECL, gcc_plugin_finish_decl, NULL);
+#endif
     register_callback (plugin_info->base_name, PLUGIN_FINISH, gcc_plugin_finish, NULL);
     register_callback (plugin_info->base_name, PLUGIN_ATTRIBUTES, gcc_plugin_attributes, NULL);
   }
