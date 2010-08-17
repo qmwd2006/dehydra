@@ -80,6 +80,8 @@ Zero_NonZero.prototype.processCall = function (isn, state) {
   if (!lhs)
     return;
 
+  lhs = unwrap_lhs(lhs);
+
   let fname = gimple_call_function_name(isn);
   if (fname == '__builtin_expect') {
     // Same as an assign from arg 0 to lhs
@@ -87,6 +89,17 @@ Zero_NonZero.prototype.processCall = function (isn, state) {
   } else {
     state.assignValue(lhs, ESP.TOP, isn);
   }
+}
+
+function unwrap_lhs(lhs) {
+  switch (lhs.tree_code()) {
+  case COMPONENT_REF:
+  case INDIRECT_REF:
+  case ARRAY_REF:
+    lhs = TREE_OPERAND(lhs, 0);
+    return unwrap_lhs(lhs);
+  }
+  return lhs;
 }
 
 // State transition for assignments. We'll just handle constants and copies.
