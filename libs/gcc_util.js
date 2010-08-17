@@ -94,6 +94,14 @@ function return_expr(exp) {
   }
 }
 
+/** Iterate over a functions local variables */
+function local_decls_iterator(fndecl) {
+  for (let list = DECL_STRUCT_FUNCTION(fndecl).local_decls;
+       list;
+       list = TREE_CHAIN(list))
+    yield TREE_VALUE(list);
+}
+
 /** Iterate over every statement of every block in the CFG. */
 function cfg_isn_iterator(cfg) {
   for (let bb in cfg_bb_iterator(cfg))
@@ -363,7 +371,13 @@ function flatten_chain(chain_head) {
 
 /** Return pure JS representation of arguments of an attribute. */
 function rectify_attribute_args(tree) {
-  return [ TREE_STRING_POINTER(TREE_VALUE(a)) for (a in flatten_chain(tree)) ]
+  let args = [];
+  for (let a in flatten_chain(tree)) {
+    let val = TREE_VALUE(a);
+    args.push(TREE_CODE(val) == INTEGER_CST ?
+              TREE_INT_CST_LOW(val) : TREE_STRING_POINTER(val));
+  }
+  return args;
 }
 
 /** Return pure JS representation of attribtues of an AST node. */

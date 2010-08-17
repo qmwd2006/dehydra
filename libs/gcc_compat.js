@@ -255,7 +255,21 @@ function DECL_SAVED_TREE (node) {
 }
 
 function DECL_STRUCT_FUNCTION(node) {
-  return  node.function_decl.f
+  return node.function_decl.f
+}
+
+// see gcc/tree.h for |enum symbol_visibility| definition:
+const VISIBILITY_DEFAULT   = 0;
+const VISIBILITY_PROTECTED = 1;
+const VISIBILITY_HIDDEN    = 2;
+const VISIBILITY_INTERNAL  = 3;
+
+function DECL_VISIBILITY(node) {
+  return node.decl_with_vis.visibility;
+}
+
+function DECL_VISIBILITY_SPECIFIED(node) {
+  return node.decl_with_vis.visibility_specified;
 }
 
 var TREE_PRIVATE = isGCC42 ?
