@@ -4,6 +4,6 @@ function process_function(f)
 {
   if (f.name == "TemplateFunction(A) [with A = int]")
     print('OK');
-else
-  print(f.name)
+  else
+    print(f.name)
 }
