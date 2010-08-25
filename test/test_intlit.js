@@ -6,7 +6,7 @@ include('unit_test.js');
 
 let r = new TestResults();
 
-// v comes from the intlic.cc body[] values, exp comes from our
+// v comes from the intlit.cc body[] values, exp comes from our
 // expected[] values
 function MyTestCase(v, exp) {
   this.v = v;
