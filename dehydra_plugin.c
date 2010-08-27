@@ -264,6 +264,9 @@ int gcc_plugin_init(const char *file, const struct plugin_argument* argv, int ar
   if (ret) return ret;
 #endif
 #ifdef CFG_PLUGINS_MOZ
+  if (flag_preprocess_only)
+    return 0;
+
   if (!arg) {
     error ("Use " STRINGIFY(PLUGIN_ARG) "=<scriptname> to specify the dehydra script to run");
     return 1;
@@ -514,6 +517,9 @@ int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version
 
   if (!plugin_info->argc)
     return 1;
+
+  if (flag_preprocess_only)
+    return 0;
 
   int ret = gcc_plugin_init (plugin_info->full_name, plugin_info->argv,
                              plugin_info->argc, &pass_name, version->basever);
