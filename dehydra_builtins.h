@@ -21,9 +21,17 @@
 #ifndef DEHYDRA_BUILTINS_H
 #define DEHYDRA_BUILTINS_H
 
+/* Support older SpiderMonkey versions where JSNative != JSFastNative */
+#ifdef JSFUN_FAST_NATIVE
+#define DH_JS_FN JS_FN
+#else
+#define DH_JS_FN(a, b, c, d, e) JS_FN(a, b, c, d)
+#define JSFUN_FAST_NATIVE 0
+#endif
+
 /* JS Natives */
 
-#define DH_JSNATIVE(fname) JSBool fname(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval);
+#define DH_JSNATIVE(fname) JSBool fname(JSContext *cx, uintN argc, jsval *vp);
  
 DH_JSNATIVE(Require);
 DH_JSNATIVE(Include);

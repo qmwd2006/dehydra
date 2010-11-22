@@ -111,15 +111,15 @@ static JSClass global_class = {
 
 void dehydra_init(Dehydra *this, const char *file, const char *version) {
   static JSFunctionSpec shell_functions[] = {
-    {"_print",          Print,          0},
-    {"include",         Include,        1},
-    {"write_file",      WriteFile,      1},
-    {"read_file",       ReadFile,       1},
-    {"diagnostic",      Diagnostic,     0},
-    {"require",         Require,        1},
-    {"hashcode",        Hashcode,       1},
-    {"resolve_path",    ResolvePath,    1},
-    {0}
+    DH_JS_FN("_print",          Print,          0,    0,    0),
+    DH_JS_FN("include",         Include,        1,    0,    0),
+    DH_JS_FN("write_file",      WriteFile,      1,    0,    0),
+    DH_JS_FN("read_file",       ReadFile,       1,    0,    0),
+    DH_JS_FN("diagnostic",      Diagnostic,     0,    0,    0),
+    DH_JS_FN("require",         Require,        1,    0,    0),
+    DH_JS_FN("hashcode",        Hashcode,       1,    0,    0),
+    DH_JS_FN("resolve_path",    ResolvePath,    1,    0,    0),
+    JS_FS_END
   };
 
   this->fndeclMap = pointer_map_create ();
@@ -204,7 +204,7 @@ int dehydra_includeScript (Dehydra *this, const char *script) {
                                                      script));
   int key = dehydra_rootObject (this, strval);
   jsval rval;
-  int ret = !Include (this->cx, this->globalObj, 1, &strval, &rval);
+  int ret = !JS_CallFunctionName(this->cx, this->globalObj, "include", 1, &strval, &rval);
   dehydra_unrootObject (this, key);
   return ret;
 }
