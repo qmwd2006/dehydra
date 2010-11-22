@@ -46,7 +46,8 @@ int set_after_gcc_pass(const char *pass);
 JSBool require_version(JSContext *cx, jsval val) {
   JSString *version_str = JS_ValueToString(cx, val);
   if (!version_str) return JS_FALSE;
-  char *version_cstr = JS_GetStringBytes(version_str);
+  char *version_cstr = JS_EncodeString(cx, version_str);
+  xassert(version_cstr);
   JSVersion version = JS_StringToVersion(version_cstr);
   JSBool retval;
   if (version == JSVERSION_UNKNOWN) {
@@ -56,6 +57,7 @@ JSBool require_version(JSContext *cx, jsval val) {
     JS_SetVersion(cx, version);
     retval = JS_TRUE;
   }
+  JS_free(cx, version_cstr);
   return retval;
 }
 
@@ -75,7 +77,8 @@ JSBool require_pass(JSContext *cx, jsval val) {
   JSString *str = JS_ValueToString(cx, val);
   if (!str) return JS_FALSE;
   JS_AddStringRoot(cx, &str);
-  char *cstr = JS_GetStringBytes(str);
+  char *cstr = JS_EncodeString(cx, str);
+  xassert(cstr);
   JSBool retval;
   if (set_after_gcc_pass(cstr)) {
     JS_ReportError(cx, "Cannot set gcc_pass_after after initialization is finished");
@@ -83,6 +86,7 @@ JSBool require_pass(JSContext *cx, jsval val) {
   } else {
     retval = JS_TRUE;
   }
+  JS_free(cx, cstr);
   JS_RemoveStringRoot(cx, &str);
   return retval;
 }
@@ -150,13 +154,15 @@ JSBool Require(JSContext *cx, uintN argc, jsval *vp)
     JSBool rv = JS_IdToValue(cx, prop_ids->vector[i], &prop);
     xassert(rv);
     JSString *prop_str = JSVAL_TO_STRING(prop);
-    char *prop_name = JS_GetStringBytes(prop_str);
+    char *prop_name = JS_EncodeString(cx, prop_str);
+    xassert(prop_name);
     jsval prop_val;
     rv = JS_GetProperty(cx, args, prop_name, &prop_val);
     xassert(rv);
 
     rv = dispatch_require(cx, prop_name, prop_val);
     if (rv == JS_FALSE) retval = JS_FALSE;
+    JS_free(cx, prop_name);
     JS_LeaveLocalRootScope(cx);
   }
   JS_DestroyIdArray(cx, prop_ids);
@@ -191,7 +197,10 @@ JSBool Print(JSContext *cx, uintN argc, jsval *vp)
     JSString *str = JS_ValueToString(cx, argv[i]);
     if (!str)
       return JS_FALSE;
-    fprintf(out, "%s", JS_GetStringBytes(str));
+    char *bytes = JS_EncodeString(cx, str);
+    xassert(bytes);
+    fprintf(out, "%s", bytes);
+    JS_free(cx, bytes);
   }
   fprintf(out, "\n");
   JS_SET_RVAL(cx, vp, JSVAL_VOID);
@@ -202,13 +211,17 @@ typedef void (*diagnostic_func)(const char *, ...);
 
 JSBool Diagnostic(JSContext *cx, uintN argc, jsval *vp)
 {
+  jsval *argv = JS_ARGV(cx, vp);
   JSBool is_error;
-  char *msg;
   JSObject *loc_obj = NULL;
 
-  if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx, vp), "bs/o", &is_error, &msg, &loc_obj))
+  if (!JS_ConvertArguments(cx, argc, argv, "b*/o", &is_error, &loc_obj))
+    return JS_FALSE;    
+
+  if (!JSVAL_IS_STRING(argv[1]))
     return JS_FALSE;
-  JS_SET_RVAL(cx, vp, JSVAL_VOID);
+  char *msg = JS_EncodeString(cx, JSVAL_TO_STRING(argv[1]));
+  xassert(msg);
 
   if (loc_obj) {
     location_t loc;
@@ -225,26 +238,26 @@ JSBool Diagnostic(JSContext *cx, uintN argc, jsval *vp)
 #endif
 // gcc 4.3
 #ifdef GIMPLE_TUPLE_P
-    if (is_error)
-      error ("%H%s", &loc, msg);
-    else 
-      warning (0, "%H%s", &loc, msg);
+      if (is_error)
+        error ("%H%s", &loc, msg);
+      else 
+        warning (0, "%H%s", &loc, msg);
 // gcc 4.5
 #else
-    if (is_error)
-      error_at (loc, "%s", msg);
-    else 
-      warning_at (loc, 0, "%s", msg);
+      if (is_error)
+        error_at (loc, "%s", msg);
+      else 
+        warning_at (loc, 0, "%s", msg);
 #endif
-      return JS_TRUE;
     }
-  }
-
-  if (is_error) {
+  } else if (is_error) {
     error ("%s", msg);
   } else {
     warning (0, "%s", msg);
   }
+
+  JS_free(cx, msg);
+  JS_SET_RVAL(cx, vp, JSVAL_VOID);
   return JS_TRUE;
 }
 
@@ -293,7 +306,9 @@ ErrorReporter(JSContext *cx, const char *message, JSErrorReport *report)
     /* reformat the spidermonkey stack */
     JS_GetProperty(cx, JSVAL_TO_OBJECT (exn), "stack", &stack);
     if (JS_TypeOfValue (cx, stack) == JSTYPE_STRING) {
-      char *str = JS_GetStringBytes (JSVAL_TO_STRING (stack));
+      char *bytes = JS_EncodeString(cx, JSVAL_TO_STRING (stack));
+      xassert(bytes);
+      char *str = bytes;
       int counter = 0;
       do {
         char *eol = strchr (str, '\n');
@@ -312,6 +327,7 @@ ErrorReporter(JSContext *cx, const char *message, JSErrorReport *report)
           break;
         }
       } while (*str);
+      JS_free(cx, bytes);
     }
   }
   fflush(stderr);
@@ -322,38 +338,53 @@ ErrorReporter(JSContext *cx, const char *message, JSErrorReport *report)
 
 JSBool ReadFile(JSContext *cx, uintN argc, jsval *vp)
 {
-  const char *filename;
-  JSBool rv = JS_ConvertArguments(cx, argc, JS_ARGV(cx, vp), "s", &filename);
-  if (!rv) return JS_FALSE;
-
+  jsval *argv = JS_ARGV(cx, vp);
+  if (!JSVAL_IS_STRING(argv[0]))
+    return JS_FALSE;
+  char *filename = JS_EncodeString(cx, JSVAL_TO_STRING(argv[0]));
+  xassert(filename);
   long size = 0;
   char *buf = readFile (filename, &size);
+  JSBool rv = JS_FALSE;
   if(!buf) {
     REPORT_ERROR_2(cx, "read_file: error opening file '%s': %s",
                    filename, strerror(errno));
-    return JS_FALSE;
+  } else {
+    JS_SET_RVAL(cx, vp, STRING_TO_JSVAL(JS_NewString(cx, buf, size)));
+    rv = JS_TRUE;
   }
-  JS_SET_RVAL(cx, vp, STRING_TO_JSVAL(JS_NewString(cx, buf, size)));
-  return JS_TRUE;
+  JS_free(cx, filename);
+  return rv;
 }
 
 JSBool WriteFile(JSContext *cx, uintN argc, jsval *vp)
 {
-  const char *filename;
+  jsval *argv = JS_ARGV(cx, vp);
   JSString *str;
-  JSBool rv = JS_ConvertArguments(cx, argc, JS_ARGV(cx, vp), "sS", &filename, &str);
-  if (!rv) return JS_FALSE;
+  if (!JS_ConvertArguments(cx, argc, argv, "*S", &str))
+    return JS_FALSE;
+  if (!JSVAL_IS_STRING(argv[0]))
+    return JS_FALSE;
 
+  char *filename = JS_EncodeString(cx, JSVAL_TO_STRING(argv[0]));
+  xassert(filename);
+
+  JSBool rv = JS_FALSE;
   FILE *f = fopen (filename, "w");
   if (!f) {
     REPORT_ERROR_2(cx, "write_file: error opening file '%s': %s",
                    filename, strerror(errno));
-    return JS_FALSE;
+  } else {
+    char *bytes = JS_EncodeString(cx, str);
+    xassert(bytes);
+    fwrite (bytes, 1, JS_GetStringLength(str), f);
+    fclose (f);
+    JS_free(cx, bytes);
+    JS_SET_RVAL(cx, vp, JSVAL_VOID);
+    rv = JS_TRUE;
   }
-  fwrite (JS_GetStringBytes(str), 1, JS_GetStringLength(str), f);
-  fclose (f);
-  JS_SET_RVAL(cx, vp, JSVAL_VOID);
-  return JS_TRUE;
+  JS_free(cx, filename);
+  return rv;
 }
 
 char *readEntireFile(FILE *f, long *size) {
@@ -450,14 +481,20 @@ static JSBool dehydra_loadScript (Dehydra *this, const char *filename,
 /* should use this function to load all objects to avoid possibity of objects including themselves */
 JSBool Include(JSContext *cx, uintN argc, jsval *vp)
 {
-  Dehydra *this = JS_GetContextPrivate(cx);
-  char *filename;
-  JSObject *namespace = this->globalObj;
   jsval *argv = JS_ARGV(cx, vp);
-  if (!JS_ConvertArguments(cx, argc, argv, "s/o", &filename, &namespace))
+  if (!JSVAL_IS_STRING(argv[0]))
     return JS_FALSE;
- 
+
+  char *filename = JS_EncodeString(cx, JSVAL_TO_STRING(argv[0]));
+  xassert(filename);
+
+  Dehydra *this = JS_GetContextPrivate(cx);
+  JSObject *namespace = this->globalObj;
+  if (!JS_ConvertArguments(cx, argc, argv, "*/o", &namespace))
+    return JS_FALSE;
+
   JS_SET_RVAL(cx, vp, OBJECT_TO_JSVAL(namespace));
+
   JSObject *includedArray = NULL;
   jsval val;
   JS_GetProperty(cx, namespace, "_includedArray", &val);
@@ -470,11 +507,16 @@ JSBool Include(JSContext *cx, uintN argc, jsval *vp)
     xassert (JS_CallFunctionName (this->cx, includedArray, "lastIndexOf",
                                   1, argv, &val));
     /* Return if file was already included in this namespace. */
-    if (JSVAL_TO_INT (val) != -1) return JS_TRUE;
+    if (JSVAL_TO_INT (val) != -1) {
+      JS_free(cx, filename);
+      return JS_TRUE;
+    }
   }
 
   JS_CallFunctionName (this->cx, includedArray, "push", 1, argv, &JS_RVAL(cx, vp));
-  return dehydra_loadScript (this, filename, namespace);
+  JSBool rv = dehydra_loadScript (this, filename, namespace);
+  JS_free(cx, filename);
+  return rv;
 }
 
 /* author: tglek
@@ -516,18 +558,24 @@ JSBool Hashcode(JSContext *cx, uintN argc, jsval *vp)
 
 JSBool ResolvePath(JSContext *cx, uintN argc, jsval *vp)
 {
-  const char *path;
-  JSBool rv = JS_ConvertArguments(cx, argc, JS_ARGV(cx, vp), "s", &path);
-  if (!rv) return JS_FALSE;
+  jsval *argv = JS_ARGV(cx, vp);
+  if (!JSVAL_IS_STRING(argv[0]))
+    return JS_FALSE;
+  char *path = JS_EncodeString(cx, JSVAL_TO_STRING(argv[0]));
+  xassert(path);
 
   char buf[PATH_MAX];
   char *buf_rv = realpath(path, buf);
+  JSBool rv = JS_FALSE;
   if (!buf_rv) {
     REPORT_ERROR_2(cx, "resolve_path: error resolving path '%s': %s",
                    path, strerror(errno));
-    return JS_FALSE;
+  } else {
+    JS_SET_RVAL(cx, vp, STRING_TO_JSVAL(JS_NewStringCopyZ(cx, buf)));
+    rv = JS_TRUE;
   }
-  JS_SET_RVAL(cx, vp, STRING_TO_JSVAL(JS_NewStringCopyZ(cx, buf)));
-  return JS_TRUE;
+
+  JS_free(cx, path);
+  return rv;
 }
 

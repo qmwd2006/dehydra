@@ -126,22 +126,25 @@ static JSBool ResolveTreeNode (JSContext *cx, JSObject *obj, jsid id,
      *
      * A better way to do this would be to simply set strict mode, but
      * strict mode doesn't always report this condition (see bug 425066). */
-    JSString* str = JSID_TO_STRING(id);
-    const char *prop_name = JS_GetStringBytes(str);
     JSBool has_prop;
     JSObject *protoObj = JS_GetPrototype(cx, obj);
+    JSString *str = JSID_TO_STRING(id);
+    char *prop_name = JS_EncodeString(cx, str);
+    xassert(prop_name);
     JSBool rv = JS_HasProperty(cx, protoObj, prop_name, &has_prop);
     if (rv && has_prop) {
       *objp = protoObj;
-      return JS_TRUE;
+    } else {
+      /* Property not found anywhere: produce the error. */
+      jsval unhandled_property_handler = dehydra_getToplevelFunction(
+          this, "unhandledLazyProperty");
+      jsval rval;
+      jsval arg = STRING_TO_JSVAL(str);
+      rv = JS_CallFunctionValue(this->cx, this->globalObj, unhandled_property_handler,
+                                1, &arg, &rval);
     }
-    /* Property not found anywhere: produce the error. */
-    jsval unhandled_property_handler = dehydra_getToplevelFunction(
-        this, "unhandledLazyProperty");
-    jsval rval;
-    jsval arg = STRING_TO_JSVAL(str);
-    return JS_CallFunctionValue (this->cx, this->globalObj, unhandled_property_handler,
-                                 1, &arg, &rval);
+    JS_free(cx, prop_name);
+    return rv;
   }
   JS_SetPrivate (cx, obj, NULL);
   lazy->handler (this, lazy->data, obj);
