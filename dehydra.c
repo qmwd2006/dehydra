@@ -126,7 +126,9 @@ void dehydra_init(Dehydra *this, const char *file, const char *version) {
   this->rt = JS_NewRuntime (0xFF000000L);
   this->cx = JS_NewContext (this->rt, 8192);
 
-#ifdef JSOPTION_JIT
+#ifdef JSOPTION_METHODJIT
+  JS_SetOptions(this->cx, JS_GetOptions(this->cx) | JSOPTION_JIT | JSOPTION_METHODJIT);
+#elif defined(JSOPTION_JIT)
   JS_SetOptions(this->cx, JS_GetOptions(this->cx) | JSOPTION_JIT);
 #endif
 

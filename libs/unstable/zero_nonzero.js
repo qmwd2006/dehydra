@@ -85,7 +85,7 @@ Zero_NonZero.prototype.processCall = function (isn, state) {
   let fname = gimple_call_function_name(isn);
   if (fname == '__builtin_expect') {
     // Same as an assign from arg 0 to lhs
-    state.assign(lhs, gimple_call_args(isn, 0), isn);
+    state.assign(lhs, gimple_call_arg(isn, 0), isn);
   } else {
     state.assignValue(lhs, ESP.TOP, isn);
   }
