@@ -268,12 +268,15 @@ FILE *dehydra_searchPath (Dehydra *this, const char *filename, char **realname)
 
       JSString *dir_str = JS_ValueToString(this->cx, val);
       if (!dir_str) continue;
-      char *dir = JS_GetStringBytes(dir_str);
+      char *dir = JS_EncodeString(this->cx, dir_str);
+      xassert(dir);
 
       char *buf = xmalloc(strlen(dir) + strlen(filename) + 2);
       /* Doing a little extra work here to get rid of unneeded '/'. */
       const char *sep = dir[strlen(dir)-1] == '/' ? "" : "/";
       sprintf(buf, "%s%s%s", dir, sep, filename);
+      JS_free(this->cx, dir);
+
       FILE *f = fopen(buf, "r");
       if (f) {
         *realname = buf;
