@@ -395,8 +395,8 @@ walk_n_test (tree *tp, int *walk_subtrees, void *data)
 }
 
 /* Returns a list of walked nodes in the current function body */
-JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
-                   jsval *argv, jsval *rval) {
+JSBool JS_C_walk_tree(JSContext *cx, uintN argc, jsval *vp)
+{
   Dehydra *this = JS_GetContextPrivate (cx);
   const size_t capacity = 512;
   GrowingString *gstr = xrealloc (NULL, capacity);
@@ -411,7 +411,7 @@ JSBool JS_C_walk_tree(JSContext *cx, JSObject *obj, uintN argc,
   /* remove last \n */
   if (gstr->length)
     gstr->str[gstr->length - 1] = 0;
-  *rval = STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, gstr->str));
+  JS_SET_RVAL(cx, vp, STRING_TO_JSVAL (JS_NewStringCopyZ (this->cx, gstr->str)));
   free(gstr);
   return JS_TRUE;
 }
@@ -477,7 +477,7 @@ int treehydra_startup (Dehydra *this) {
   dehydraSysObj = JSVAL_TO_OBJECT (sys_val);
 
   xassert (JS_DefineFunction (this->cx, this->globalObj, "C_walk_tree",
-                              JS_C_walk_tree, 0, 0));
+                              (JSNative) JS_C_walk_tree, 0, JSFUN_FAST_NATIVE));
 
   xassert (JS_InitClass(this->cx, this->globalObj, NULL
                         ,&js_tree_class , NULL, 0, NULL, NULL, NULL, NULL));
