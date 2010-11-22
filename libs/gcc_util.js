@@ -94,6 +94,61 @@ function return_expr(exp) {
   }
 }
 
+/** Yields all virtual member function decls in a node containing
+ *  expressions of the form &Class::foo, where foo is virtual.
+ *  We don't handle (frontend specific?) PTRMEM_CST nodes.
+ */
+function resolve_virtual_fn_addr_exprs(node) {
+  switch (node.tree_code()) {
+  case CONSTRUCTOR:
+    switch (TREE_TYPE(node).tree_code()) {
+    case ARRAY_TYPE:
+    case RECORD_TYPE:
+    case UNION_TYPE:
+      for each (let ce in VEC_iterate(CONSTRUCTOR_ELTS(node))) {
+        if (ce.index.tree_code() == FIELD_DECL &&
+            ce.value.tree_code() == INTEGER_CST &&
+            IDENTIFIER_POINTER(DECL_NAME(ce.index)) == "__pfn")
+        {
+          yield resolve_virtual_fn_addr_expr(ce.index, ce.value);
+        }
+      }
+      break;
+    case LANG_TYPE:
+      break;
+    default:
+      throw new Error("Unexpected type in constructor: " + TREE_TYPE(node).tree_code());
+    }
+    break;
+  case GIMPLE_ASSIGN:
+    let lhs = gimple_op(node, 0);
+    if (lhs.tree_code() != COMPONENT_REF)
+      return;
+    let field_decl = TREE_OPERAND(lhs, 1)
+    if (field_decl.tree_code() != FIELD_DECL)
+      return;
+    if (IDENTIFIER_POINTER(DECL_NAME(field_decl)) != "__pfn")
+      return;
+    let rhs = gimple_op(node, 1);
+    if (rhs.tree_code() != INTEGER_CST)
+      return;
+    yield resolve_virtual_fn_addr_expr(field_decl, rhs);
+  }
+}
+
+/** Helper for resolve_virtual_fn_addr_exprs */
+function resolve_virtual_fn_addr_expr(pfn, vtable_index_tree) {
+  let base = TYPE_METHOD_BASETYPE(TREE_TYPE(TYPE_PTRMEMFUNC_FN_TYPE(DECL_CONTEXT(pfn))));
+  let func = BINFO_VIRTUALS(TYPE_BINFO(base));
+  let ptr_size = TREE_INT_CST_LOW(TYPE_SIZE_UNIT(TREE_TYPE(vtable_index_tree)));
+  let vtable_index = TREE_INT_CST_LOW(vtable_index_tree);
+  while (vtable_index > 1) {
+    func = TREE_CHAIN(func);
+    vtable_index -= ptr_size;
+  }
+  return BV_FN(func);
+}
+
 /** Iterate over a functions local variables */
 function local_decls_iterator(fndecl) {
   for (let list = DECL_STRUCT_FUNCTION(fndecl).local_decls;
