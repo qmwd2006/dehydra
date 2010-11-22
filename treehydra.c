@@ -301,7 +301,6 @@ void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
     convert_tree_node_union (this, TS_COMMON, t, obj);
   }
   /* do not do tree_node_structure() for non C types */
-  /* taras: AFAIK This guard is only needed for gcc <= 4.3 */
   if (code < NUM_TREE_CODES
       || (isGPlusPlus()
           && cp_tree_node_structure ((union lang_tree_node *)t) == TS_CP_GENERIC)) {
@@ -319,7 +318,8 @@ void lazy_tree_node (Dehydra *this, void *structure, JSObject *obj) {
       }
     }
   } else {
-    fprintf(stderr, "%s\n", tree_code_name[code]);
+    // gaurd is tripped by TEMPLATE_INFO, TEMPLATE_PARM_INDEX, and OVERLOAD nodes
+    //fprintf(stderr, "%s\n", tree_code_name[code]);
   }
 }
 

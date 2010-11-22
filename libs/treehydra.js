@@ -212,6 +212,7 @@ function walk_tree (t, func, guard, stack) {
   case TEMPLATE_PARM_INDEX:
   case PTRMEM_CST:
   case USING_DECL:
+  case OVERLOAD:
     /* expressions with no operands */
     break;
   default:
