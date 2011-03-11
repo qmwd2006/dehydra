@@ -43,7 +43,7 @@
 #include "dehydra_ast.h"
 
 #ifndef JS_HAS_NEW_GLOBAL_OBJECT
-#define JS_NewGlobalObject(cx, cls) JS_NewObject(cx, cls, NULL, NULL)
+#define JS_NewCompartmentAndGlobalObject(cx, cl, pr) JS_NewObject(cx, cl, NULL, NULL)
 #endif
 
 const char *NAME = "name";
@@ -123,8 +123,13 @@ void dehydra_init(Dehydra *this, const char *file, const char *version) {
   };
 
   this->fndeclMap = pointer_map_create ();
-  this->rt = JS_NewRuntime (0xFF000000L);
+  this->rt = JS_NewRuntime (0x32L * 1024L * 1024L);
+  if (this->rt == NULL)
+    exit(1);
+
   this->cx = JS_NewContext (this->rt, 8192);
+  if (this->cx == NULL)
+    exit(1);
 
 #ifdef JSOPTION_METHODJIT
   JS_SetOptions(this->cx, JS_GetOptions(this->cx) | JSOPTION_JIT | JSOPTION_METHODJIT);
@@ -134,10 +139,15 @@ void dehydra_init(Dehydra *this, const char *file, const char *version) {
 
   JS_SetContextPrivate (this->cx, this);
   
-  this->globalObj = JS_NewGlobalObject (this->cx, &global_class);
+  this->globalObj = JS_NewCompartmentAndGlobalObject (this->cx, &global_class, NULL);
+  if (this->globalObj == NULL)
+    exit(1);
+
   JS_InitStandardClasses (this->cx, this->globalObj);
+
   /* register error handler */
   JS_SetErrorReporter (this->cx, ErrorReporter);
+
   xassert (JS_DefineFunctions (this->cx, this->globalObj, shell_functions));
   if (dehydra_getToplevelFunction(this, "include") == JSVAL_VOID) {
     fprintf (stderr, "Your version of spidermonkey has broken JS_DefineFunctions, upgrade it or ./configure with another version\n");
