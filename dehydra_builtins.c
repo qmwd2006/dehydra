@@ -350,7 +350,7 @@ JSBool ReadFile(JSContext *cx, uintN argc, jsval *vp)
     REPORT_ERROR_2(cx, "read_file: error opening file '%s': %s",
                    filename, strerror(errno));
   } else {
-    JS_SET_RVAL(cx, vp, STRING_TO_JSVAL(JS_NewString(cx, buf, size)));
+    JS_SET_RVAL(cx, vp, STRING_TO_JSVAL(JS_NewStringCopyN(cx, buf, size)));
     rv = JS_TRUE;
   }
   JS_free(cx, filename);
