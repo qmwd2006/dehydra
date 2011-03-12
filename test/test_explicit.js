@@ -30,7 +30,7 @@ let tests={'C::C()': false,
            'C::C(int, char)': false,
            'C::C(int, float)': true};
 
-if (/^4.3/(sys.gcc_version)) {
+if (/^4.3/.exec(sys.gcc_version)) {
   delete tests['C::C()']
   delete tests['C::C(int, char)']
 }

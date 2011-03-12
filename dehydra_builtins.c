@@ -458,18 +458,17 @@ static JSBool dehydra_loadScript (Dehydra *this, const char *filename,
     return JS_FALSE;
   }
 
-  JSScript *script = JS_CompileScript(this->cx, namespace,
-                                      content, size, realname, 1);
+  JSObject *sobj = JS_CompileScript(this->cx, namespace,
+                                    content, size, realname, 1);
   free(realname);
-  if (script == NULL) {
+  if (sobj == NULL) {
     xassert(JS_IsExceptionPending(this->cx));
     return JS_FALSE;
   }
 
-  JSObject *sobj = JS_NewScriptObject(this->cx, script);
   JS_AddNamedObjectRoot(this->cx, &sobj, filename);
   jsval rval;
-  JSBool rv = JS_ExecuteScript(this->cx, namespace, script, &rval);
+  JSBool rv = JS_ExecuteScript(this->cx, namespace, sobj, &rval);
   JS_RemoveObjectRoot(this->cx, &sobj);
   if (!rv) {
     xassert(JS_IsExceptionPending(this->cx));
