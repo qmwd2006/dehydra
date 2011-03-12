@@ -571,7 +571,7 @@ function convert (unit, aggr, byValue) {
       cast = "char *"
       isPrimitive = true
       lengthExpr = undefined
-    } else if (location_tRegexp(m.type.name)) {
+    } else if (location_tRegexp.exec(m.type.name)) {
       // This must appear before isUnsignedOrInt because location_t is an
       // int (if we are not using gcc 4.2), but we want to convert it to a
       // formatted location.
