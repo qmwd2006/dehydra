@@ -123,7 +123,7 @@ void dehydra_init(Dehydra *this, const char *file, const char *version) {
   };
 
   this->fndeclMap = pointer_map_create ();
-  this->rt = JS_NewRuntime (0x32L * 1024L * 1024L);
+  this->rt = JS_NewRuntime (512L * 1024L * 1024L);
   if (this->rt == NULL)
     exit(1);
 
