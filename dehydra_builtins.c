@@ -348,7 +348,7 @@ JSBool ReadFile(JSContext *cx, uintN argc, jsval *vp)
   JSBool rv = JS_FALSE;
   if(!buf) {
     REPORT_ERROR_2(cx, "read_file: error opening file '%s': %s",
-                   filename, strerror(errno));
+                   filename, xstrerror(errno));
   } else {
     JS_SET_RVAL(cx, vp, STRING_TO_JSVAL(JS_NewStringCopyN(cx, buf, size)));
     rv = JS_TRUE;
@@ -373,7 +373,7 @@ JSBool WriteFile(JSContext *cx, uintN argc, jsval *vp)
   FILE *f = fopen (filename, "w");
   if (!f) {
     REPORT_ERROR_2(cx, "write_file: error opening file '%s': %s",
-                   filename, strerror(errno));
+                   filename, xstrerror(errno));
   } else {
     char *bytes = JS_EncodeString(cx, str);
     xassert(bytes);
@@ -568,7 +568,7 @@ JSBool ResolvePath(JSContext *cx, uintN argc, jsval *vp)
   JSBool rv = JS_FALSE;
   if (!buf_rv) {
     REPORT_ERROR_2(cx, "resolve_path: error resolving path '%s': %s",
-                   path, strerror(errno));
+                   path, xstrerror(errno));
   } else {
     JS_SET_RVAL(cx, vp, STRING_TO_JSVAL(JS_NewStringCopyZ(cx, buf)));
     rv = JS_TRUE;
