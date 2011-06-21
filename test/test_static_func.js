@@ -10,6 +10,7 @@ function process_function(f) {
   case "X::st()":
   case "gst()":    
   case "<unnamed>::nst()":
+  case "{anonymous}::nst()":
     assert(f.isStatic)
     break;
   default:
