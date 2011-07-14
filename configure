@@ -27,8 +27,6 @@ Usage: ./configure ...
 --js-name= part between lib and .so in libjs.so on your system (Usually js, mozjs on Ubuntu)
 --js-libs= Location of libjs.so
 --js-headers= SpiderMonkey headers, location of jsapi.h. Might get autodetected correctly from --js-libs.
---gcc-build= GCC build directory. Defaults to ../gcc-build
---gcc-src= GCC source directory. Autodetected from build dir
 --enable-C Enable experimental C support""".lstrip()
     pass
 
@@ -40,31 +38,6 @@ def checkdir(path,opt):
     print "Checking " + opt + ": " + path
     if not os.path.isdir (path):
         error("directory '"+path+"' doesn't exist, specify correct directory with --" + opt)
-
-def get_gcc_srcdir(build_dir):
-    checkdir(build_dir, "gcc-build")
-    makefile = os.path.join(build_dir, "Makefile")
-    try:
-        for line in open (makefile).readlines():
-            arr = line.split(" = ")
-            if len(arr) and arr[0] == "srcdir":
-                src_dir = arr[1].rstrip()
-                if not os.path.isabs(src_dir):
-                    src_dir = os.path.join(build_dir, src_dir)
-                return os.path.realpath(src_dir)
-        raise "Couldn't find srcdir in gcc Makefile: " + makefile
-    except:
-        error("Invalid gcc build dir " + build_dir)
-
-def check_gcc_srcdir(config, gcc_src):
-    sys.stdout.write ("Checking if GCC supports plugins via mozilla patch: ")
-    if os.path.isfile (os.path.join (gcc_src, "gcc/tree-plugin-pass.c")):
-        print ("Mozilla plugin framework patch")
-        config["PLUGINS_MOZ"] = "Using Mozilla's patch to pre-plugin GCCs'"
-        config["PLUGIN_ARG"] = "-fplugin-arg"
-    else:
-        sys.stdout.flush()
-        error("GCC sources in %s do not have the plugin patch applied" % gcc_src)
 
 def getjsdirs(jsname, jslibs, jsheaders):
     if jslibs == None:
@@ -89,18 +62,12 @@ def getjsdirs(jsname, jslibs, jsheaders):
 def detect_cxx(config):
     sys.stdout.write ("Checking for a C++ compiler: ")
     cxx="g++"
-    if platform.system() == 'Darwin':
-        cxx = "g++-4.2"
     try:
         cxx = os.environ["CXX"]
     except:
         pass
-    try:
-        cxx.find("../")
-        cxx = os.path.abspath(cxx)
-    except:
-        pass
     config["CXX"] = cxx
+    sys.stdout.write ("%s\n" % cxx)
 
 def try_enable_treehydra(config):
     cxx = config["CXX"]
@@ -138,23 +105,15 @@ def try_gcc_plugin_headers(config):
     sys.stdout.write ("Checking for %s plugin headers: " % cxx)
     cout, cin, cerr = popen2.popen3([cxx, '-print-file-name=plugin'])
     path = cout.read().strip()
-    if os.path.exists(path):
-        path = os.path.abspath(path +"/include")
-        config["GCC_PLUGIN_HEADERS"] = "-I%s" % (path)
-        config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-script"
-        print(path)
-        try_enable_finish_decl(config)
-    else:
-        print("No. Will rely on for Mozilla plugin API and build/src dirs")
-        config["GCCBUILDDIR"] = os.path.realpath(config["GCCBUILDDIR"])
-        if config["GCCDIR"] == None:
-            config["GCCDIR"] = get_gcc_srcdir (config["GCCBUILDDIR"])
-        checkdir(config["GCCDIR"], "gcc-src")
-        check_gcc_srcdir(config, config["GCCDIR"])
-        config["GCC_PLUGIN_HEADERS"] ="""-I$(GCCBUILDDIR)/$(GCCSTAGE) -I$(GCCDIR)/gcc \
--I$(GCCDIR)/gcc/. -I$(GCCDIR)/gcc/../include -I$(GCCDIR)/gcc/../libcpp/include \
--I$(GCCDIR)/gcc/../libdecnumber -I$(GCCDIR)/gcc/../libdecnumber/bid \
--I$(GCCBUILDDIR)/libdecnumber -I$(GCCBUILDDIR)""".replace("\\\n","")
+
+    if not os.path.exists(path):
+        raise cxx + " doesn't have plugin headers!"
+
+    path = os.path.abspath(path +"/include")
+    config["GCC_PLUGIN_HEADERS"] = "-I%s" % (path)
+    config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-script"
+    print(path)
+    try_enable_finish_decl(config)
 
 
 
@@ -168,7 +127,7 @@ if __name__ == "__main__":
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h",
-                                   ["js-name=", "js-libs=", "js-headers=", "gcc-src=", "gcc-build=", "enable-C"])
+                                   ["js-name=", "js-libs=", "js-headers=", "enable-C"])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -178,8 +137,6 @@ if __name__ == "__main__":
     jsnamels = [jsname, "js"]
     jslibs = None
     jsheaders = None
-    gcc_build = "../gcc-build"
-    gcc_src = None
     Csupport = False
     for o, val in opts:
         if o == "--js-name":
@@ -189,8 +146,6 @@ if __name__ == "__main__":
             jslibs = os.path.expanduser(val)
         elif o == "--js-headers":
             jsheaders = os.path.expanduser(val)
-        elif o == "--gcc-build":
-            gcc_build = os.path.expanduser(val)
         elif o == "--enable-C":
             Csupport = True
         elif o in ("-h", "--help"):
@@ -212,8 +167,7 @@ if __name__ == "__main__":
     
     if os.environ.has_key("CFLAGS"):
         cflags += ' ' + os.environ["CFLAGS"]
-    config =dict(GCCDIR=gcc_src, GCCBUILDDIR=gcc_build, 
-              SM_NAME=jsname, SM_SUFFIX=dynamic_lib_suffix,
+    config =dict(SM_NAME=jsname, SM_SUFFIX=dynamic_lib_suffix,
               SM_INCLUDE=jsheaders, SM_LIBDIR=jslibs,
               SHARED_LINK_FLAGS=shared_link_flags, 
               CONFIGURE_CFLAGS=cflags)
