@@ -48,6 +48,7 @@ LazyType.prototype.__defineGetter__('attributes', function type_atts() {
   case TYPENAME_TYPE:
   case TEMPLATE_TYPE_PARM:
   case TYPEOF_TYPE:
+  case DECLTYPE_TYPE:
     // types for which TYPE_P does not hold. argh.
     break;
   default:
@@ -523,7 +524,10 @@ function dehydra_convert(type) {
     /* maybe should add an isTemplateParam? */
   case TEMPLATE_TYPE_PARM:
   case TYPENAME_TYPE:
+  case TYPE_ARGUMENT_PACK:
+  case TYPE_PACK_EXPANSION:
   case TYPEOF_TYPE:
+  case DECLTYPE_TYPE:
     return new LazyType(type);
   case FUNCTION_TYPE:
   case METHOD_TYPE:

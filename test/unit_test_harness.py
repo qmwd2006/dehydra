@@ -43,6 +43,8 @@ class PluginTestCase(TestCase):
         # turn .../g++ into .../gcc
         if self.lang == 'c':
             command = re.sub(r'g\+\+([^/]*)$', r'gcc\1', command)
+        elif self.lang == 'c++0x':
+            command += " -std=c++0x"
         command += " -c -fplugin=../gcc_" + self.plugin + ".so -o /dev/null"
         if "PLUGINS_MOZ" in config_opts:
             command += ' -fplugin-arg="' + self.jsfile
@@ -187,19 +189,16 @@ def extractTests(filename):
     if langs is None:
         langs = 'c,c++'
     # ignore C tests if C is not enabled
-    if not 'C_SUPPORT' in config_opts:
-        # ignore C only tests
-        if langs == 'c':
-            return []
-        # use only C++ for multiplatform tests
-        langs = 'c++'
+    supported = set(['c++', 'c++0x'])
+    if 'C_SUPPORT' in config_opts:
+        supported.update('c')
     langs = langs.split(',')
     for lang in langs:
-        if lang not in ('c', 'c++'):
+        if lang not in ('c', 'c++', 'c++0x'):
             raise TestSpecException(filename, "invalid language %s"%lang)
 
     return [ PluginTestCase(plugin, lang, filename, arguments, srcfile, checker, checker_str)
-             for plugin in plugins for lang in langs]
+             for plugin in plugins for lang in supported.intersection(langs)]
 
 def parseConfigFile(config_filename):
     config = dict()

@@ -458,6 +458,9 @@ static jsval dehydra_convert_type_cached (Dehydra *this, tree type,
     /* maybe should add an isTemplateParam? */
   case TEMPLATE_TYPE_PARM:
   case TYPENAME_TYPE:
+  case TYPE_ARGUMENT_PACK:
+  case TYPE_PACK_EXPANSION:
+    // FIXME: variadic templates need better support
     dehydra_defineStringProperty (this, obj, NAME, dehydra_typeString(type));
     dehydra_defineProperty (this, obj, ISTYPENAME, JSVAL_TRUE);
     break;
@@ -490,8 +493,9 @@ static jsval dehydra_convert_type_cached (Dehydra *this, tree type,
       }
     }
   case TYPEOF_TYPE:
+  case DECLTYPE_TYPE:
     // avoid dealing with typeof mess
-    dehydra_defineStringProperty (this, obj, "typeof_not_implemented", type_as_string (type, 0));
+    dehydra_defineStringProperty (this, obj, "typeof_decltype_not_implemented", type_as_string (type, 0));
     break;
   default:
     warning (1, "Dehydra: Unhandled %s: %s", tree_code_name[TREE_CODE(type)],

@@ -108,6 +108,8 @@ function dehydra_convert2(type, obj) {
     /* maybe should add an isTemplateParam? */
   case TEMPLATE_TYPE_PARM:
   case TYPENAME_TYPE:
+  case TYPE_ARGUMENT_PACK:
+  case TYPE_PACK_EXPANSION:
     obj.name = dehydra_typeString(type);
     break;
   case FUNCTION_TYPE:

@@ -23,9 +23,9 @@ class NotDerived {
   virtual int c();
 };
 
-typedef typeof(&Base::a) aPtrBase;
-typedef typeof(&Base::b) bPtrBase;
-typedef typeof(&Derived::a) aPtrDerived;
+typedef decltype(&Base::a) aPtrBase;
+typedef decltype(&Base::b) bPtrBase;
+typedef decltype(&Derived::a) aPtrDerived;
 
 struct A
 {
