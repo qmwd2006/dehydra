@@ -1,4 +1,4 @@
-// { 'test': 'treehydra', 'input': 'virtual_fn_addr_exprs.cc', 'output': 'unit_test', 'lang': 'c++' }
+// { 'test': 'treehydra', 'input': 'virtual_fn_addr_exprs.cc', 'output': 'unit_test', 'lang': 'c++0x' }
 
 include('unit_test.js');
 
