@@ -132,6 +132,9 @@ function type_string(type) {
       throw new Error("expected TYPE_DECL; original type is " + TREE_CODE(type_decl));
     return prefix + decl_name_string(type_decl);
 
+  case TYPE_PACK_EXPANSION:
+	return type_string(TREE_TYPE(type));
+
   case TYPE_DECL:
   case IDENTIFIER_NODE:
     throw new Error("Unexpected " + code);
