@@ -238,7 +238,7 @@ function decl_name (decl, no_context) {
     if (TYPE_P (context)) {
       context = TYPE_NAME (context)
     }
-    if (code != FUNCTION_DECL) {
+    if (code != FUNCTION_DECL && code != TRANSLATION_UNIT_DECL) {
       str = (context ? decl_name (context) : '<anonymous?>') + "::"
     }
   }
