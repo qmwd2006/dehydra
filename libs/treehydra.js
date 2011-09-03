@@ -42,34 +42,9 @@ if (TREE_CODE) {
   include('useful_arrays.js')
 }
 
-if (isGCC42) {
-  // try to increase the chances of linux scripts working on osx out of the box
-  this.GIMPLE_MODIFY_STMT = MODIFY_EXPR;
-  this.POINTER_PLUS_EXPR = PLUS_EXPR;
-  this.FIXED_POINT_TYPE = {};
- }
-
-if (!isUsingGCCTuples) {
-  this.gimple_code = TREE_CODE;
-  this.GIMPLE_CALL = CALL_EXPR;
-  this.GIMPLE_ASSIGN = GIMPLE_MODIFY_STMT;
-  this.GIMPLE_COND = COND_EXPR;
-  this.GIMPLE_SWITCH = SWITCH_EXPR;
-  this.GIMPLE_RETURN = RETURN_EXPR;
-  this.GIMPLE_LABEL = LABEL_EXPR;
-  this.gimple_call_fn = CALL_EXPR_FN;
-  this.gimple_call_fndecl = call_function_decl;
-  this.gimple_call_function_name = call_function_name;
-  this.gimple_call_args = call_expr_args;
-  this.gimple_call_arg = call_arg;
-  this.gimple_call_arg_iterator = call_arg_iterator;
-  this.gs_display = isn_display;
-  this.gimple_op = function(isn, i) { return isn.operands()[i]; }
-} else {
-  this.FILTER_EXPR = undefined;
-  this.EXC_PTR_EXPR = undefined;
-  this.GIMPLE_MODIFY_STMT = undefined;
-}
+this.FILTER_EXPR = undefined;
+this.EXC_PTR_EXPR = undefined;
+this.GIMPLE_MODIFY_STMT = undefined;
 
 // Class that the lazyness builds itself around of
 function GCCNode () {
@@ -94,9 +69,9 @@ GCCNode.prototype.toString = function () {
   return "I am a " + this._struct_name
 }
 
-GCCNode.prototype.tree_code = isGCC42 ?
-  function () { return this.common.code; } :
-  function () { return GIMPLE_TUPLE_P(this) ? this.gsbase.code : this.base.code; }
+GCCNode.prototype.tree_code = function () {
+  return GIMPLE_TUPLE_P(this) ? this.gsbase.code : this.base.code;
+}
 
 /* Convienient thing along the lines of GENERIC_TREE_OPERAND */
 GCCNode.prototype.operands = function () {
