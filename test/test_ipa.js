@@ -1,6 +1,5 @@
 // { 'test': 'treehydra', 'input': 'locks_good.cc', 'output': 'unit_test' }
-// this test fails on einline_ipa on GCC 4.5, even though that is a potential pass
-require({ after_gcc_pass: isGCC43 ? 'einline_ipa' : 'einline' });
+require({ after_gcc_pass: 'einline' });
 
 ls = ["good1", "good2"]
 function process_tree() {

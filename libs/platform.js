@@ -18,6 +18,6 @@
  */
 
 const isGCCApple = (sys.gcc_version.indexOf('Apple') != -1);
-const isGCC42 = (sys.gcc_version.indexOf('4.2') == 0);
-const isGCC43 = (sys.gcc_version.indexOf('4.3') == 0);
-const isUsingGCCTuples = !(isGCC42 || isGCC43)
+const isGCC42 = false;
+const isGCC43 = false;
+const isUsingGCCTuples = true;

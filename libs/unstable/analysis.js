@@ -158,68 +158,6 @@ function isn_uses(isn) {
     yield d;
 };
 
-if (!isUsingGCCTuples) {
-isn_defs = function (isn, kind) {
-  switch (TREE_CODE(isn)) {
-  case GIMPLE_MODIFY_STMT:
-    yield GENERIC_TREE_OPERAND(isn, 0);
-    if (kind != 'strong') {
-      let rhs = GENERIC_TREE_OPERAND(isn, 1);
-      if (TREE_CODE(rhs) == CALL_EXPR) {
-        for (let d in call_expr_defs(rhs)) yield d;
-      }
-    }
-    break;
-  case CALL_EXPR:
-    if (kind != 'strong') {
-      for (let d in call_expr_defs(isn)) yield d;
-    }
-    break;
-  case RETURN_EXPR:
-    let operand = isn.operands()[0];
-    if (operand) {
-      for (let d in isn_defs(operand, kind)) yield d;
-    }
-    break;
-  case COND_EXPR:
-  case SWITCH_EXPR:
-  case LABEL_EXPR:
-  case RESX_EXPR:
-    // Should be side-effect free
-    break;
-  case RESULT_DECL:
-    // This occurs nested inside a RETURN_EXPR. It is a use, not a def.
-    break;
-  default:
-    throw new Error("isn_defs ni " + TREE_CODE(isn).name);
-  }
-};
-
-isn_uses = function (isn) {
-  switch (TREE_CODE(isn)) {
-  case GIMPLE_MODIFY_STMT:
-    return expr_uses(GENERIC_TREE_OPERAND(isn, 1));
-  case CALL_EXPR:
-    return call_expr_uses(isn);
-  case RETURN_EXPR:
-    let e = TREE_OPERAND(isn, 0);
-    if (e) return isn_uses(e);
-    return undefined; // not sure what should go here
-  case RESULT_DECL:
-    return expr_uses(isn);
-  case COND_EXPR:
-    return expr_uses(TREE_OPERAND(isn, 0));
-  case SWITCH_EXPR:
-    return expr_uses(TREE_OPERAND(isn, 0));
-  case LABEL_EXPR:
-  case RESX_EXPR:
-    break;
-  default:
-    throw new Error("isn_uses ni " + TREE_CODE(isn).name);
-  }
-};
-} // !isUsingGCCTuples
-
 /** Iterate over variables defined by a call. All of these are weak defs.
   * This is unsound -- we just iterate over x where &x is an arg, without
   * attempting alias analysis. */

@@ -233,12 +233,10 @@ function bb_pred_edges(bb) {
 
 /** stmt_list in a bb, may vary on gcc version.
  */
-var bb_stmt_list = isGCC42 ?
-  function (bb) { return bb.stmt_list; } :
-  function (bb) {
-    let iltree = bb.il.tree;
-    return iltree ? iltree.stmt_list : undefined;
-  }    
+function bb_stmt_list(bb) {
+  let iltree = bb.il.tree;
+  return iltree ? iltree.stmt_list : undefined;
+}    
 
 /** Iterate over statements of a BB. */
 let bb_isn_iterator;
@@ -258,7 +256,6 @@ let bb_isn_last;
  *  track the conditions that hold on branches of a switch. */
 let link_switches;
 
-if (isUsingGCCTuples) {
 function bb_gimple_seq(bb) {
   let gimple_bb_info = bb.il.gimple
   return gimple_bb_info ? gimple_bb_info.seq : undefined
@@ -336,81 +333,6 @@ link_switches = function (cfg) {
   }
   return ans;
 }
-} else {
-bb_isn_iterator = function (bb) {
-  let outer_stmt_list = bb_stmt_list(bb);
-  if (outer_stmt_list != undefined) {
-    let stmt_list = outer_stmt_list.stmt_list;
-    for (let cur = stmt_list.head; cur; cur = cur.next) {
-      yield cur.stmt;
-    }
-  }
-}
-
-bb_isn_iterator_reverse = function (bb) {
-  let outer_stmt_list = bb_stmt_list(bb);
-  if (outer_stmt_list != undefined) {
-    let stmt_list = outer_stmt_list.stmt_list;
-    for (let cur = stmt_list.tail; cur; cur = cur.prev) {
-      yield cur.stmt;
-    }
-  }
-}
-  
-bb_isn_last = function (bb) {
-  let stmt_list = bb_stmt_list(bb).stmt_list;
-  return stmt_list.tail.stmt;
-}
-
-link_switches = function(cfg) {
-  /** Helper for link_switches. */
-  function link_switch(cfg, bb, isn) {
-    // GCC uses a default label for finally_tmp vars, even though there
-    // is really only one possibility. We'll find it and put that in, 
-    // to help later analyses track branches.
-    let max_val;
-    for each (let cl in SWITCH_LABELS(isn).vec.a) {
-      let case_val = CASE_LOW(cl) == undefined ? null : TREE_INT_CST_LOW(CASE_LOW(cl));
-      if (case_val != null && (max_val == undefined || case_val > max_val))
-        max_val = case_val;
-      if (is_finally_tmp(SWITCH_COND(isn)) && case_val == null) {
-        case_val = max_val + 1;
-      }
-
-      let label_uid = LABEL_DECL_UID(CASE_LABEL(cl));
-      let bb_succ = cfg.x_label_to_block_map.base.vec[label_uid];
-      //print(label_uid + ' ' + bb_label(bb_succ));
-      let found = false;
-      for each (let e in bb_succ_edges(bb)) {
-        //print('BBS ' + e.dest.index + ' ' + bb_succ.index);
-        if (e.dest == bb_succ) {
-          e.case_val = case_val;
-          found = true;
-          //print('LINK ' + e.src.index + ' -> ' + e.dest.index + ": " + e.case_val);
-          break;
-        }
-      }
-      if (!found)
-        throw new Error("not found");
-    }
-  }
-
-  let ans = [];
-  for (let bb in cfg_bb_iterator(cfg)) {
-    for (let isn in bb_isn_iterator(bb)) {
-      if (TREE_CODE(isn) == SWITCH_EXPR) {
-        if (is_finally_tmp(SWITCH_COND(isn))) {
-          ans.push(SWITCH_COND(isn));
-        }
-        link_switch(cfg, bb, isn, ans);
-      }
-    }
-  }
-  return ans;
-}
- 
-}//isUsingGCCTuples
-
 
 
 // Translate GCC FUNCTION_DECL to a pure JS object

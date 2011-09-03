@@ -36,9 +36,9 @@ function IS_EXPR_CODE_CLASS (code_class) {
     && code_class.value <= tcc_expression.value
 }
 
-var IS_GIMPLE_STMT_CODE_CLASS = isGCC43 ?
-  function (code_class) { return code_class == tcc_gimple_stmt; } :
-  function (code_class) { return false; }
+function IS_GIMPLE_STMT_CODE_CLASS (code_class) {
+  return false;
+}
 
 function TreeCheckError (expected_code, actual_code) {
   var err = new Error("Expected " + expected_code + ", got " + actual_code)
@@ -112,11 +112,9 @@ function TREE_OPERAND_LENGTH (node)
     return TREE_CODE_LENGTH (TREE_CODE (node));
 }
 
-var GIMPLE_STMT_P = isGCC43 ?
-  function (node) {
-    return TREE_CODE_CLASS(TREE_CODE((node))) == tcc_gimple_stmt;
-  } :
-  function (node) { return false; }
+function GIMPLE_STMT_P (node) {
+  return false;
+}
 
 // This macro was eventually removed in GCC 4.5, however this
 // is needed to simultaneously handle GENERIC and GIMPLE.
@@ -128,12 +126,7 @@ function TREE_OPERAND (node, i) {
   return node.exp.operands[i]
 }
 
-var GIMPLE_STMT_OPERAND = isGCC42 ?
-  TREE_OPERAND : isGCC43 ?
-    function (node, i) {
-      return node.gstmt.operands[i]
-    } :
-    gimple_op
+var GIMPLE_STMT_OPERAND = gimple_op;
 
 function GENERIC_TREE_OPERAND (node, i)
 {
@@ -150,41 +143,24 @@ function BIND_EXPR_BODY (node) {
   return TREE_OPERAND (TREE_CHECK (node, BIND_EXPR), 1)
 }
 
-const CALL_EXPR_FN_OPERAND_INDEX = isGCC42 ? 0 : 1;
+const CALL_EXPR_FN_OPERAND_INDEX = 1;
 function CALL_EXPR_FN (node) {
   return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), CALL_EXPR_FN_OPERAND_INDEX)
 }
 
-var call_expr_arg_iterator = isGCC42 ?
-  function (node) {
-    for (let arg_holder = TREE_OPERAND(node, 1); arg_holder;
-         arg_holder = TREE_CHAIN(arg_holder))
-      yield TREE_VALUE(arg_holder);
-  } :
-  function (node) {
-    let nargs = call_expr_nargs(node);
-    for (let i = 0; i < nargs; ++i)
-      yield CALL_EXPR_ARG(node, i);
-  }
+function call_expr_arg_iterator (node) {
+  let nargs = call_expr_nargs(node);
+  for (let i = 0; i < nargs; ++i)
+    yield CALL_EXPR_ARG(node, i);
+}
 
-var CALL_EXPR_ARG = isGCC42 ?
-  function (node, i) {
-    let iter = call_expr_arg_iterator(node);
-    for (let j = 0; j < i; ++j)
-      iter.next();
-    return iter.next();
-  } :
-  function (node, i) {
-    return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), i + 3);
-  }
+function CALL_EXPR_ARG (node, i) {
+  return TREE_OPERAND (TREE_CHECK (node, CALL_EXPR), i + 3);
+}
 
-var call_expr_nargs = isGCC42 ?
-  function (node) {
-    return [arg for (arg in call_expr_arg_iterator(node))].length;
-  } :
-  function (node) {
-    return TREE_INT_CST_LOW(TREE_OPERAND(node, 0)) - 3;
-  }
+function call_expr_nargs (node) {
+  return TREE_INT_CST_LOW(TREE_OPERAND(node, 0)) - 3;
+}
 
 function TYPE_BINFO (node) {
   return TREE_CHECK (node, RECORD_TYPE, UNION_TYPE, QUAL_UNION_TYPE).type.binfo
@@ -194,9 +170,9 @@ function BINFO_BASE_ACCESSES(node) {
   return TREE_CHECK(node, TREE_BINFO).binfo.base_accesses;
 }
 
-var BINFO_VIRTUAL_P = isGCC42 ?
-  function (node) { return TREE_CHECK(node, TREE_BINFO).common.static_flag; } :
-  function (node) { return TREE_CHECK(node, TREE_BINFO).base.static_flag; }
+function BINFO_VIRTUAL_P (node) {
+  return TREE_CHECK(node, TREE_BINFO).base.static_flag;
+}
 
 // not sure if this will work same way in gcc 4.3
 function TREE_CHAIN (node) {
@@ -272,25 +248,25 @@ function DECL_VISIBILITY_SPECIFIED(node) {
   return node.decl_with_vis.visibility_specified;
 }
 
-var TREE_PRIVATE = isGCC42 ?
-  function (node) { return node.common.private_flag; } :
-  function (node) { return node.base.private_flag; };
+function TREE_PRIVATE(node) {
+  return node.base.private_flag;
+}
 
-var TREE_PROTECTED = isGCC42 ?
-  function (node) { return node.common.protected_flag; } :
-  function (node) { return node.base.protected_flag; };
+function TREE_PROTECTED(node) {
+  return node.base.protected_flag;
+}
 
 function IDENTIFIER_POINTER (node) {
   return node.identifier.id.str
 }
 
-var IDENTIFIER_OPNAME_P = isGCC42 ?
-  function (node) { return !!node.common.lang_flag_2; } :
-  function (node) { return !!node.base.lang_flag_2; };
+function IDENTIFIER_OPNAME_P (node) {
+  return !!node.base.lang_flag_2;
+}
 
-var IDENTIFIER_TYPENAME_P = isGCC42 ?
-  function (node) { return !!node.common.lang_flag_4; } :
-  function (node) { return !!node.base.lang_flag_4; };
+function IDENTIFIER_TYPENAME_P (node) { 
+  return !!node.base.lang_flag_4;
+}
 
 function TREE_VEC_LENGTH (node) {
   return TREE_CHECK (node, TREE_VEC).vec.length
@@ -355,7 +331,7 @@ function CLASSTYPE_TEMPLATE_INFO (node) {
   return LANG_TYPE_CLASS_CHECK(node).template_info
 }
 
-const TI_TEMPLATE = isUsingGCCTuples ? TREE_TYPE : TREE_PURPOSE;
+const TI_TEMPLATE = TREE_TYPE;
 
 function CLASSTYPE_TI_TEMPLATE (node) {
   return TI_TEMPLATE (CLASSTYPE_TEMPLATE_INFO (node))
@@ -365,21 +341,17 @@ function DECL_LANG_SPECIFIC (node) {
   return node.decl_common.lang_specific
 }
 
-var decl_flags = isUsingGCCTuples?
-  function (tree) { return tree.u.fn; } :
-  function (tree) { return tree.decl_flags; }
+function decl_flags (tree) {
+  return tree.u.fn;
+}
 
 function VAR_TEMPL_TYPE_OR_FUNCTION_DECL_CHECK(node) {
   return TREE_CHECK(node, VAR_DECL, FUNCTION_DECL, TYPE_DECL, TEMPLATE_DECL);
 }
 
-var DECL_TEMPLATE_INFO = isUsingGCCTuples ?
-  function (node) {
-    return DECL_LANG_SPECIFIC(VAR_TEMPL_TYPE_OR_FUNCTION_DECL_CHECK(node)).u.min.template_info;
-  } :
-  function (node) {
-    return DECL_LANG_SPECIFIC(node).decl_flags.u.template_info;
-  }
+function DECL_TEMPLATE_INFO(node) {
+  return DECL_LANG_SPECIFIC(VAR_TEMPL_TYPE_OR_FUNCTION_DECL_CHECK(node)).u.min.template_info;
+}
 
 function DECL_TI_TEMPLATE(node) {
   return TI_TEMPLATE (DECL_TEMPLATE_INFO (node));
@@ -394,7 +366,7 @@ function TYPE_TEMPLATE_INFO(node) {
     return CLASSTYPE_TEMPLATE_INFO (node)
 }
 
-const TI_ARGS = isUsingGCCTuples ? TREE_CHAIN : TREE_VALUE;
+const TI_ARGS = TREE_CHAIN;
 
 function TMPL_ARGS_HAVE_MULTIPLE_LEVELS (node) {
   if (!node) return
@@ -413,13 +385,9 @@ function TYPE_METHODS(node) {
  because it merely returns the vector array and lets
 the client for each it*/
 // undefined is used for empty vectors, so support it nicely here.
-var VEC_iterate = isGCC42 ?
-  function (vec_node) {
-    if (!vec_node)
-      return [];
-    return vec_node.base ? vec_node.base.vec : vec_node.vec;
-  } :
-  function (vec_node) { return vec_node ? vec_node.base.vec : []; }
+function VEC_iterate (vec_node) {
+  return vec_node ? vec_node.base.vec : [];
+}
 
 function EXPR_P(node) {
   return IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (TREE_CODE (node)));
@@ -524,9 +492,9 @@ function CASE_LOW(expr) { return TREE_OPERAND(expr, 0); }
 function CASE_HIGH(expr) { return TREE_OPERAND(expr, 1); }
 function CASE_LABEL(expr) { return TREE_OPERAND(expr, 2); }
 
-var LABEL_DECL_UID = isUsingGCCTuples ?
-  function (decl) { return decl.label_decl.label_decl_uid; } :
-  function (decl) { return decl.decl_common.pointer_alias_set; }
+function LABEL_DECL_UID(decl) {
+  return decl.label_decl.label_decl_uid;
+}
 
 /** Given an OBJ_TYPE_REF, return a FUNCTION_DECL for the method. */
 function resolve_virtual_fun_from_obj_type_ref(ref) {
@@ -606,13 +574,13 @@ function COMPLETE_TYPE_P (node) {
   return TYPE_SIZE(node) != undefined;
 }
 
-var TYPE_VOLATILE = isGCC42 ?
-  function (node) { return node.common.volatile_flag; } :
-  function (node) { return node.base.volatile_flag; };
+function TYPE_VOLATILE (node) {
+  return node.base.volatile_flag;
+}
 
-var TYPE_READONLY = isGCC42 ?
-  function (node) { return node.common.readonly_flag; } :
-  function (node) { return node.base.readonly_flag; };
+function TYPE_READONLY (node) {
+  return node.base.readonly_flag;
+}
 
 function TYPE_RESTRICT (node) {
   return node.type.restrict_flag;
@@ -657,13 +625,13 @@ function DECL_ARTIFICIAL(node) {
   return node.decl_common.artificial_flag;
 }
 
-var TREE_STATIC = isGCC42 ?
-  function (node) { return node.common.static_flag; } :
-  function (node) { return node.base.static_flag; };
+function TREE_STATIC(node) {
+  return node.base.static_flag;
+}
 
-var TREE_PUBLIC = isGCC42 ?
-  function (node) { return node.common.public_flag; } :
-  function (node) { return node.base.public_flag; };
+function TREE_PUBLIC(node) {
+  return node.base.public_flag;
+}
 
 function DECL_IMPLICIT_TYPEDEF_P(node) {
   return TREE_CODE(node) == TYPE_DECL && DECL_LANG_FLAG_2(node);
@@ -797,9 +765,9 @@ function loc_as_string(loc) {
   return loc.file + ':' + loc.line + ':' + loc.column;
 }
 
-var TYPE_UNSIGNED = isGCC42 ?
-  function (t) { return t.common.unsigned_flag; } :
-  function (t) { return t.base.unsigned_flag; };
+function TYPE_UNSIGNED(t) {
+  return t.base.unsigned_flag;
+}
 
 /* The following globals are functions because they are tree nodes which must
  * not be held past the current treehydra callback.
@@ -906,29 +874,19 @@ function gimple_switch_label (gs, index)
 
 let _comparisons = null;
 
-var gimple_cond_code = isUsingGCCTuples ?
-  function (gs) {
-    if (!this._comparisons) {
-      this._comparisons = {}
-      let enums = [LT_EXPR, LE_EXPR, GT_EXPR, GE_EXPR, EQ_EXPR, NE_EXPR];
-      for each (let e in enums)
-        this._comparisons[e.value] = e
-    }
-    let ret = _comparisons[gs.gsbase.subcode];
-    if (!ret)
-      throw new Error("Unexpected gimple_cond subcode");
-    return ret
-  } :
-  function (cond_expr) {
-    return TREE_CODE(TREE_OPERAND(cond_expr, 0));
+function gimple_cond_code (gs) {
+  if (!this._comparisons) {
+    this._comparisons = {}
+    let enums = [LT_EXPR, LE_EXPR, GT_EXPR, GE_EXPR, EQ_EXPR, NE_EXPR];
+    for each (let e in enums)
+      this._comparisons[e.value] = e
   }
+  let ret = _comparisons[gs.gsbase.subcode];
+  if (!ret)
+    throw new Error("Unexpected gimple_cond subcode");
+  return ret
+}
 
-var condition_operand = isUsingGCCTuples ? 
-  function (gimple_cond, i) {
-    return gimple_op(gimple_cond, i);
-  } :
-  function (cond_expr, i) {
-    let expr = TREE_OPERAND(cond_expr, 0);
-    let cond_op = TREE_OPERAND(expr, i);
-    return cond_op;
-  }
+function condition_operand (gimple_cond, i) {
+  return gimple_op(gimple_cond, i);
+}

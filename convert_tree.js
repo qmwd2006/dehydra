@@ -471,7 +471,7 @@ const location_tRegexp = /location_t|location_s|source_locus/;
 * first(%1) is the parent of current type
 * byValue means that this aggr is part of another struct
 */
-const tree_code_name = isGCC42 ? "tree_common::code" : "tree_base::code";
+const tree_code_name = "tree_base::code";
 function convert (unit, aggr, byValue) {
   if (!aggr || unit.guard(aggr)) {
     return
@@ -576,7 +576,7 @@ function convert (unit, aggr, byValue) {
       // int (if we are not using gcc 4.2), but we want to convert it to a
       // formatted location.
       type_name = 'location_t';
-      cast = isGCC42 ? 'location_s' : 'location_t';
+      cast = 'location_t';
       isPrimitive = true;
     } else if (isUnsignedOrInt(m.type)) {
       type_name = "int"
