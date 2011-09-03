@@ -19,35 +19,24 @@
  */
 
 #define DEFTREECODE(SYM, NAME, TYPE, LENGTH) TYPE,
+#define END_OF_BASE_TREE_CODES
 
 const enum tree_code_class tree_code_type[] = {
-#include "tree.def"
-  tcc_exceptional,
-#include "c-common.def"
-  tcc_exceptional,
-#include "cp/cp-tree.def"
+#include "all-tree.def"
 };
 
 #undef DEFTREECODE
 #define DEFTREECODE(SYM, NAME, TYPE, LENGTH) LENGTH,
 
 const unsigned char tree_code_length[] = {
-#include "tree.def"
-  0,
-#include "c-common.def"
-  0,
-#include "cp/cp-tree.def"
+#include "all-tree.def"
 };
 
 #undef DEFTREECODE
 #define DEFTREECODE(SYM, NAME, TYPE, LENGTH) NAME,
 
 const unsigned char tree_code_name[] = {
-#include "tree.def"
-  0,
-#include "c-common.def"
-  0,
-#include "cp/cp-tree.def"
+#include "all-tree.def"
 };
 
 #undef DEFTREECODE
