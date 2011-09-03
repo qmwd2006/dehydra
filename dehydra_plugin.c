@@ -45,17 +45,8 @@ static int init_finished = 0;
 static char *after_gcc_pass = 0;
 #endif
 
-#ifndef CFG_PLUGINS_MOZ
 #include "gcc-plugin.h"
 #include "plugin.h"
-#define PLUGIN_HANDLER_RETURN return
-#define NOT_MOZ_PLUGINS(x) ,x
-#else
-#define NOT_MOZ_PLUGINS(x)
-#include <version.h>
-#define PLUGIN_HANDLER_RETURN return 0
-#define MAYBE_CLASS_TYPE_P(tree_type) (TREE_CODE(tree_type) == RECORD_TYPE)
-#endif
 
 /* Queue up tree object for latest processing (ie because gcc will fill in more info or 
    loose track of them)
@@ -244,12 +235,8 @@ static void process (tree t) {
 
 #define STRINGIFY(x) #x
 
-#ifdef CFG_PLUGINS_MOZ
-int gcc_plugin_init(const char *file, const char* arg, char **pass)
-#else
 int gcc_plugin_init(const char *file, const struct plugin_argument* argv, int argc, 
                     char **pass, const char *version_string)
-#endif
 {
   char *script = NULL;
 
@@ -263,27 +250,6 @@ int gcc_plugin_init(const char *file, const struct plugin_argument* argv, int ar
   ret = treehydra_startup (&dehydra);
   if (ret) return ret;
 #endif
-#ifdef CFG_PLUGINS_MOZ
-  if (flag_preprocess_only)
-    return 0;
-
-  if (!arg) {
-    error ("Use " STRINGIFY(PLUGIN_ARG) "=<scriptname> to specify the dehydra script to run");
-    return 1;
-  }
-
-  char *rest;
-  const char *options = "";
-
-  script = xstrdup(arg);
-  rest = strchr(script, ' ');
-  if (rest) {
-    *rest = '\0';
-    ++rest;
-    options = rest;
-  }
-  dehydra_defineStringProperty(&dehydra, dehydra.globalObj, "options", options);
-#else
   JSObject *options = dehydra_defineObjectProperty (&dehydra, dehydra.globalObj, "options");
 
   int i;
@@ -298,7 +264,6 @@ int gcc_plugin_init(const char *file, const struct plugin_argument* argv, int ar
     error ("Use " STRINGIFY(PLUGIN_ARG) "=<scriptname> to specify the dehydra script to run");
     return 1;
   }
-#endif
 
   dehydra_appendDirnameToPath (&dehydra, script);
   ret = dehydra_includeScript (&dehydra, script);
@@ -345,13 +310,9 @@ void gcc_plugin_pass (void) {
    dehydra_cp_pre_genericize call dehydra_visitDecl directly */
 static bool postGlobalNamespace = 0;
 
-#ifdef CFG_PLUGINS_MOZ
-int gcc_plugin_post_parse()
-#else
 static void gcc_plugin_post_parse(void*_, void*_2) 
-#endif
 {
-  if (processed || errorcount) PLUGIN_HANDLER_RETURN;
+  if (processed || errorcount) return;
   processed = 1;
 
   int i;
@@ -383,14 +344,9 @@ static void gcc_plugin_post_parse(void*_, void*_2)
   }
 
   postGlobalNamespace = 1;
-  PLUGIN_HANDLER_RETURN;
 }
 
-#ifdef CFG_PLUGINS_MOZ
-void gcc_plugin_cp_pre_genericize(tree fndecl)
-#else
 static void gcc_plugin_cp_pre_genericize(tree fndecl, void *_)
-#endif
 {
   if (errorcount
       || DECL_CLONED_FUNCTION_P (fndecl)
@@ -402,15 +358,11 @@ static void gcc_plugin_cp_pre_genericize(tree fndecl, void *_)
 #endif
 }
 
-#ifdef CFG_PLUGINS_MOZ
-int gcc_plugin_finish_struct (tree t)
-#else
 static void gcc_plugin_finish_struct (tree t, void *_)
-#endif
 {
   // gcc trunk gives us error_mark for some reason
   if (errorcount || TREE_CODE(t) != RECORD_TYPE)
-    PLUGIN_HANDLER_RETURN;
+    return;
   dehydra_finishStruct (&dehydra, t);
 
   /* It's lame but types are still instantiated after post_parse
@@ -421,14 +373,13 @@ static void gcc_plugin_finish_struct (tree t, void *_)
 #ifdef TREEHYDRA_PLUGIN
     treehydra_call_js (&dehydra, "process_tree_type", t);
 #endif
-    PLUGIN_HANDLER_RETURN;
+    return;
   }
   /* Appending stuff to the queue instead of 
      processing immediately is because gcc is overly
      lazy and does some things (like setting anonymous
      struct names) sometime after completing the type */
   dehydra_ehqueue_tree(t);
-  PLUGIN_HANDLER_RETURN;
 }
 
 static void dehydra_ehqueue_tree (tree t) {
@@ -446,11 +397,7 @@ static void gcc_plugin_finish_decl(void *event_data, void *_) {
 }
 #endif
 
-#ifdef CFG_PLUGINS_MOZ
-int gcc_plugin_finish ()
-#else
 static void gcc_plugin_finish (void *_, void *_2)
-#endif
 {
   pointer_set_destroy (pset);
   pset = NULL;
@@ -462,10 +409,8 @@ static void gcc_plugin_finish (void *_, void *_2)
 
   if (!errorcount)
     dehydra_input_end (&dehydra);
-  PLUGIN_HANDLER_RETURN;
 }
 
-#ifndef CFG_PLUGINS_MOZ
 #ifdef TREEHYDRA_PLUGIN
 static unsigned int execute_treehydra_pass (void)
 {
@@ -559,11 +504,7 @@ int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version
     register_callback (plugin_info->base_name, PLUGIN_FINISH_UNIT, gcc_plugin_post_parse, NULL);
     if (isGPlusPlus()) {
       register_callback (plugin_info->base_name, 
-#ifdef CFG_PLUGINS_MOZ
-                         PLUGIN_CXX_CP_PRE_GENERICIZE, 
-#else
                          PLUGIN_PRE_GENERICIZE,
-#endif
                          (plugin_callback_func) gcc_plugin_cp_pre_genericize, NULL);
     }
     register_callback (plugin_info->base_name, PLUGIN_FINISH_TYPE, 
@@ -576,4 +517,3 @@ int plugin_init (struct plugin_name_args *plugin_info, struct plugin_gcc_version
   }
   return ret;
 }
-#endif

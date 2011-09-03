@@ -12,7 +12,7 @@ like this:
            to the output. See checkers, below.
   lang:    comma-separated list of languages to test, c or c++. defaults to c++
   args:    list of key value pairs passed as arguments to the script
-  version: for restricting tests to a particular GCC version. 4.3 or 4.5
+  version: minimum version of GCC to run test on.
 
 """
 
@@ -46,16 +46,10 @@ class PluginTestCase(TestCase):
         elif self.lang == 'c++0x':
             command += " -std=c++0x"
         command += " -c -fplugin=../gcc_" + self.plugin + ".so -o /dev/null"
-        if "PLUGINS_MOZ" in config_opts:
-            command += ' -fplugin-arg="' + self.jsfile
-            argprefix = "--"
-        else :
-            command += " -fplugin-arg-gcc_" + self.plugin + "-script=" + self.jsfile
-            argprefix = "-fplugin-arg-gcc_" + self.plugin + "-"
+        command += " -fplugin-arg-gcc_" + self.plugin + "-script=" + self.jsfile
+        argprefix = "-fplugin-arg-gcc_" + self.plugin + "-"
         for key, value in self.arguments.iteritems():
             command += " " + argprefix + key + "=" + value
-        if "PLUGINS_MOZ" in config_opts:
-            command += '"'
         command += " " + self.ccfile
         return command
 
@@ -176,10 +170,7 @@ def extractTests(filename):
     checker = eval(checker_str)
 
     version = spec.get('version')
-    if version == '4.5' and "PLUGINS_MOZ" in config_opts:
-        return []
-    if version == '4.3' and not "PLUGINS_MOZ" in config_opts:
-        return []
+    # XXX: check version against gcc version
 
     arguments = spec.get('args')
     if arguments is None:

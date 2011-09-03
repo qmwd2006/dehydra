@@ -184,9 +184,6 @@ void dehydra_init(Dehydra *this, const char *file, const char *version) {
                         ,&js_type_class , NULL, 0, NULL, NULL, NULL, NULL));
   xassert (JS_InitClass(this->cx, this->globalObj, NULL
                         ,&js_decl_class , NULL, 0, NULL, NULL, NULL, NULL));
-#ifdef CFG_PLUGINS_MOZ
-  dehydra_setFilename(this);
-#endif
 }
 
 void dehydra_setFilename(Dehydra *this) {
