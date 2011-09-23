@@ -19,7 +19,7 @@
 #
 # Author: Taras Glek
 # OSX support by Vlad Sukhoy
-import getopt, sys, os.path, os, platform, popen2, tempfile
+import getopt, sys, os.path, os, platform, subprocess, tempfile
 
 def usage():
     print """
@@ -78,7 +78,9 @@ def try_enable_finish_decl(config):
 enum plugin_event p = PLUGIN_FINISH_DECL;
 """)
     file.flush()
-    po = popen2.Popen3("cc -c -o /dev/null " + config["GCC_PLUGIN_HEADERS"] + " " + file.name)
+    po = subprocess.Popen(cxx + " -c -o /dev/null " + 
+        config["GCC_PLUGIN_HEADERS"] + " " + file.name, shell=True,
+        close_fds=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if po.wait() == 0:
         config['FINISH_DECL'] = "yes"
         print("FINISH_DECL callback enabled");
@@ -89,11 +91,12 @@ enum plugin_event p = PLUGIN_FINISH_DECL;
 def try_gcc_plugin_headers(config):
     cxx = config["CXX"]
     sys.stdout.write ("Checking for %s plugin headers: " % cxx)
-    cout, cin, cerr = popen2.popen3([cxx, '-print-file-name=plugin'])
-    path = cout.read().strip()
+    proc = subprocess.Popen(cxx + ' -print-file-name=plugin', shell=True,
+        stdout=subprocess.PIPE, close_fds=True)
+    path = proc.stdout.read().strip()
 
     if not os.path.exists(path):
-        raise cxx + " doesn't have plugin headers!"
+        raise Exception(cxx + " doesn't have plugin headers!")
 
     path = os.path.abspath(path +"/include")
     config["GCC_PLUGIN_HEADERS"] = "-I%s" % (path)
