@@ -69,11 +69,6 @@ def detect_cxx(config):
     config["CXX"] = cxx
     sys.stdout.write ("%s\n" % cxx)
 
-def try_enable_treehydra(config):
-    cxx = config["CXX"]
-    config["BUILD_TREEHYDRA"] = "gcc_treehydra.so"
-    print "Will use %s to build Treehydra" % cxx
-
 def try_enable_finish_decl(config):
     print("Checking for FINISH_DECL callback:")
     cxx = config["CXX"]
@@ -102,7 +97,6 @@ def try_gcc_plugin_headers(config):
 
     path = os.path.abspath(path +"/include")
     config["GCC_PLUGIN_HEADERS"] = "-I%s" % (path)
-    config["PLUGIN_ARG"] = "-fplugin-arg-gcc_dehydra-script"
     print(path)
     try_enable_finish_decl(config)
 
@@ -169,7 +163,6 @@ if __name__ == "__main__":
         print("Disabling C testsuite");
     detect_cxx(config)
     try_gcc_plugin_headers(config)
-    try_enable_treehydra(config)
     f = open("config.mk", "w")
     f.write("""# %s
 %s
