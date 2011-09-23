@@ -1,6 +1,7 @@
 include ../config.mk
 
 PLUGIN = ../gcc_dehydra.so
+PLUGIN_ARG = -fplugin-arg-gcc_dehydra-script
 GCCPLUGIN = -fplugin=$(PLUGIN)
 SCRIPT=test.js
 CXXFLAGS = $(GCCPLUGIN) $(PLUGIN_ARG)=$(SCRIPT)
@@ -29,7 +30,7 @@ GLOBAL_DEPS = \
   $(NULL)
 
 #do treehydra checks if treehydra is built by default
-check:: check_dehydra $(BUILD_TREEHYDRA:gcc_treehydra.so=check_treehydra)
+check:: check_dehydra check_treehydra
 	@printf "'make check' only runs the dehydra test suite. To run all tests, run 'make check_both'.\n"
 
 # Unit tests
