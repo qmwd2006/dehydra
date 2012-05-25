@@ -32,7 +32,7 @@ all: gcc_dehydra.so gcc_treehydra.so
 gcc_dehydra.so: dehydra_plugin.o dehydra_builtins.o jsval_map.o $(DEHYDRA_OBJS)
 	$(CXX) -o $@ $+ $(LDFLAGS)
 
-gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) jsval_map.o useful_arrays.js
+gcc_treehydra.so: gcc_dehydra.so $(TREEHYDRA_OBJS) jsval_map.o libs/useful_arrays.js
 	$(CXX) -o $@ $(TREEHYDRA_OBJS) jsval_map.o $(LDFLAGS)
 
 -include $(TREEHYDRA_OBJS:%.o=$(DEPDIR)/%.P)
@@ -54,7 +54,7 @@ jsval_map.o: jsval_map.cc jsval_map.h
 useful_arrays.ii: useful_arrays.c
 	$(CC) $(INCLUDE) -E $< -o $@
 
-useful_arrays.js: useful_arrays.ii
+libs/useful_arrays.js: useful_arrays.ii
 	sed -e 's/.*tree_code/var tree_code/' -e 's/^#.*//' -e 's/\[\]//' -e 's/{/[/' -e 's/}/]/' $< > $@
 
 treehydra: gcc_treehydra.so
@@ -65,7 +65,7 @@ check check_dehydra check_treehydra check_both check_both_tinderbox:
 	$(MAKE) -C test $@
 
 clean:
-	rm -f *.o *.so *~ *.s *.ii *_generated.c enums.js useful_arrays.js $(DEPDIR)/*.P
+	rm -f *.o *.so *~ *.s *.ii *_generated.c libs/enums.js libs/useful_arrays.js $(DEPDIR)/*.P
 	$(MAKE) -C test clean
 
 distclean: clean
