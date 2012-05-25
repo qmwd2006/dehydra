@@ -173,7 +173,6 @@ void dehydra_init(Dehydra *this, const char *file, const char *version) {
 
   char *filename_copy = xstrdup(file);
   char *dir = my_dirname(filename_copy);
-  dehydra_appendToPath(this, dir);
   char *libdir = xmalloc(strlen(dir) + strlen(STD_INCLUDE) + 2);
   sprintf(libdir, "%s/%s", dir, STD_INCLUDE);
   dehydra_appendToPath(this, libdir);

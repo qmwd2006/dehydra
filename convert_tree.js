@@ -719,7 +719,7 @@ function input_end () {
   var fname = "treehydra_generated.c";
   write_file (fname, str)
   print ("Generated " + fname)
-  unit.saveEnums ("enums.js")
+  unit.saveEnums ("libs/enums.js")
   delete this.tree_code_class
   delete this.cgraph_node
   delete this.tree_code
