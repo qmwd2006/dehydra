@@ -91,14 +91,14 @@ enum plugin_event p = PLUGIN_FINISH_DECL;
 def try_gcc_plugin_headers(config):
     cxx = config["CXX"]
     sys.stdout.write ("Checking for %s plugin headers: " % cxx)
-    proc = subprocess.Popen(cxx + ' -print-file-name=plugin', shell=True,
+    proc = subprocess.Popen(cxx + ' -print-file-name=', shell=True,
         stdout=subprocess.PIPE, close_fds=True)
-    path = proc.stdout.read().strip()
+    path = os.path.join(proc.stdout.read().strip(), 'plugin', 'include')
 
     if not os.path.exists(path):
         raise Exception(cxx + " doesn't have plugin headers!")
 
-    path = os.path.abspath(path +"/include")
+    path = os.path.abspath(path)
     config["GCC_PLUGIN_HEADERS"] = "-I%s" % (path)
     print(path)
     try_enable_finish_decl(config)
