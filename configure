@@ -53,7 +53,9 @@ def getjsdirs(jsname, jslibs, jsheaders):
         checkdir (jsheaders, "js-headers")
     elif jslibs != None:
         jsapi = os.path.dirname(os.path.normpath(jslibs)) + "/include/" + jsname + "/jsapi.h"
-        if (os.path.isfile (jsapi)):
+        if not os.path.isfile(jsapi):
+            jsapi = os.path.dirname(os.path.normpath(jslibs)) + "/include/js/jsapi.h"
+        if os.path.isfile(jsapi):
             jsheaders = os.path.dirname(jsapi)
             print "Detected JavaScript headers: " + jsheaders
 
